@@ -1,0 +1,1 @@
+There are two example feature classes representing the lower 48 US States and another feature class representing the lower 48 states plus Puerto Rico, Alaska, and Hawaii.
