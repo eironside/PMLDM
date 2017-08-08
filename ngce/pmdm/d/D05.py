@@ -1,3 +1,5 @@
+from multiprocessing import Pool, cpu_count
+from functools import partial
 import arcpy
 import time
 import sys
@@ -25,15 +27,11 @@ def collect_table_inputs(j_id):
         return values
 
 
-def handle_rasters(lasd, data_domain, base_dir, d04_output):
+def filter_fishnet(data_domain, base_dir, d04_output):
 
-    print('Generating Rasters From D04 Fishnet')
+    print('Filtering Fishnet & Collecting Task Extents')
 
-    # Create Path for Output Rasters
-    raster_path = os.path.join(base_dir, 'RASTER')
-    os.mkdir(raster_path)
-
-    # Create Path for Other Results
+    # Create Path for Fishnet Results
     fishnet_path = os.path.join(base_dir, 'FISHNET')
     os.mkdir(fishnet_path)
 
@@ -42,61 +40,41 @@ def handle_rasters(lasd, data_domain, base_dir, d04_output):
     sel = arcpy.SelectLayerByLocation_management(layer, 'INTERSECT', data_domain)
     filter_fishnet = arcpy.CopyFeatures_management(sel, os.path.join(fishnet_path, 'filter_fishnet.shp'))
 
-    # Get Count of Filtered Fishnet
-    cells = arcpy.GetCount_management(filter_fishnet)
-
-    # Process Rasters From Filtered Fishnet Extents
-    proc_count = 0
-    fail_count = 0
-    tri_count = 0
-    reg_count = 0
+    # Populate Dictionary With Grid Cell Extents
+    ext_dict = {}
     for r in arcpy.da.SearchCursor(filter_fishnet, ['FID', 'SHAPE@']):
         ext = r[1].extent
-        arcpy.env.extent = arcpy.Extent(ext.XMin, ext.YMin, ext.XMax, ext.YMax)
-        out_raster = os.path.join(raster_path, str(r[0]) + '.tif')
-        try:
-            arcpy.LasDatasetToRaster_conversion(
-                lasd,
-                out_raster,
-                'ELEVATION',
-                'TRIANGULATION LINEAR NO_THINNING MINIMUM 0',
-                'FLOAT',
-                'CELLSIZE',
-                1.0
-            )
-            tri_count += 1
+        box = [ext.XMin, ext.YMin, ext.XMax, ext.YMax]
+        id = str(r[0])
+        ext_dict[id] = box
+
+    return ext_dict
 
 
-        except Exception as e:
-            print('Exception: ', e)
-            print('Attempting To Generate Raster Without Interpolation Parameter')
+def generate_raster(las, path, proc_dict):
 
-            try:
-                arcpy.LasDatasetToRaster_conversion(
-                    lasd,
-                    out_raster,
-                    'ELEVATION',
-                    '#',
-                    'FLOAT',
-                    'CELLSIZE',
-                    1.0
-                )
-                reg_count += 1
+    # Set Extent for Task Processing
+    proc_ext = proc_dict[1]
+    XMin = proc_ext[0]
+    YMin = proc_ext[1]
+    XMax = proc_ext[2]
+    YMax = proc_ext[3]
+    arcpy.env.extent = arcpy.Extent(XMin, YMin, XMax, YMax)
 
-            except Exception as e:
-                print('Exception: ', e)
-                print('Unable to Generate Raster For Fishnet Cell: ', str(r[0]))
-                fail_count += 1
+    # Generate Raster
+    try:
+        arcpy.LasDatasetToRaster_conversion(
+            las,
+            os.path.join(path, str(proc_dict[0]) + '.tif'),
+            'ELEVATION',
+            'TRIANGULATION LINEAR NO_THINNING MINIMUM 0',
+            'FLOAT',
+            'CELLSIZE',
+            1.0
+        )
 
-        finally:
-            proc_count += 1
-
-    # Admin Logging
-    print('Total: ', cells)
-    print('Processed: ',  proc_count)
-    print('Failed: ', fail_count)
-    print('Interpolated: ', tri_count)
-    print('Not Interpolated: ', reg_count)
+    except Exception as e:
+        print('Exception: ', e)
 
 
 if __name__ == '__main__':
@@ -123,15 +101,27 @@ if __name__ == '__main__':
         # Reference LASD
         target_lasd = os.path.join(derived_dir, project_id + '.lasd')
 
-        # Data Domain For Fishnet Parse
+        # Data Domain For Filter Fishnet
         data_domain = os.path.join(derived_dir, 'D01', 'RESULTS', 'data_domain.shp')
 
-        # Generate Rasters
-        handle_rasters(target_lasd, data_domain, base_dir, d04_output)
+        # Filter Fishnet
+        extent_dict = filter_fishnet(data_domain, base_dir, d04_output)
+
+        # Create Path for Output Rasters
+        raster_path = os.path.join(base_dir, 'RASTER')
+        os.mkdir(raster_path)
+
+        # Admin Log - Adding Line to Run Util Log
+        print('Creating Raster From Fishnet Extens')
+
+        # Use Multiprocessing Pool for Raster  Generation
+        pool = Pool(processes=cpu_count() - 2)
+        result = pool.map_async(partial(generate_raster, target_lasd, raster_path), extent_dict.items())
+        pool.close()
+        pool.join()
 
     except Exception as e:
         print('Exception', e)
 
     finally:
         print('Program Ran: {0}'.format(time.time() - start))
-
