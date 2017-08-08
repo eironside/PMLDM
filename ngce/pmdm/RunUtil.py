@@ -14,17 +14,21 @@ import sys
 import tempfile
 
 PATH_PYTHON27_32= r"C:\Program Files (x86)\PYTHON27\ArcGIS10.5"
-PATH_PYTHON27_64= r"C:\Program Files (x86)\PYTHON27\ArcGISx6410.5"
-WMX_TOOLS = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools"
+#PATH_PYTHON27_64= r"C:\Program Files (x86)\PYTHON27\ArcGISx6410.5"
+PATH_PYTHON27_64= r'C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3'
+#WMX_TOOLS = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools"
+WMX_TOOLS = r'C:\Temp'
 
 def runTool(path, toolArgs, bit32=False):
+
+    script_name = os.path.split(path)[1]
     path = r'"{}"'.format(os.path.join(WMX_TOOLS, path))
 
     for index in range(0,len(toolArgs)):
         if toolArgs[index].endswith('\\'):
             toolArgs[index] = toolArgs[index][0:-1]
         toolArgs[index] = r'"{}"'.format(toolArgs[index])
-    
+
     if not bit32:
         arcpy.AddMessage("Architecture='{} {}' Python='{}'".format(arcpy.GetInstallInfo()['ProductName'],platform.architecture()[0],sys.executable))
 
@@ -35,9 +39,14 @@ def runTool(path, toolArgs, bit32=False):
     env = os.environ.copy()
     env['PYTHONPATH']= r'{}\Lib\site-packages;{}'.format(path_python27, WMX_TOOLS)
     env['PATH']= path_python27
-    exe = r'"{}\pythonw.exe"'.format(path_python27)        
-    
-    logfile = tempfile.NamedTemporaryFile(suffix=".log",dir=r"{}\Logs".format(WMX_TOOLS), delete=False)
+    exe = r'"{}\pythonw.exe"'.format(path_python27)
+
+    logfile = tempfile.NamedTemporaryFile(
+        prefix = script_name[:-3] + '__',
+        suffix = ".log",
+        dir = r"{}\Logs".format(WMX_TOOLS),
+        delete = False
+    )
     args = [exe,path]
     for arg in toolArgs:
         args.append(arg)
@@ -46,7 +55,7 @@ def runTool(path, toolArgs, bit32=False):
         arcpy.AddMessage(args)
     # Error writing data to STDOUT, TODO: Switch to file logging
     #proc= subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, shell=False)
-    proc= subprocess.Popen(args, env=env, shell=False, stdout=logfile, stderr=logfile )
+    proc = subprocess.Popen(args, env=env, shell=False, stdout=logfile, stderr=logfile )
     while proc.poll() is None:
         time.sleep(1)
 

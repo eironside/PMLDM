@@ -1,4 +1,5 @@
 from multiprocessing import Pool, cpu_count
+from ngce.pmdm.d.D_Config import *
 from functools import partial
 import tempfile
 import arcpy
@@ -13,7 +14,7 @@ def collect_table_inputs(j_id):
 
     j_id = int(j_id)
 
-    table = r'C:\Users\jeff8977\Desktop\USDA\CMDR.gdb\ProjectJob'
+    table = JOB_SOURCE
 
     values = []
     with arcpy.da.SearchCursor(table, ['WMX_Job_ID', 'Project_ID' ,'Project_Dir']) as cursor:
@@ -253,8 +254,8 @@ if __name__ == '__main__':
         project_id, project_dir = inputs[0], inputs[1]
 
         # Create D01 Directory For Script Results
-        derived_dir = os.path.join(project_dir, 'DERIVED')
-        base_dir = os.path.join(derived_dir, 'D01')
+        derived_dir = os.path.join(project_dir, DERIVED)
+        base_dir = os.path.join(derived_dir, D01)
         os.mkdir(base_dir)
 
         # Target LASD From Project ID

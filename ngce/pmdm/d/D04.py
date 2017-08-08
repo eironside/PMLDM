@@ -1,3 +1,4 @@
+from ngce.pmdm.d.D_Config import *
 import arcpy
 import math
 import time
@@ -11,7 +12,7 @@ def collect_table_inputs(j_id):
 
     j_id = int(j_id)
 
-    table = r'C:\Users\jeff8977\Desktop\USDA\CMDR.gdb\ProjectJob'
+    table = JOB_SOURCE
 
     values = []
     with arcpy.da.SearchCursor(table, ['WMX_Job_ID', 'Project_ID', 'Project_Dir']) as cursor:
@@ -83,11 +84,11 @@ if __name__ == '__main__':
         project_id, project_dir = inputs[0], inputs[1]
 
         # Create Target Inputs
-        derived_dir = os.path.join(project_dir, 'DERIVED')
-        base_dir = os.path.join(derived_dir, 'D04')
+        derived_dir = os.path.join(project_dir, DERIVED)
+        base_dir = os.path.join(derived_dir, D04)
         os.mkdir(base_dir)
         target_lasd = os.path.join(derived_dir, project_id + '.lasd')
-        d03_output = os.path.join(derived_dir, 'D03', 'RESULTS', 'd03_final.shp')
+        d03_output = os.path.join(derived_dir, D03, 'RESULTS', 'd03_final.shp')
 
         # Populate D03 With Z_MIN Field
         print('LasPointStatsByArea_3d')

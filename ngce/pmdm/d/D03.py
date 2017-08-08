@@ -1,3 +1,4 @@
+from ngce.pmdm.d.D_Config import *
 import arcpy
 import time
 import sys
@@ -10,7 +11,7 @@ def collect_table_inputs(j_id):
 
     j_id = int(j_id)
 
-    table = r'C:\Users\jeff8977\Desktop\USDA\CMDR.gdb\ProjectJob'
+    table = JOB_SOURCE
 
     values = []
     with arcpy.da.SearchCursor(table, ['WMX_Job_ID', 'Project_Dir']) as cursor:
@@ -80,11 +81,11 @@ if __name__ == "__main__":
     project_dir = inputs[0]
 
     # Create Directory For Script Results
-    out_workspace = os.path.join(project_dir, 'DERIVED', 'D03', 'RESULTS')
+    out_workspace = os.path.join(project_dir, DERIVED, D03, 'RESULTS')
     os.makedirs(out_workspace)
 
     # Resolve D02 Tiles into Final Output
-    d02_output = os.path.join(project_dir, r'DERIVED\D02\RESULTS')
+    d02_output = os.path.join(project_dir, DERIVED, D02, 'RESULTS')
     handle_d02_output(d02_output, out_workspace)
 
     print('Program Ran: {0}'.format(time.time() - start))

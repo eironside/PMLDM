@@ -1,4 +1,5 @@
 from multiprocessing import Pool, cpu_count
+from ngce.pmdm.d.D_Config import *
 from functools import partial
 import arcpy
 import time
@@ -12,7 +13,7 @@ def collect_table_inputs(j_id):
 
     j_id = int(j_id)
 
-    table = r'C:\Users\jeff8977\Desktop\USDA\CMDR.gdb\ProjectJob'
+    table = JOB_SOURCE
 
     values = []
     with arcpy.da.SearchCursor(table, ['WMX_Job_ID', 'Project_ID', 'Project_Dir']) as cursor:
@@ -91,18 +92,18 @@ if __name__ == '__main__':
         project_id, project_dir = inputs[0], inputs[1]
 
         # Create Target Inputs
-        derived_dir = os.path.join(project_dir, 'DERIVED')
-        base_dir = os.path.join(derived_dir, 'D05')
+        derived_dir = os.path.join(project_dir, DERIVED)
+        base_dir = os.path.join(derived_dir, D05)
         os.mkdir(base_dir)
 
         # Reference D04 Fishnet Output
-        d04_output = os.path.join(derived_dir, 'D04', 'FISHNET', 'fishnet_clip.shp')
+        d04_output = os.path.join(derived_dir, D04, 'FISHNET', 'fishnet_clip.shp')
 
         # Reference LASD
         target_lasd = os.path.join(derived_dir, project_id + '.lasd')
 
         # Data Domain For Filter Fishnet
-        data_domain = os.path.join(derived_dir, 'D01', 'RESULTS', 'data_domain.shp')
+        data_domain = os.path.join(derived_dir, D01, 'RESULTS', 'data_domain.shp')
 
         # Filter Fishnet
         extent_dict = filter_fishnet(data_domain, base_dir, d04_output)
