@@ -38,7 +38,7 @@ def handle_d02_output(d02_output, out_workspace):
 
     # # Merge Results From D02 Output (arcpy.ListFeatureClasses)
     # # Not As Fast As Above Process with List Comprehension & File Directory
-    # # Assumes out_workspace = File Geodatabase
+    # # Assumes d02_output/out_workspace = File Geodatabase
     # arcpy.env.workspace = d02_output
     # output_fcs = arcpy.ListFeatureClasses('pre_*', "POLYGON", "")
     # merged_feats = os.path.join(out_workspace, "d02_mc")
@@ -62,7 +62,7 @@ def handle_d02_output(d02_output, out_workspace):
     arcpy.SelectLayerByAttribute_management("lyr", "NEW_SELECTION", '"ACRES" > 2')
 
     # Copy Selection
-    arcpy.CopyFeatures_management("lyr", os.path.join(out_workspace, 'd03_final'))
+    arcpy.CopyFeatures_management("lyr", os.path.join(out_workspace, D03_FINAL))
 
     # Remove Result of MakeFeatureLayer_management
     arcpy.Delete_management("lyr")
@@ -73,19 +73,23 @@ if __name__ == "__main__":
     # Get Script Start Time
     start = time.time()
 
-    # Collect Job ID from Command Line
-    job_id = sys.argv[1]
+    try:
+        # Collect Job ID from Command Line
+        job_id = sys.argv[1]
 
-    # Collect Script Inputs from SDE Table
-    inputs = collect_table_inputs(job_id)
-    project_dir = inputs[0]
+        # Collect Script Inputs from Table
+        inputs = collect_table_inputs(job_id)
+        project_dir = inputs[0]
 
-    # Create Directory For Script Results
-    out_workspace = os.path.join(project_dir, DERIVED, D03, 'RESULTS')
-    os.makedirs(out_workspace)
+        # Create Directory For Script Results
+        out_workspace = os.path.join(project_dir, DERIVED, D03, 'RESULTS')
+        os.makedirs(out_workspace)
 
-    # Resolve D02 Tiles into Final Output
-    d02_output = os.path.join(project_dir, DERIVED, D02, 'RESULTS')
-    handle_d02_output(d02_output, out_workspace)
+        # Resolve D02 Tiles into D03 Final Output
+        d02_output = os.path.join(project_dir, DERIVED, D02, 'RESULTS')
+        handle_d02_output(d02_output, out_workspace)
+
+    except Exception as e:
+        print('Exception: ', e)
 
     print('Program Ran: {0}'.format(time.time() - start))

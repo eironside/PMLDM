@@ -1,5 +1,6 @@
 from ngce.pmdm.d.D_Config import *
 import arcpy
+import time
 import os
 
 
@@ -26,6 +27,8 @@ def collect_table_inputs(j_id):
 
 def project_set(base_dir, project_id):
 
+    print('Creating Copy of Base APRX File')
+
     base_aprx = arcpy.mp.ArcGISProject(BASE_APRX)
     new_aprx = os.path.join(base_dir, project_id + '.aprx')
     base_aprx.saveACopy(new_aprx)
@@ -36,35 +39,44 @@ def project_set(base_dir, project_id):
 
 if __name__ == '__main__':
 
-    # Collect Job ID from Command Line
-    job_id = '808'
+    # Get Script Start Time
+    start = time.time()
 
-    # Collect Script Inputs from SDE Table
-    inputs = collect_table_inputs(job_id)
-    project_id, project_dir = inputs[0], inputs[1]
+    try:
+        # Collect Job ID from Command Line
+        job_id = '808'
 
-    # Set Path For APRX
-    derived_dir = os.path.join(project_dir, DERIVED)
-    base_dir = os.path.join(derived_dir, 'Editing')
-    os.mkdir(base_dir)
+        # Collect Script Inputs from Table
+        inputs = collect_table_inputs(job_id)
+        project_id, project_dir = inputs[0], inputs[1]
 
-    # Return Map Object
-    aprx = project_set(base_dir, project_id)
-    base_map = aprx.listMaps('*')[0]
+        # Set Path For APRX
+        derived_dir = os.path.join(project_dir, DERIVED)
+        base_dir = os.path.join(derived_dir, 'Editing')
+        os.mkdir(base_dir)
 
-    # Reference LASD
-    target_lasd = os.path.join(derived_dir, project_id + '.lasd')
+        # Return Map Object
+        aprx = project_set(base_dir, project_id)
+        base_map = aprx.listMaps('*')[0]
 
-    # Reference D03 Output
-    d03_output = os.path.join(derived_dir, D03, 'RESULTS', 'd03_final.shp')
+        # Reference LASD
+        target_lasd = os.path.join(derived_dir, project_id + '.lasd')
 
-    # Reference D01 Fishnet
-    d01_fishnet = os.path.join(derived_dir, D01, 'FISHNET', 'fishnet.shp')
+        # Reference D03 Output
+        d03_output = os.path.join(derived_dir, D03, 'RESULTS', D03_FINAL)
 
-    # Add Inputs To Map
-    base_map.addDataFromPath(target_lasd)
-    base_map.addDataFromPath(d01_fishnet)
-    base_map.addDataFromPath(d03_output)
+        # Reference D01 Fishnet
+        d01_fishnet = os.path.join(derived_dir, D01, 'FISHNET', 'fishnet.shp')
 
-    # Save APRX
-    aprx.save()
+        # Add Inputs To Map
+        base_map.addDataFromPath(target_lasd)
+        base_map.addDataFromPath(d01_fishnet)
+        base_map.addDataFromPath(d03_output)
+
+        # Save APRX
+        aprx.save()
+
+    except Exception as e:
+        print('Exception: ', e)
+
+    print('Program Ran: {0}'.format(time.time() - start))

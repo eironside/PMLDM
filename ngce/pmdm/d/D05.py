@@ -54,6 +54,8 @@ def filter_fishnet(data_domain, base_dir, d04_output):
 
 def generate_raster(las, path, proc_dict):
 
+    print('Generating Raster for Extent: ', proc_dict[0])
+
     # Set Extent for Task Processing
     proc_ext = proc_dict[1]
     XMin = proc_ext[0]
@@ -87,33 +89,30 @@ if __name__ == '__main__':
         # Collect Job ID from Command Line
         job_id = sys.argv[1]
 
-        # Collect Script Inputs from SDE Table
+        # Collect Script Inputs from Table
         inputs = collect_table_inputs(job_id)
         project_id, project_dir = inputs[0], inputs[1]
 
-        # Create Target Inputs
+        # Create Directory For Script Results
         derived_dir = os.path.join(project_dir, DERIVED)
         base_dir = os.path.join(derived_dir, D05)
         os.mkdir(base_dir)
 
-        # Reference D04 Fishnet Output
-        d04_output = os.path.join(derived_dir, D04, 'FISHNET', 'fishnet_clip.shp')
+        # Reference D04 Clipped Fishnet Output
+        d04_output = os.path.join(derived_dir, D04, 'FISHNET', D04_FINAL)
 
         # Reference LASD
         target_lasd = os.path.join(derived_dir, project_id + '.lasd')
 
-        # Data Domain For Filter Fishnet
-        data_domain = os.path.join(derived_dir, D01, 'RESULTS', 'data_domain.shp')
+        # Reference Data Domain For Filtering Fishnet
+        data_domain = os.path.join(derived_dir, D01, 'RESULTS', D01_DATA_DOMAIN)
 
-        # Filter Fishnet
+        # Create Filtered Fishnet & Return Extent For Processing
         extent_dict = filter_fishnet(data_domain, base_dir, d04_output)
 
         # Create Path for Output Rasters
         raster_path = os.path.join(base_dir, 'RASTER')
         os.mkdir(raster_path)
-
-        # Admin Log - Adding Line to Run Util Log
-        print('Creating Raster From Fishnet Extens')
 
         # Use Multiprocessing Pool for Raster  Generation
         pool = Pool(processes=cpu_count() - 2)

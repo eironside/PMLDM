@@ -219,7 +219,7 @@ def handle_results(base_dir, task_dir, target_lasd):
     e_diss_sel_criteria = '"ACRES" > 1.5'
     e_diss_sel_layer_name = 'e_diss_sel_lyr_'
     e_diss_sel_layer = arcpy.MakeFeatureLayer_management(e_diss, e_diss_sel_layer_name, e_diss_sel_criteria)
-    e_diss_name = os.path.join(results, 'drivers.shp')
+    e_diss_name = os.path.join(results, D01_DRIVERS)
     arcpy.CopyFeatures_management(e_diss_sel_layer, e_diss_name)
     arcpy.Delete_management(e_diss_sel_layer)
 
@@ -232,7 +232,7 @@ def handle_results(base_dir, task_dir, target_lasd):
     f_union = arcpy.Union_analysis(f_merge, f_union_name, 'ALL', '#', 'NO_GAPS')
 
     # Dissolve G (Data Domain)
-    f_diss_name = os.path.join(results, 'data_domain.shp')
+    f_diss_name = os.path.join(results, D01_DATA_DOMAIN)
     data_domain = arcpy.Dissolve_management(f_union, f_diss_name, '#', '#', 'False', 'True')
 
     # Apply Data Domain As Soft Clip to LASD
@@ -249,16 +249,16 @@ if __name__ == '__main__':
         # Collect Job ID from Command Line
         job_id = sys.argv[1]
 
-        # Collect Script Inputs from SDE Table
+        # Collect Script Inputs from Table
         inputs = collect_table_inputs(job_id)
         project_id, project_dir = inputs[0], inputs[1]
 
-        # Create D01 Directory For Script Results
+        # Create Directory For Script Results
         derived_dir = os.path.join(project_dir, DERIVED)
         base_dir = os.path.join(derived_dir, D01)
         os.mkdir(base_dir)
 
-        # Target LASD From Project ID
+        # Reference LASD
         target_lasd = os.path.join(derived_dir, project_id + '.lasd')
 
         # Determine Grid Dimensions For Fishnet
@@ -270,7 +270,6 @@ if __name__ == '__main__':
     except Exception as e:
         print('Script Encountered Issues While Initializing')
         print('Exception: ', e)
-        print('Line', sys.exc_info()[2].tb_lineno)
 
     else:
         try:
@@ -284,17 +283,12 @@ if __name__ == '__main__':
             pool.close()
             pool.join()
 
-            # Wait For Max Run Seconds Before Going Nuclear On Potential Zombie Processes
-            max_run = 43200
-            result.wait(max_run)
-
             # Create Results From Task Output
             handle_results(base_dir, task_dir, target_lasd)
 
         except Exception as e:
             print('Script Encountered Issues While Processing')
             print('Exception: ', e)
-            print('Line', sys.exc_info()[2].tb_lineno)
 
     finally:
         print('Program Ran: {0}'.format(time.time() - start))

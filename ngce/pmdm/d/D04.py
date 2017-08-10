@@ -63,10 +63,12 @@ def handle_fishnet(lasd, base_dir, grid_dim):
         'POLYGON'
     )
 
-    #  Buffer Fishnet To Ensure Grid Cells Overlap & Clip Outside Buffers
+    #  Buffer Fishnet To Ensure Grid Cells Overlap
     fish_buff = os.path.join(fishnet_path, 'fishnet_buff.shp')
     buff_grid = arcpy.Buffer_analysis(grid, fish_buff, '2 Meters', 'FULL', 'FLAT', 'NONE', '#', 'PLANAR')
-    clip_name = os.path.join(fishnet_path, 'fishnet_clip.shp')
+
+    # Clip Buffered Fishnet With Originial To Exclude Outer Buffers
+    clip_name = os.path.join(fishnet_path, D04_FINAL)
     arcpy.Clip_analysis(buff_grid, fishnet_name, clip_name)
 
 
@@ -79,29 +81,31 @@ if __name__ == '__main__':
         # Collect Job ID from Command Line
         job_id = sys.argv[1]
 
-        # Collect Script Inputs from SDE Table
+        # Collect Script Inputs from Table
         inputs = collect_table_inputs(job_id)
         project_id, project_dir = inputs[0], inputs[1]
 
-        # Create Target Inputs
+        # Create Directory For Script Results
         derived_dir = os.path.join(project_dir, DERIVED)
         base_dir = os.path.join(derived_dir, D04)
         os.mkdir(base_dir)
+
+        # Reference LASD
         target_lasd = os.path.join(derived_dir, project_id + '.lasd')
-        d03_output = os.path.join(derived_dir, D03, 'RESULTS', 'd03_final.shp')
+
+        # Reference D03 Output
+        d03_output = os.path.join(derived_dir, D03, 'RESULTS', D03_FINAL)
 
         # Populate D03 With Z_MIN Field
-        print('LasPointStatsByArea_3d')
         arcpy.LasPointStatsByArea_3d(target_lasd, d03_output, 'Z_MIN')
 
         # Add D03 As Soft Replace
-        print('AddFilesToLasDataset_management')
         arcpy.AddFilesToLasDataset_management(target_lasd, '#', '#', [[d03_output, 'Z_MIN', 'Soft_Replace']])
 
         # Get Dimension For LAS Fishnet
         grid_dimension = grid_calc(target_lasd)
 
-        # Create Fishnet and Generate Rasters
+        # Create Fishnet
         handle_fishnet(target_lasd, base_dir, grid_dimension)
 
     except Exception as e:
