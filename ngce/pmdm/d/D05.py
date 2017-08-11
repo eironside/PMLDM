@@ -54,8 +54,6 @@ def filter_fishnet(data_domain, base_dir, d04_output):
 
 def generate_raster(las, path, proc_dict):
 
-    print('Generating Raster for Extent: ', proc_dict[0])
-
     # Set Extent for Task Processing
     proc_ext = proc_dict[1]
     XMin = proc_ext[0]
