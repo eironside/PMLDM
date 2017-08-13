@@ -333,10 +333,7 @@ class ProjectJob(object):
     fields = fields_ProjectJob
     
     def __init__(self):
-        try:
         self.fclass = arcpy.ListFeatureClasses('*{}'.format(fcName_ProjectJob))[0]
-        except:
-            pass
 ##        for fc in arcpy.ListFeatureClasses():
 ##            arcpy.AddMessage("Class: {}".format(fc))
 ##        arcpy.AddMessage("ProjectJob Feature Class = '{}'".format(self.fclass))
