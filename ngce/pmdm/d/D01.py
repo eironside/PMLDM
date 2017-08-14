@@ -93,6 +93,16 @@ def collect_extents(lasd, base_dir, row, col):
     return ext_dict
 
 
+def check_surface_constraints(lasd):
+
+    print('Checking Existing Surface Constraints')
+
+    if arcpy.Describe(lasd).constraintCount == 0:
+        pass
+    else:
+        raise Exception('LASD Has Existing Surface Constraints.')
+
+
 def task(target_lasd, task_dir, dictionary):
 
     print('Starting Task: ', dictionary[0])
@@ -260,6 +270,9 @@ if __name__ == '__main__':
 
         # Reference LASD
         target_lasd = os.path.join(derived_dir, project_id + '.lasd')
+
+        # Handle Surface Constraints
+        check_surface_constraints(target_lasd)
 
         # Determine Grid Dimensions For Fishnet
         row, col = grid_calc()
