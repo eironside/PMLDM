@@ -159,24 +159,49 @@ def isProcessFile(f_path, elev_type, target_path, publish_path):
                         
     return process_file
 
+'''
+----------------------------------------
+Calculate all the paths related to the outputs of this script
+Changes based on the elevation type (DTM, DSM) and the raster
+version (original, derived, or published)
+
+NOTE: GRIDs don't work well in a multiprocessing environment (conflicts with the scratch workspace).
+Don't use them, always convert raster formats without a file extension
+(FGDB or GRID) to .tif
+----------------------------------------
+'''
 def getFilePaths(f_path, elev_type, target_path, publish_path, raster_version=STAT_FOLDER_ORG):
     # File names and paths
-    root_f_path, f_ext = os.path.splitext(f_path)
+    root_f_path, target_f_ext = os.path.splitext(f_path)
     root_f_path, f_name = os.path.split(root_f_path)
-    target_f_path = os.path.join(target_path, elev_type, f_name)
-    if len(f_ext) > 0:
-        target_f_path = os.path.join(target_path, elev_type, "{}.{}".format(f_name, f_ext))
+    
+    if target_f_ext is None or len(str(target_f_ext).strip()) <= 0:
+        target_f_ext = ".tif"
+    
+    target_f_path = os.path.join(target_path, elev_type, "{}{}".format(f_name, target_f_ext))
     publish_f_path = os.path.join(publish_path, elev_type, "{}.TIF".format(f_name))
     
     bound_out_folder = os.path.join(target_path, STAT_FOLDER, elev_type)
     vector_bound_path = os.path.join(bound_out_folder, "B_{}.shp".format(f_name))
     
+    try:
+        # Make the STAT folder if it doesn't already exist
+        if not os.path.exists(bound_out_folder):
+            os.makedirs(bound_out_folder)
+    except:
+        # Another thread must have made it or there is a lock
+        pass
+    
     stat_out_folder = os.path.join(bound_out_folder, raster_version)
     stat_file_path = os.path.join(stat_out_folder, "S_{}.txt".format(f_name))
     
+    try:
     # Make the STAT folder if it doesn't already exist
     if not os.path.exists(stat_out_folder):
         os.makedirs(stat_out_folder)
+    except:
+        # Another thread must have made it or there is a lock
+        pass
     
     return f_name, target_f_path, publish_f_path, stat_out_folder, stat_file_path, bound_out_folder, vector_bound_path
     
@@ -532,13 +557,12 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
     nodata = RasterConfig.NODATA_DEFAULT     
     
     f_name, target_f_path, publish_f_path, stat_out_folder, stat_file_path, bound_out_folder, vector_bound_path = getFilePaths(f_path, elev_type, target_path, publish_path)  # @UnusedVariable
-    target_left, target_right = os.path.split(target_f_path)
-    temp_folder = os.path.join(target_left, "TEMP", f_name.upper())
-    target1_f_path = os.path.join(temp_folder, target_right.upper())
+    publish1_f_left, publish1_f_right = os.path.splitext(publish_f_path)
+    publish1_f_path = "{}1{}".format(publish1_f_left, publish1_f_right)
     # Don't maintain fGDB raster format, update to TIFF
-    if raster_props[FORMAT] == "FGDBR":
-        target_f_path = "{}.TIF".format(target_f_path)
-        target1_f_path = "{}.TIF".format(target1_f_path)
+#     if raster_props[FORMAT] == "FGDBR":
+#         target_f_path = "{}.TIF".format(target_f_path)
+        
         
     if raster_props[BAND_COUNT] <> 1:
         arcpy.AddMessage("Skipping Raster {}, not 1 band image.".format(f_path))
@@ -553,27 +577,19 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                 if arcpy.Exists(target_f_path):
                     arcpy.AddMessage("\tDerived Raster exists: {}".format(target_f_path))
                 else:
-                    # Set the no data default value on the input raster
-                    arcpy.SetRasterProperties_management(f_path, data_type="#", statistics="#", stats_file="#", nodata="1 {}".format(nodata))
-                    a = doTime(a, "\tSet NODATA on {}".format(f_path))
+                    deleteFileIfExists(target_f_path, True)
+                    arcpy.AddMessage("\tSaving derived raster to {}".format(target_f_path))
                     
                     # Compression isn't being applied properly so results are uncompressed
                     rasterObject = arcpy.Raster(f_path) 
                     outSetNull = arcpy.sa.Con(((rasterObject >= (float(minZ))) & (rasterObject <= (float(maxZ)))), f_path)  # @UndefinedVariable
-                    arcpy.AddMessage("\tSaving temp raster to {}".format(target1_f_path))
-                    
-                    if not os.path.exists(temp_folder):
-                        os.makedirs(temp_folder)
-                    deleteFileIfExists(target1_f_path, True)
-                    outSetNull.save(target1_f_path)
-                    
-                    arcpy.AddMessage("\tCliping temp raster to {}".format(target_f_path))
-                    arcpy.Clip_management(in_raster=target1_f_path, out_raster=target_f_path, in_template_dataset=bound_path, nodata_value="-3.402823e+038", clipping_geometry="ClippingGeometry", maintain_clipping_extent="NO_MAINTAIN_EXTENT")
-                    deleteFileIfExists(target1_f_path, True)
-                    deleteFileIfExists(temp_folder, True)
+                    outSetNull.save(target_f_path)
                     
                     del outSetNull, rasterObject
                 
+                    # Set the no data default value on the input raster
+                    arcpy.SetRasterProperties_management(target_f_path, data_type="#", statistics="#", stats_file="#", nodata="1 {}".format(nodata))
+                    
                     # make sure we make a new published copy of this
                     if arcpy.Exists(publish_f_path):
                         arcpy.Delete_management(publish_f_path)
@@ -584,9 +600,19 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                 if arcpy.Exists(publish_f_path):
                     arcpy.AddMessage("\tPublish Raster exists: {}".format(publish_f_path))
                 else:
+                    arcpy.AddMessage("\tCopy and clip published raster from {} to {}".format(target_f_path, publish1_f_path))
+                    a = datetime.now()
+                    
+                    deleteFileIfExists(publish1_f_path, True)
+                    deleteFileIfExists(publish_f_path, True)
                     # arcpy.RasterToOtherFormat_conversion(target_f_path, publish_f_path, Raster_Format="TIFF")
-                    arcpy.CopyRaster_management(in_raster=target_f_path, out_rasterdataset=publish_f_path, config_keyword="", background_value="", nodata_value=nodata, onebit_to_eightbit="NONE", colormap_to_RGB="NONE", pixel_type="32_BIT_FLOAT", scale_pixel_value="NONE", RGB_to_Colormap="NONE", format="TIFF", transform="NONE")
+                    arcpy.CopyRaster_management(in_raster=target_f_path, out_rasterdataset=publish1_f_path, config_keyword="", background_value="", nodata_value=nodata, onebit_to_eightbit="NONE", colormap_to_RGB="NONE", pixel_type="32_BIT_FLOAT", scale_pixel_value="NONE", RGB_to_Colormap="NONE", format="TIFF", transform="NONE")
                 
+                    arcpy.AddMessage("\tCliping temp raster {} to {}".format(publish1_f_path, publish_f_path))
+                    arcpy.Clip_management(in_raster=publish1_f_path, out_raster=publish_f_path, in_template_dataset=bound_path, nodata_value=nodata, clipping_geometry="ClippingGeometry", maintain_clipping_extent="NO_MAINTAIN_EXTENT")
+                    
+                    deleteFileIfExists(publish1_f_path, True)
+                    
                     a = doTime(a, "\tCopied '{}' to '{}'".format(target_f_path, publish_f_path))
                 
 
@@ -626,8 +652,15 @@ def CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_p
                 arcpy.AddMessage("RASTER CHECK '{}': Horizontal WKID from LAS '{}' {} raster file '{}'".format(f_name, h_wkid, ("Matches" if isHwkid else "Does NOT Match"), raster_props[H_WKID]))
             else:
                 arcpy.AddWarning("WARNING: RASTER CHECK '{}': Horizontal WKID from LAS '{}' {} raster file '{}'".format(f_name, h_wkid, ("Matches" if isHwkid else "Does NOT Match"), raster_props[H_WKID]))
+    
+    
+            # @TODO: exit if a coordinate system is not present or not complete (make them project or define projection)
     except:
         pass
+       
+
+    
+    
        
 
 def processFile(bound_path, f_path, elev_type, target_path, publish_path, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid):

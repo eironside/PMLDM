@@ -20,7 +20,8 @@ from ngce.folders import ProjectFolders
 from ngce.las import LAS
 from ngce.pmdm import RunUtil
 from ngce.pmdm.a import A04_C_ConsolidateLASInfo
-from ngce.pmdm.a.A04_B_CreateLASStats import STAT_FOLDER, doTime
+from ngce.pmdm.a.A04_B_CreateLASStats import STAT_FOLDER, doTime, \
+    deleteFileIfExists
 
 
 PROCESS_DELAY = 2
@@ -226,7 +227,7 @@ def getLasQAInfo(ProjectFolder):
 
 
 
-def getLasFileProcessList(start_dir, target_path, doRasters, isClassified):
+def getLasFileProcessList(start_dir, target_path, doRasters, isClassified, returnFirst=False):
     ext = ".las"
     fileList = []
     arcpy.AddMessage("getLasFileProcessList: Starting in dir {}".format(start_dir))
@@ -235,6 +236,9 @@ def getLasFileProcessList(start_dir, target_path, doRasters, isClassified):
             if f.upper().endswith(ext.upper()):
                 subdir = os.path.join(",".join(dirs))
                 f_path = os.path.join(root, subdir, f)
+                
+                if returnFirst:
+                    return f_path
                 
                 if A04_B_CreateLASStats.isProcessFile(f_path, target_path, doRasters, isClassified):
                     fileList.append(f_path)
@@ -345,9 +349,109 @@ def updateCMDR(ProjectJob, project, las_qainfo, updatedBoundary):
 
 
 
+def isSrValueValid(sr_value):
+    result = True
+    if sr_value is None or sr_value == 'UNKNOWN' or sr_value.upper() == 'NONE' or sr_value == '0':
+        result = False
+    return result
+
+ 
+def checkSpatialOnLas(start_dir, target_path, doRasters, isClassified):
+    las_spatial_ref = None
+    prj_spatial_ref = None
+    
+    las_f_path = getLasFileProcessList(start_dir, target_path, doRasters, isClassified, returnFirst=True)
+    lasd_f_path = "{}d".format(las_f_path)
+    
+    a = datetime.datetime.now()
+    deleteFileIfExists(lasd_f_path, True)
+    arcpy.AddMessage("Testing spatial reference on .las file: '{}' '{}'".format(las_f_path, lasd_f_path))
+    
+#     arcpy.CreateLasDataset_management(input="E:/NGCE/RasterDatasets/OK_SugarCreek_2008/DELIVERED/LAS_CLASSIFIED/3409805_ne_A.las", out_las_dataset="E:/NGCE/RasterDatasets/OK_SugarCreek_2008/DELIVERED/LAS_CLASSIFIED/c3409805_ne_A_LasDataset.lasd", folder_recursion="NO_RECURSION", in_surface_constraints="", spatial_reference="", compute_stats="COMPUTE_STATS", relative_paths="RELATIVE_PATHS", create_las_prj="NO_FILES")
+    
+    arcpy.CreateLasDataset_management(input=las_f_path,
+                                      spatial_reference=None,
+                                      out_las_dataset=lasd_f_path,
+                                      folder_recursion="NO_RECURSION",
+                                      in_surface_constraints="",
+                                      compute_stats="COMPUTE_STATS",
+                                      relative_paths="RELATIVE_PATHS",
+                                      create_las_prj="NO_FILES")
+    
+    doTime(a, "\tCreated LASD {}".format(lasd_f_path))
+    
+    desc = arcpy.Describe(lasd_f_path)
+    if desc is not None:
+        las_spatial_ref = desc.SpatialReference
+    
+    prj_Count, prj_File = Utility.fileCounter(start_dir, '.prj')
+    if prj_Count > 0 and prj_File is not None and len(str(prj_File)) > 0:
+        prj_spatial_ref = os.path.join(start_dir, prj_File)
+        
+        prj_spatial_ref = arcpy.SpatialReference(prj_spatial_ref)
+    
+    las_horz_cs_name, las_horz_cs_unit_name, las_horz_cs_factory_code, las_vert_cs_name, las_vert_cs_unit_name = Utility.getSRValues(las_spatial_ref)
+    prj_horz_cs_name, prj_horz_cs_unit_name, prj_horz_cs_factory_code, prj_vert_cs_name, prj_vert_cs_unit_name = Utility.getSRValues(prj_spatial_ref)
+        
+    arcpy.AddMessage("LAS File Spatial Reference:\n\tH_Name: '{}'\n\tH_Unit: '{}'\n\tH_WKID: '{}'\n\tV_Name: '{}'\n\tV_Unit: '{}'".format(las_horz_cs_name, las_horz_cs_unit_name, las_horz_cs_factory_code, las_vert_cs_name, las_vert_cs_unit_name))
+    arcpy.AddMessage("PRJ File Spatial Reference:\n\tH_Name: '{}'\n\tH_Unit: '{}'\n\tH_WKID: '{}'\n\tV_Name: '{}'\n\tV_Unit: '{}'".format(prj_horz_cs_name, prj_horz_cs_unit_name, prj_horz_cs_factory_code, prj_vert_cs_name, prj_vert_cs_unit_name))
+    
+    prj_horz_name_isValid = isSrValueValid(prj_horz_cs_name)
+    prj_vert_name_isValid = isSrValueValid(prj_vert_cs_name)
+    prj_horz_unit_isValid = isSrValueValid(prj_horz_cs_unit_name)
+    prj_vert_unit_isValid = isSrValueValid(prj_vert_cs_unit_name)
+    
+    las_horz_name_isValid = isSrValueValid(las_horz_cs_name)
+    las_vert_name_isValid = isSrValueValid(las_vert_cs_name)
+    las_horz_unit_isValid = isSrValueValid(las_horz_cs_unit_name)
+    las_vert_unit_isValid = isSrValueValid(las_vert_cs_unit_name)
+    
+    prj_isValid = prj_horz_name_isValid and prj_vert_name_isValid and prj_horz_unit_isValid and prj_vert_unit_isValid
+    
+    las_isValid = las_horz_name_isValid and las_vert_name_isValid and las_horz_unit_isValid and las_vert_unit_isValid
+    
+    sr_horz_name_isSame = prj_horz_name_isValid and las_horz_name_isValid and prj_horz_cs_name == las_horz_cs_name
+    sr_horz_unit_isSame = prj_horz_unit_isValid and las_horz_unit_isValid and prj_horz_cs_unit_name == las_horz_cs_unit_name  
+    sr_vert_name_isSame = prj_vert_name_isValid and las_vert_name_isValid and prj_vert_cs_name == las_vert_cs_name
+    sr_vert_unit_isSame = prj_vert_unit_isValid and las_vert_unit_isValid and prj_vert_cs_unit_name == las_vert_cs_unit_name
+    
+    sr_horz_isSame = sr_horz_name_isSame and sr_horz_unit_isSame
+    sr_vert_isSame = sr_vert_name_isSame and sr_vert_unit_isSame 
+        
+    sr_isSame = sr_horz_isSame and sr_vert_isSame
+    
+    if prj_isValid or las_isValid: 
+        if sr_horz_isSame:
+            arcpy.AddMessage("         The LAS and PRJ horizontal spatial references MATCH".format(Utility.getSpatialReferenceInfo(prj_spatial_ref)))
+        else:
+            arcpy.AddWarning("WARNING: The LAS and PRJ horizontal spatial references DO NOT MATCH.")
+    
+        if sr_vert_isSame:
+            arcpy.AddMessage("         The LAS and PRJ vertical spatial references MATCH".format(Utility.getSpatialReferenceInfo(prj_spatial_ref)))
+        else:
+            arcpy.AddWarning("WARNING: The LAS and PRJ vertical spatial references DO NOT MATCH.")
+    
+        if sr_isSame:
+            arcpy.AddMessage("         The LAS and PRJ spatial references MATCH".format(Utility.getSpatialReferenceInfo(prj_spatial_ref)))
+        else:
+            arcpy.AddWarning("WARNING: The LAS and PRJ spatial references DO NOT MATCH.")
+    
+    result = None
+    if prj_isValid:
+        arcpy.AddMessage("         Found a valid spatial reference in a PRJ file. Using this as the spatial reference: {}".format(Utility.getSpatialReferenceInfo(prj_spatial_ref)))
+        result = os.path.join(start_dir, prj_File)
+    elif las_isValid:
+        arcpy.AddMessage("         Found a valid spatial reference in a LAS file. Using this as the spatial reference: {}".format(Utility.getSpatialReferenceInfo(las_spatial_ref)))
+        result = las_spatial_ref
+        
+    return result
+    
+    
+            
 
 def processProject(ProjectJob, project, doRasters):
     aaa = datetime.datetime.now()
+    updatedBoundary = None
     
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
     ProjectID = ProjectJob.getProjectID(project)
@@ -378,29 +482,51 @@ def processProject(ProjectJob, project, doRasters):
         else:
             arcpy.AddMessage("Derived fGDB sand box already exists. Using '{}'".format(las_qainfo.filegdb_path))
         
-        las_spatial_ref = None
-        prj_Count, prj_File = Utility.fileCounter(las_qainfo.las_directory, '.prj')
-        if prj_Count > 0:
-            las_qainfo.setProjectionFile(prj_File)
-            las_spatial_ref = os.path.join(las_qainfo.las_directory, prj_File)
-            arcpy.AddMessage("Found a projection file with the las files, OVERRIDE LAS SR (if set) '{}'".format(las_spatial_ref))
-            arcpy.AddMessage(Utility.getSpatialReferenceInfo(las_qainfo.getSpatialReference()))
-        else:
-            arcpy.AddMessage("Using projection (coordinate system) from las files if available.")
+        las_qainfo.lasd_spatial_ref = checkSpatialOnLas(las_qainfo.las_directory, target_path, doRasters, las_qainfo.isClassified)
+        
+        if las_qainfo.lasd_spatial_ref is None:
+            arcpy.AddError("ERROR:   Neither spatial reference in PRJ or LAS files are valid CANNOT CONTINUE.")
+            arcpy.AddError("ERROR:   Please create a projection file (.prj) in the LAS folder using the '3D Analyst Tools/Conversion/From File/Point File Information' tool.")
+            
+        elif not las_qainfo.isValidSpatialReference():
+            las_qainfo.lasd_spatial_ref = None
+            arcpy.AddError("ERROR: Spatial Reference for the las files is not standard: '{}'".format(Utility.getSpatialReferenceInfo(las_qainfo.lasd_spatial_ref)))
+            arcpy.AddError("ERROR: Please create a projection file (.prj) in the LAS folder using the '3D Analyst Tools/Conversion/From File/Point File Information' tool.")
+            
+        elif las_qainfo.isUnknownSpatialReference():
+            las_qainfo.lasd_spatial_ref = None
+            arcpy.AddError("ERROR: Spatial Reference for the las files is not standard: '{}'".format(Utility.getSpatialReferenceInfo(las_qainfo.lasd_spatial_ref)))
+            arcpy.AddError("ERROR: Please provide a projection file (.prj) that provides a valid transformation in the LAS directory.")
+            arcpy.AddError("ERROR:   Please create a projection file (.prj) in the LAS folder using the '3D Analyst Tools/Conversion/From File/Point File Information' tool.")
+            
+        
+        if las_qainfo.lasd_spatial_ref is not None:
+    #         prj_Count, prj_File = Utility.fileCounter(las_qainfo.las_directory, '.prj')
+    #         if prj_Count > 0 and prj_File is not None and len(str(prj_File)) > 0:
+    #             prj_spatial_ref = os.path.join(las_qainfo.las_directory, prj_File)
+    #             
+    #         if prj_Count > 0:
+    #             las_qainfo.setProjectionFile(prj_File)
+    #             las_spatial_ref = os.path.join(las_qainfo.las_directory, prj_File)
+    #             arcpy.AddMessage("Found a projection file with the las files, OVERRIDE LAS SR (if set) '{}'".format(las_spatial_ref))
+    #             arcpy.AddMessage(Utility.getSpatialReferenceInfo(las_qainfo.getSpatialReference()))
+    #         else:
+    #             arcpy.AddMessage("Using projection (coordinate system) from las files if available.")
         
         fileList = getLasFileProcessList(las_qainfo.las_directory, target_path, doRasters, las_qainfo.isClassified)
-        createLasStatistics(fileList, target_path, las_spatial_ref, las_qainfo.isClassified, doRasters)
+            createLasStatistics(fileList, target_path, las_qainfo.lasd_spatial_ref, las_qainfo.isClassified, doRasters)
         
         # Create the project's las dataset. Don't do this before you validated that each .las file has a .lasx
         if arcpy.Exists(las_qainfo.las_dataset_path):
             arcpy.AddMessage("Deleting existing LAS Dataset {}".format(las_qainfo.las_dataset_path))
             arcpy.Delete_management(las_qainfo.las_dataset_path)
         
+            # note: don't use method in A04_B because we don't want to compute statistics this time
         arcpy.CreateLasDataset_management(input=las_qainfo.las_directory,
                                           out_las_dataset=las_qainfo.las_dataset_path,
                                           folder_recursion="RECURSION",
                                           in_surface_constraints="",
-                                          spatial_reference=las_spatial_ref,
+                                              spatial_reference=las_qainfo.lasd_spatial_ref,
                                           compute_stats="NO_COMPUTE_STATS",
                                           relative_paths="RELATIVE_PATHS",
                                           create_las_prj="FILES_MISSING_PROJECTION")
@@ -409,29 +535,28 @@ def processProject(ProjectJob, project, doRasters):
         # get the SR object from LAS Dataset
         desc = arcpy.Describe(las_qainfo.las_dataset_path)
         
-        las_qainfo.lasd_spatial_ref = desc.SpatialReference
+            # las_qainfo.lasd_spatial_ref = desc.SpatialReference
         las_qainfo.LASDatasetPointCount = desc.pointCount
         las_qainfo.LASDatasetFileCount = desc.fileCount
         
-        if las_spatial_ref is None:
-            las_spatial_ref = las_qainfo.lasd_spatial_ref
-            try:
-                arcpy.AddMessage("    Using coordinate system found in las files: {}".format(Utility.getSpatialReferenceInfo(las_spatial_ref)))
-                if not las_qainfo.isValidSpatialReference():
-                    arcpy.AddWarning("Spatial Reference for the las files is not standard. It may not add to the Master correctly.")
-            except:
-                pass
+#             if spatial_ref is None:
+#                 las_spatial_ref = las_qainfo.lasd_spatial_ref
+#                 try:
+#                     arcpy.AddMessage("    Using coordinate system found in las files: {}".format(Utility.getSpatialReferenceInfo(las_spatial_ref)))
+#                     if not las_qainfo.isValidSpatialReference():
+#                         arcpy.AddWarning("Spatial Reference for the las files is not standard. It may not add to the Master correctly.")
+#                 except:
+#                     pass
         
         
         arcpy.AddMessage("LASDatasetPointCount {} and LASDatasetFileCount {}".format(desc.pointCount, desc.fileCount))
         
-        las_qainfo.isValidSpatialReference()
-        if las_qainfo.isUnknownSpatialReference():
-            # TODO: Delete all files in STATS and QA Raster directories since the CS is invalid
-            arcpy.AddMessage("Spatial Reference for the las files is 'Unknown'. If missing in the .las file, please provide a .prj file in your LAS folder containing the desired horizontal/vertical coordinate systems.")
-            arcpy.AddError("Missing spatial reference, CANNOT CONTINUE.")
-            sys.exit(1)
-        else:
+#             las_qainfo.isValidSpatialReference()
+#             if las_qainfo.isUnknownSpatialReference():
+#                 arcpy.AddMessage("Spatial Reference for the las files is 'Unknown'. If missing in the .las file, please provide a .prj file in your LAS folder containing the desired horizontal/vertical coordinate systems.")
+#                 arcpy.AddError("Missing spatial reference, CANNOT CONTINUE.")
+#                 sys.exit(1)
+#             else:
             
             updatedBoundary = A04_C_ConsolidateLASInfo.createLasdBoundaryAndFootprints(las_qainfo.filegdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID)
     
@@ -463,14 +588,16 @@ def GenerateQALasDataset(jobID, doRasters):
     if project is None:
         arcpy.AddError("Project with Job ID {} not found, CANNOT CONTINUE.".format(jobID)) 
     else:
-        ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
-        ProjectID = ProjectJob.getProjectID(project)
+#         ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
+#         ProjectID = ProjectJob.getProjectID(project)
         
-        arcpy.AddMessage("Project '{}' folder '{}'".format(ProjectID, ProjectFolder))
+#         arcpy.AddMessage("Project '{}' folder '{}'".format(ProjectID, ProjectFolder))
         
-        las_qainfo, updatedBoundary = processProject(ProjectJob, project, doRasters)
+        # las_qainfo, updatedBoundary = processProject(ProjectJob, project, doRasters)
+        processProject(ProjectJob, project, doRasters)
         
-        updateCMDR(ProjectJob, project, las_qainfo, updatedBoundary)
+        
+        # updateCMDR(ProjectJob, project, las_qainfo, updatedBoundary)
                             
     arcpy.CheckInExtension("3D")
     arcpy.CheckInExtension("Spatial")
