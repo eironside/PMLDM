@@ -1,3 +1,9 @@
+# Name: D05.py
+#
+# Purpose: Uses the fishnet generated in D04 to create multiprocessing extents for creation of raster files.
+#
+# Author: jeff8977
+
 from multiprocessing import Pool, cpu_count
 from ngce.pmdm.d.D_Config import *
 from functools import partial
@@ -28,7 +34,7 @@ def collect_table_inputs(j_id):
         return values
 
 
-def filter_fishnet(data_domain, base_dir, d04_output):
+def filter_fishnet(data_domain, base_dir, fishnet):
 
     print('Filtering Fishnet & Collecting Task Extents')
 
@@ -36,14 +42,14 @@ def filter_fishnet(data_domain, base_dir, d04_output):
     fishnet_path = os.path.join(base_dir, 'FISHNET')
     os.mkdir(fishnet_path)
 
-    # Filter D04 Fishnet By Data Domain
-    layer = arcpy.MakeFeatureLayer_management(d04_output, 'd04_layer')
+    # Filter Fishnet By Data Domain
+    layer = arcpy.MakeFeatureLayer_management(fishnet, 'fishnet_layer')
     sel = arcpy.SelectLayerByLocation_management(layer, 'INTERSECT', data_domain)
-    filter_fishnet = arcpy.CopyFeatures_management(sel, os.path.join(fishnet_path, 'filter_fishnet.shp'))
+    filter_fish = arcpy.CopyFeatures_management(sel, os.path.join(fishnet_path, 'filter_fishnet.shp'))
 
     # Populate Dictionary With Grid Cell Extents
     ext_dict = {}
-    for r in arcpy.da.SearchCursor(filter_fishnet, ['FID', 'SHAPE@']):
+    for r in arcpy.da.SearchCursor(filter_fish, ['FID', 'SHAPE@']):
         ext = r[1].extent
         box = [ext.XMin, ext.YMin, ext.XMax, ext.YMax]
         id = str(r[0])

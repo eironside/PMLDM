@@ -1,3 +1,12 @@
+# Name: D_APRX.py
+#
+# Purpose: Copies the ArcGIS Pro project (APRX) @ ngce/pmdm/d/APRX/D_Base.aprx and inserts the follwing files:
+# las file, results of D03, and a fishnet filtered by the "data domain" created in D01.
+#
+# Notes: A simple task is included in the ArcGIS Pro project that will help the end user set up a Map Series.
+#
+# Author: jeff8977
+
 from ngce.pmdm.d.D_Config import *
 import arcpy
 import time
@@ -37,6 +46,22 @@ def project_set(base_dir, project_id):
     return aprx
 
 
+def filter_fishnet(data_domain, base_dir, fishnet):
+
+    print('Filtering Fishnet & Collecting Task Extents')
+
+    # Create Path for Fishnet Results
+    fishnet_path = os.path.join(base_dir, 'FISHNET')
+    os.mkdir(fishnet_path)
+
+    # Filter Fishnet By Data Domain
+    layer = arcpy.MakeFeatureLayer_management(fishnet, 'fishnet_layer')
+    sel = arcpy.SelectLayerByLocation_management(layer, 'INTERSECT', data_domain)
+    filter_fish = arcpy.CopyFeatures_management(sel, os.path.join(fishnet_path, 'filter_fishnet.shp'))
+
+    return filter_fish
+
+
 if __name__ == '__main__':
 
     # Get Script Start Time
@@ -62,15 +87,21 @@ if __name__ == '__main__':
         # Reference LASD
         target_lasd = os.path.join(derived_dir, project_id + '.lasd')
 
-        # Reference D03 Output
-        d03_output = os.path.join(derived_dir, D03, 'RESULTS', D03_FINAL)
-
         # Reference D01 Fishnet
         d01_fishnet = os.path.join(derived_dir, D01, 'FISHNET', 'fishnet.shp')
 
+        # Reference D03 Output
+        d03_output = os.path.join(derived_dir, D03, 'RESULTS', D03_FINAL)
+
+        # Reference Data Domain For Filtering Fishnet
+        data_domain = os.path.join(derived_dir, D01, 'RESULTS', D01_DATA_DOMAIN)
+
+        # Filter Fishnet
+        filtered_fishnet = filter_fishnet(data_domain, base_dir, d01_fishnet)
+
         # Add Inputs To Map
         base_map.addDataFromPath(target_lasd)
-        base_map.addDataFromPath(d01_fishnet)
+        base_map.addDataFromPath(filtered_fishnet)
         base_map.addDataFromPath(d03_output)
 
         # Save APRX

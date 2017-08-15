@@ -1,3 +1,13 @@
+# Name: D03.py
+#
+# Purpose: Updates D03_CombineTiledPolygons. This script merges, dissolves, and filters the output of D02.
+#
+# Notes: @ Lines 47-53 - Assuming the results from D02 are shapefiles in a common directory allows for much
+# faster processing with basic list comprehension. These commented lines would be used if the results of D02
+# were stored in a File Geodatabase.
+#
+# Author: jeff8977
+
 from ngce.pmdm.d.D_Config import *
 import arcpy
 import time

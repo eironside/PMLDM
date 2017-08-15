@@ -1,3 +1,11 @@
+# Name: D01.py
+#
+# Purpose: Updates D01_GenerateConstraintPolygonsFromLAS. Generate a "driver" feature class (D01_DRIVERS)
+# and a "data domain" feature class (D01_DATA_DOMAIN). Script will segment input LAS file, use the fishnet extents
+# for multiprocessing, merge the output, and append the "data domain" as a surface constraint to the LAS file.
+#
+# Author: jeff8977
+
 from multiprocessing import Pool, cpu_count
 from ngce.pmdm.d.D_Config import *
 from functools import partial

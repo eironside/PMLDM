@@ -1,3 +1,11 @@
+# Name: D04.py
+#
+# Purpose: Generate fishnets to approximate extent of las files within las dataset and clip a buffered version
+# of that fishnet to exclude external edges. The revised output of D03.py (remove slivers/blocks through ArcGIS Pro
+# Project using D_APRX.py) is also added as a surface constraint to the input las file.
+#
+# Author: jeff8977
+
 from ngce.pmdm.d.D_Config import *
 import arcpy
 import math
