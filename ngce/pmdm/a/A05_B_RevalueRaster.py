@@ -610,6 +610,10 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                     # Set the no data default value on the input raster
                     arcpy.SetRasterProperties_management(target_f_path, data_type="#", statistics="#", stats_file="#", nodata="1 {}".format(nodata))
                     if spatial_ref is not None:
+                        arcpy.AddMessage("Applying projection to raster '{}' {}".format(target_f_path, spatial_ref))
+                        if str(spatial_ref).lower().endswith(".prj"):
+                            spatial_ref = arcpy.SpatialReference(spatial_ref)
+                        arcpy.AddMessage("Applying projection to raster '{}' {}".format(target_f_path, spatial_ref.exportToString()))
                         arcpy.DefineProjection_management(in_dataset=target_f_path, coor_system=spatial_ref)
                     
                     # make sure we make a new published copy of this
