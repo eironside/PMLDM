@@ -68,16 +68,11 @@ import time
 import traceback
 
 from ngce import Utility
-from ngce.cmdr import CMDR, CMDRConfig
-from ngce.cmdr.CMDRConfig import DSM, DTM, fields_RasterFileStat, \
-    field_RasterFileStat_ProjID, field_RasterFileStat_Name, \
-    field_RasterFileStat_ElevType, field_RasterFileStat_Group
+from ngce.cmdr import CMDR
 from ngce.folders import ProjectFolders
-from ngce.folders.FoldersConfig import delivered_dir, published_dir
-from ngce.las.LAS import validateZRange
 from ngce.pmdm import RunUtil
 from ngce.pmdm.a import A05_B_RevalueRaster, A04_A_GenerateQALasDataset, \
-    A04_C_ConsolidateLASInfo
+    A04_C_ConsolidateLASInfo, A05_C_ConsolidateRasterInfo
 from ngce.pmdm.a.A04_A_GenerateQALasDataset import grouper
 from ngce.pmdm.a.A05_B_RevalueRaster import FIELD_INFO, MIN, MAX, V_NAME, V_UNIT, \
     H_NAME, H_UNIT, H_WKID, doTime
@@ -271,119 +266,83 @@ def getFileProcessList(start_dir, elev_type, target_path, publish_path):
 
 
 def processProject(ProjectJob, project, ProjectUID):
-    workspace = arcpy.env.workspace  # @UndefinedVariable
     
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
     ProjectID = ProjectJob.getProjectID(project)
+    ProjectUID = ProjectJob.getUID(project)
 
-    Deliver = CMDR.Deliver()
-    delivery = list(Deliver.getDeliver(ProjectID))
-    
-    RasterFileStat = CMDR.RasterFileStat()
-    
-    minZ = Deliver.getValidZMin(delivery)
-    maxZ = Deliver.getValidZMax(delivery)
-    
-    minZ, maxZ = validateZRange(minZ, maxZ)
-    
-    source_path = ProjectFolder.delivered.path
+    elev_types = ["DTM", "DSM"]
     target_path = ProjectFolder.derived.path
     publish_path = ProjectFolder.published.path
-    
-    rows = []
-    TotalCount = 0
-    targetFolders = [DSM, DTM]
-    for targetFolder in targetFolders:
-        localrows = []
-        InputFolder = os.path.join(source_path, targetFolder)
-        OutputFolder = os.path.join(target_path, targetFolder)
-        PublishFolder = os.path.join(publish_path, targetFolder)
-        
-        count, cellSize = processRastersInFolder(minZ, maxZ, InputFolder, OutputFolder, targetFolder, localrows, ProjectID, ProjectUID)
-        
-        Raster_Files = []
-        for row in localrows:
-            rows.append(row)
-            if RasterFileStat.getGroup(row) == delivered_dir:
-                Raster_Files.append(RasterFileStat.getPath(row))
-                newRow = list(row)
-                RasterFileStat.setGroup(newRow, published_dir)
-                RasterFileStat.setFormat(newRow, "TIFF")
-                RasterFileStat.setPath(newRow, os.path.join(target_path, publish_path, RasterFileStat.getName(newRow)))
-                rows.append(newRow)
-        
-        
-        if len(Raster_Files) > 0:
-            Utility.clearFolder(PublishFolder);
-                
-            Raster_Files = ";".join(Raster_Files)
-            arcpy.RasterToOtherFormat_conversion(Raster_Files, PublishFolder, Raster_Format="TIFF")
-            Utility.addToolMessages()
-        
-#         Utility.setWMXJobDataAsEnvironmentWorkspace(jobID)
-        arcpy.env.workspace = workspace  # @UndefinedVariable
-        TotalCount = TotalCount + count
-        arcpy.AddMessage("Processed {} rasters in '{}'".format(count, InputFolder))
-        
-        if targetFolder == DSM:
-            Deliver.setDSMCellResolution(delivery, cellSize)
-            Deliver.setDSMCountRaster(delivery, count)
-            Deliver.setDSMExists(delivery, "No")
-            if count > 0:
-                Deliver.setDSMExists(delivery, "Yes")
-        elif targetFolder == DTM:
-            Deliver.setDTMCellResolution(delivery, cellSize)
-            Deliver.setDTMCountRaster(delivery, count)
-            Deliver.setDTMExists(delivery, "No")
-            if count > 0:
-                Deliver.setDTMExists(delivery, "Yes")
-    
-#     Utility.setWMXJobDataAsEnvironmentWorkspace(jobID)
-    arcpy.env.workspace = workspace  # @UndefinedVariable
-    Deliver.setCountRasterFiles(delivery, TotalCount)
-    Deliver.updateDeliver(delivery, ProjectID)
-    
-    
-    arcpy.AddMessage("Saving raster property rows")
-    for row in rows:
-        arcpy.AddMessage("Saving {}".format(row))
-                     
-        RasterFileStat.saveOrUpdateRasterFileStat(row,
-                                                  row[fields_RasterFileStat.index(field_RasterFileStat_ProjID)],
-                                                  row[fields_RasterFileStat.index(field_RasterFileStat_Name)],
-                                                  row[fields_RasterFileStat.index(field_RasterFileStat_ElevType)],
-                                                  row[fields_RasterFileStat.index(field_RasterFileStat_Group)])
-    
     fgdb_path = ProjectFolder.derived.fgdb_path
-    if not arcpy.Exists(fgdb_path):
-        arcpy.AddMessage("creating fGDB '{}'".format(fgdb_path))
-        arcpy.CreateFileGDB_management(ProjectFolder.derived.path, ProjectFolder.derived.fgdb_name)
-        Utility.addToolMessages()
-    rasterFileStat_path = os.path.join(fgdb_path, CMDRConfig.fcName_RasterFileStat)
-    if arcpy.Exists(rasterFileStat_path):
-        arcpy.Delete_management(rasterFileStat_path)
-        Utility.addToolMessages()
-    if not arcpy.Exists(rasterFileStat_path):
-        arcpy.AddMessage("creating feature class '{}' '{}' ".format(fgdb_path, CMDRConfig.fcName_RasterFileStat))
-        sr = arcpy.Describe(RasterFileStat.fclass).spatialReference
-        arcpy.AddMessage("using spatial reference '{}'".format(sr))
-        arcpy.CreateFeatureclass_management(out_path=fgdb_path, out_name=CMDRConfig.fcName_RasterFileStat, template=RasterFileStat.fclass, geometry_type="POLYGON", spatial_reference=sr)
-#             desc = arcpy.Describe(RasterFileStat.fclass)
-#             fieldListComplete = desc.fields
-#             # limit field list to all fields except OBJECT_ID
-#             fieldList = fieldListComplete[1:]
-#             # create fields in the output feature class
-#             for i in fieldList:
-#                 arcpy.AddField_management(rasterFileStat_path, i.name, i.type, "", "", i.length)
-#                 Utility.addToolMessages()
-#         edit = Utility.startEditingSession()
-    cursor_i = arcpy.da.InsertCursor(rasterFileStat_path, CMDRConfig.fields_RasterFileStat)  # @UndefinedVariable
-    for row in rows:
-        arcpy.AddMessage("Saving {}".format(row))
-        cursor_i.insertRow(row)
-        arcpy.AddMessage("Updated {} record: {}".format(rasterFileStat_path, row))
-#         Utility.stopEditingSession(edit)
-    del cursor_i
+    
+    lasd_boundary = A04_C_ConsolidateLASInfo.getLasdBoundaryPath(fgdb_path)
+    raster_footprints, raster_boundaries = [], []
+    
+    raster_footprint_main = A05_C_ConsolidateRasterInfo.getRasterFootprintPath(fgdb_path)
+    raster_boundary_main = A05_C_ConsolidateRasterInfo.getRasterBoundaryPath(fgdb_path)
+    
+    z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid = getBoundData(lasd_boundary)
+    for elev_type in elev_types:
+        start_dir = os.path.join(ProjectFolder.delivered.path, elev_type)
+        fileList = getFileProcessList(start_dir, elev_type, target_path, publish_path)     
+        processRastersInFolder(fileList, target_path, publish_path, elev_type, lasd_boundary, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid)
+        raster_footprint, raster_boundary = A05_C_ConsolidateRasterInfo.createRasterBoundaryAndFootprints(fgdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID, elev_type)
+        if raster_footprint is not None:
+            raster_footprints.append(raster_footprint)
+        if raster_boundary is not None:
+            raster_boundaries.append(raster_boundary)
+    
+    
+    if arcpy.Exists(raster_footprint_main):
+        A05_C_ConsolidateRasterInfo.deleteFileIfExists(raster_footprint_main, True)
+    if len(raster_footprints) > 0:
+        arcpy.Merge_management(inputs=raster_footprints, output=raster_footprint_main)
+        arcpy.AddMessage("Merged raster footprints {} to {}".format(raster_footprints, raster_footprint_main))
+#         for raster_footprint in raster_footprints:
+#             try:
+#                 A05_C_ConsolidateRasterInfo.deleteFileIfExists(raster_footprint, True)
+#             except:
+#                 pass
+    
+    
+    
+    if arcpy.Exists(raster_boundary_main):
+        A05_C_ConsolidateRasterInfo.deleteFileIfExists(raster_boundary_main, True)
+    if len(raster_boundaries) > 0:
+        arcpy.Merge_management(inputs=raster_boundaries, output=raster_boundary_main)
+        arcpy.AddMessage("Merged raster boundaries {} to {}".format(raster_boundaries, raster_boundary_main))
+#         for raster_boundary in raster_boundaries:
+#             try:
+#                 A05_C_ConsolidateRasterInfo.deleteFileIfExists(raster_boundary, True)
+#             except:
+#                 pass
+    
+    try:
+        out_map_file_path = os.path.join(target_path, "{}.mxd".format(ProjectID))
+        if not os.path.exists(out_map_file_path):
+            mxd = arcpy.mapping.MapDocument(r"./blank.mxd")
+            mxd.saveACopy(out_map_file_path)
+                
+        mxd = arcpy.mapping.MapDocument(out_map_file_path)
+        mxd.relativePaths = True    
+        mxd_path = mxd.filePath
+        if mxd is not None:
+            df = mxd.activeDataFrame    
+            if not A04_A_GenerateQALasDataset.isLayerExist(mxd, df, "Raster Boundary"):
+                lyr_footprint = arcpy.MakeFeatureLayer_management(raster_boundary_main, "Raster Boundary").getOutput(0)
+                arcpy.mapping.AddLayer(df, lyr_footprint, 'TOP')
+                arcpy.AddMessage("\tAdded MD {} to MXD {}.".format("Raster Boundary", mxd_path))
+            
+            if not A04_A_GenerateQALasDataset.isLayerExist(mxd, df, "Raster Footprints"):
+                lyr_footprint = arcpy.MakeFeatureLayer_management(raster_footprint_main, "Raster Footprints").getOutput(0)
+                arcpy.mapping.AddLayer(df, lyr_footprint, 'TOP')
+                arcpy.AddMessage("\tAdded MD {} to MXD {}.".format("Raster Footprints", mxd_path))
+            
+            
+            mxd.save()
+    except:
+        pass
     
     
     
@@ -414,21 +373,24 @@ def RemoveDEMErrantValues(jobID):
 if __name__ == '__main__':
     
     a = datetime.now()
-#     projId = sys.argv[1]
-#          
-#     GenerateQALasDataset(projId, doRasters)
+    jobID = sys.argv[1]
     
-    UID = None  # field_ProjectJob_UID
-    wmx_job_id = 1
-    project_Id = "OK_SugarCreek_2008"
-    alias = "Sugar Creek"
-    alias_clean = "SugarCreek"
-    state = "OK"
-    year = 2008
-    parent_dir = r"E:\NGCE\RasterDatasets"
-    archive_dir = r"E:\NGCE\RasterDatasets"
-    project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
-    project_AOI = None
+    RemoveDEMErrantValues(jobID)
+    
+#          
+    
+#     
+#     UID = None  # field_ProjectJob_UID
+#     wmx_job_id = 1
+#     project_Id = "OK_SugarCreek_2008"
+#     alias = "Sugar Creek"
+#     alias_clean = "SugarCreek"
+#     state = "OK"
+#     year = 2008
+#     parent_dir = r"E:\NGCE\RasterDatasets"
+#     archive_dir = r"E:\NGCE\RasterDatasets"
+#     project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
+#     project_AOI = None
                 
 #     ProjectJob = ProjectJob()
 #     project = [
@@ -445,16 +407,4 @@ if __name__ == '__main__':
 #                project_AOI  # field_ProjectJob_SHAPE
 #                ]
      
-    elev_type = "DTM"
-    start_dir = os.path.join(project_dir, "DELIVERED", elev_type)
-    target_path = os.path.join(project_dir, "DERIVED")
-    publish_path = os.path.join(project_dir, "PUBLISHED")
-    fgdb_path = os.path.join(target_path, "{}.gdb".format(project_Id))
-    
-    lasd_boundary = A04_C_ConsolidateLASInfo.getLasdBoundaryPath(fgdb_path)
-    
-    z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid = getBoundData(lasd_boundary)
-    fileList = getFileProcessList(start_dir, elev_type, target_path, publish_path)     
-    processRastersInFolder(fileList, target_path, publish_path, elev_type, lasd_boundary, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid)
-    
     

@@ -75,6 +75,7 @@ SINGLE_RETURNS = "Single"
 FIRST_OF_MANY_RETURNS = "First_of_Many"
 LAST_OF_MANY_RETURNS = "Last_of_Many"
 ALL_RETURNS = "All"
+ELEV_TYPE = "Elevation_Type"
 
 KEY_LIST = [NAME, PATH, MAX, MEAN, MIN, STAND_DEV, WIDTH, HEIGHT, MEAN_CELL_HEIGHT, MEAN_CELL_WIDTH, BAND_COUNT, COMP_TYPE, FORMAT, HAS_RAT, IS_INT, IS_TEMP, PIXEL_TYPE, UNCOMP_SIZE, XMIN, YMIN, XMAX, YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID, NODATA_VALUE]
 
@@ -124,7 +125,8 @@ FIELD_INFO = {IS_CLASSIFIED: ["is_class", "Is Classified", "TEXT", "10"],
                 
                 POINT_SPACING   : ["pt_sp", "Point Spacing", "DOUBLE", ""],
                 POINT_COUNT  : ["pt_ct", "Point Count", "DOUBLE", ""],
-                POINT_PERCENT  : ["pt_pct", "Point Percent", "DOUBLE", ""]
+                POINT_PERCENT  : ["pt_pct", "Point Percent", "DOUBLE", ""],
+                ELEV_TYPE  : ["el_type", "Elevation Type", "TEXT", "20"]
 
 
 
@@ -500,14 +502,18 @@ Note this is better than A or B methods above, still it misses water bodies on t
 It performs 10x faster than the other 'B' method
 --------------------------------------------------------------------------------
 '''
-def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_bound_path, minZ, maxZ, bound_path):
+def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_bound_path, minZ, maxZ, bound_path, elev_type):
     a = datetime.now()
     
     vector_1_bound_path = os.path.join(stat_out_folder, "B1_{}.shp".format(f_name))
+    vector_2_bound_path = os.path.join(stat_out_folder, "B2_{}.shp".format(f_name))
     deleteFileIfExists(vector_bound_path, useArcpy=True)
     deleteFileIfExists(vector_1_bound_path, useArcpy=True)
+    deleteFileIfExists(vector_2_bound_path, useArcpy=True)
     
-    arcpy.RasterDomain_3d(in_raster=f_path, out_feature_class=vector_1_bound_path, out_geometry_type="POLYGON")
+    arcpy.RasterDomain_3d(in_raster=f_path, out_feature_class=vector_2_bound_path, out_geometry_type="POLYGON")
+    arcpy.EliminatePolygonPart_management(in_features=vector_2_bound_path, out_feature_class=vector_1_bound_path, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
+    deleteFileIfExists(vector_2_bound_path, useArcpy=True)
      
     footprint_area = 0
     for row in arcpy.da.SearchCursor(vector_1_bound_path, ["SHAPE@"]):  # @UndefinedVariable
@@ -517,15 +523,13 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[PATH][0], field_alias=FIELD_INFO[PATH][1], field_type=FIELD_INFO[PATH][2], field_length=FIELD_INFO[PATH][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[NAME][0], field_alias=FIELD_INFO[NAME][1], field_type=FIELD_INFO[NAME][2], field_length=FIELD_INFO[NAME][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[AREA][0], field_alias=FIELD_INFO[AREA][1], field_type=FIELD_INFO[AREA][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+    arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[ELEV_TYPE][0], field_alias=FIELD_INFO[ELEV_TYPE][1], field_type=FIELD_INFO[ELEV_TYPE][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+    arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[RANGE][0], field_alias=FIELD_INFO[RANGE][1], field_type=FIELD_INFO[RANGE][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
      
-    b_f_path, b_f_name = os.path.split(f_path)
-    b_f_name = os.path.splitext(b_f_name)[0]
-    arcpy.CalculateField_management(in_table=vector_1_bound_path, field=FIELD_INFO[PATH][0], expression='"{}"'.format(b_f_path), expression_type="PYTHON_9.3")
-    arcpy.CalculateField_management(in_table=vector_1_bound_path, field=FIELD_INFO[NAME][0], expression='"{}"'.format(b_f_name), expression_type="PYTHON_9.3")
-    arcpy.CalculateField_management(in_table=vector_1_bound_path, field=FIELD_INFO[AREA][0], expression=footprint_area, expression_type="PYTHON_9.3")
-    
-#     arcpy.DeleteField_management(in_table=vector_bound_path, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
-     
+    try:
+        arcpy.DeleteField_management(in_table=vector_1_bound_path, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
+    except:
+        pass
      
     arcpy.AddMessage(raster_props)
     for field_name in KEY_LIST:
@@ -544,6 +548,18 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
         if field_value is not None:
             arcpy.CalculateField_management(in_table=vector_1_bound_path, field=field_shpname, expression=field_value, expression_type="PYTHON_9.3")
     
+    b_f_path, b_f_name = os.path.split(f_path)
+    b_f_name = os.path.splitext(b_f_name)[0]
+    arcpy.CalculateField_management(in_table=vector_1_bound_path, field=FIELD_INFO[PATH][0], expression='"{}"'.format(b_f_path), expression_type="PYTHON_9.3")
+    arcpy.CalculateField_management(in_table=vector_1_bound_path, field=FIELD_INFO[NAME][0], expression='"{}"'.format(b_f_name), expression_type="PYTHON_9.3")
+    arcpy.CalculateField_management(in_table=vector_1_bound_path, field=FIELD_INFO[AREA][0], expression=footprint_area, expression_type="PYTHON_9.3")
+    arcpy.CalculateField_management(in_table=vector_1_bound_path, field=FIELD_INFO[ELEV_TYPE][0], expression='"{}"'.format(elev_type), expression_type="PYTHON_9.3")
+    try:
+        z_expr = "!{}! - !{}!".format(FIELD_INFO[MAX][0], FIELD_INFO[MIN][0])
+        arcpy.CalculateField_management(in_table=vector_1_bound_path, field=FIELD_INFO[RANGE][0], expression=z_expr, expression_type="PYTHON_9.3")
+    except:
+        pass
+    
     deleteFileIfExists(vector_bound_path, True)
     arcpy.Clip_analysis(in_features=vector_1_bound_path, clip_features=bound_path, out_feature_class=vector_bound_path, cluster_tolerance="")
     arcpy.Delete_management(in_data=vector_1_bound_path, data_type="ShapeFile")
@@ -552,13 +568,18 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
         
                 
 
-def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, minZ, maxZ, bound_path):
+def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, minZ, maxZ, bound_path, spatial_ref=None):
     a = datetime.now()
     nodata = RasterConfig.NODATA_DEFAULT     
     
     f_name, target_f_path, publish_f_path, stat_out_folder, stat_file_path, bound_out_folder, vector_bound_path = getFilePaths(f_path, elev_type, target_path, publish_path)  # @UnusedVariable
-    publish1_f_left, publish1_f_right = os.path.splitext(publish_f_path)
-    publish1_f_path = "{}1{}".format(publish1_f_left, publish1_f_right)
+    
+#     target_f_left, target_f_right = os.path.splitext(target_f_path)
+#     target1_f_path = "{}1{}".format(target_f_left, target_f_right)
+    
+    publish_f_left, publish_f_right = os.path.splitext(publish_f_path)
+    publish1_f_path = "{}1{}".format(publish_f_left, publish_f_right)
+    
     # Don't maintain fGDB raster format, update to TIFF
 #     if raster_props[FORMAT] == "FGDBR":
 #         target_f_path = "{}.TIF".format(target_f_path)
@@ -584,11 +605,12 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                     rasterObject = arcpy.Raster(f_path) 
                     outSetNull = arcpy.sa.Con(((rasterObject >= (float(minZ))) & (rasterObject <= (float(maxZ)))), f_path)  # @UndefinedVariable
                     outSetNull.save(target_f_path)
-                    
                     del outSetNull, rasterObject
                 
                     # Set the no data default value on the input raster
                     arcpy.SetRasterProperties_management(target_f_path, data_type="#", statistics="#", stats_file="#", nodata="1 {}".format(nodata))
+                    if spatial_ref is not None:
+                        arcpy.DefineProjection_management(in_dataset=target_f_path, coor_system=spatial_ref)
                     
                     # make sure we make a new published copy of this
                     if arcpy.Exists(publish_f_path):
@@ -617,7 +639,8 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                 
 
 
-def CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_props):
+def CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_props, spatial_ref=None):
+    sr = None
     try:
         if raster_props is not None:
             f_name = raster_props[NAME]
@@ -653,48 +676,21 @@ def CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_p
             else:
                 arcpy.AddWarning("WARNING: RASTER CHECK '{}': Horizontal WKID from LAS '{}' {} raster file '{}'".format(f_name, h_wkid, ("Matches" if isHwkid else "Does NOT Match"), raster_props[H_WKID]))
     
-    
+            if spatial_ref is not None:
+                sr = arcpy.SpatialReference(spatial_ref)
+                arcpy.AddMessage(Utility.getSpatialReferenceInfo(sr))
+                arcpy.AddMessage(sr.exportToString())
             # @TODO: exit if a coordinate system is not present or not complete (make them project or define projection)
     except:
         pass
        
+    return sr
 
     
     
        
 
-def processFile(bound_path, f_path, elev_type, target_path, publish_path, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid):
-#     z_min = None
-#     z_max = None
-#     v_name = None
-#     v_unit = None
-#     h_name = None
-#     h_unit = None
-#     h_wkid = None
-#     bound_fields = [
-#                      FIELD_INFO[MIN][0],
-#                      FIELD_INFO[MAX][0],
-#                      FIELD_INFO[V_NAME][0],
-#                      FIELD_INFO[V_UNIT][0],
-#                      FIELD_INFO[H_NAME][0],
-#                      FIELD_INFO[H_UNIT][0],
-#                      FIELD_INFO[H_WKID][0]
-#                      ]
-#     
-#     for row in arcpy.da.SearchCursor(bound_path, bound_fields):  # @UndefinedVariable
-#         z_min = row[0]
-#         z_max = row[1]
-#         v_name = row[2]
-#         v_unit = row[3]
-#         h_name = row[4]
-#         h_unit = row[5]
-#         h_wkid = row[6]
-#     
-#     
-#     
-#     arcpy.AddMessage("\tZ is between {} and {}, adding 10% buffer...".format(z_min, z_max))
-#     z_min = (z_min * 0.9 if z_min > 0 else z_min * 1.1)
-#     z_max = (z_max * 1.1 if z_max > 0 else z_max * 0.9)
+def processFile(bound_path, f_path, elev_type, target_path, publish_path, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref=None):
     
     f_name, target_f_path, publish_f_path, stat_out_folder, stat_file_path, bound_out_folder, vector_bound_path = getFilePaths(f_path, elev_type, target_path, publish_path)  # @UnusedVariable
     
@@ -704,7 +700,7 @@ def processFile(bound_path, f_path, elev_type, target_path, publish_path, z_min,
         arcpy.AddMessage("\tStat file exists: {}".format(stat_file_path))
     else:
         raster_props = createRasterDatasetStats(f_path, stat_file_path)
-        CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_props)
+        spatial_ref = CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_props, spatial_ref)
     
     if os.path.exists(target_f_path) and os.path.exists(publish_f_path):
         arcpy.AddMessage("\tRasters exist: '{}' and '{}'".format(target_f_path, publish_f_path))
@@ -712,7 +708,7 @@ def processFile(bound_path, f_path, elev_type, target_path, publish_path, z_min,
         if raster_props is None:
             # Stat.txt and boundary file already exists, so just read them in here
             raster_props = createRasterDatasetStats(f_path)
-        RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, z_min, z_max, bound_path)
+        RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, z_min, z_max, bound_path, spatial_ref)
         CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_props)
     
     f_name, target_f_path, publish_f_path, stat_out_folder, stat_file_path, bound_out_folder, vector_bound_path = getFilePaths(f_path, elev_type, target_path, publish_path, STAT_FOLDER_DER)  # @UnusedVariable
@@ -731,10 +727,8 @@ def processFile(bound_path, f_path, elev_type, target_path, publish_path, z_min,
     if os.path.exists(vector_bound_path):
         arcpy.AddMessage("\tBound file exists: {}".format(vector_bound_path))
     else:
-        if raster_props is None:
-            # Stat.txt file already exists, so just read them in here
             raster_props = createRasterDatasetStats(publish_f_path)
-        createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_bound_path, z_min, z_max, bound_path)
+        createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_bound_path, z_min, z_max, bound_path, elev_type)
     
     CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_props)
     
@@ -785,7 +779,7 @@ if __name__ == '__main__':
     publish_path = None
     bound_path = None
     checkedOut = False
-    z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid = None,None,None,None,None,None,None
+    z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref = None, None, None, None, None, None, None, None
     
     if len(sys.argv) >= 2:
         f_paths = sys.argv[1]
@@ -823,7 +817,10 @@ if __name__ == '__main__':
     if len(sys.argv) >= 13:
         h_wkid = sys.argv[12]
     
-    arcpy.AddMessage("\tf_paths='{}',elev_type='{}',target_path='{}',publish_path='{}',bound_path='{}',z_min='{}', z_max='{}', v_name='{}', v_unit='{}', h_name='{}', h_unit='{}', h_wkid='{}'".format(f_paths, elev_type, target_path, publish_path, bound_path,z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid))
+    if len(sys.argv) >= 14:
+        spatial_ref = sys.argv[13]
+    
+    arcpy.AddMessage("\tf_paths='{}',elev_type='{}',target_path='{}',publish_path='{}',bound_path='{}',z_min='{}', z_max='{}', v_name='{}', v_unit='{}', h_name='{}', h_unit='{}', h_wkid='{}', sr='{}'".format(f_paths, elev_type, target_path, publish_path, bound_path, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref))
     
     f_paths = str(f_paths).split(",")
     
@@ -837,7 +834,7 @@ if __name__ == '__main__':
                 arcpy.CheckOutExtension("3D")
                 arcpy.CheckOutExtension("Spatial")
             
-            processFile(bound_path, f_path, elev_type, target_path, publish_path, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid)
+            processFile(bound_path, f_path, elev_type, target_path, publish_path, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref)
             
     if checkedOut:
         arcpy.CheckInExtension("3D")

@@ -32,6 +32,7 @@ import arcpy
 import datetime
 import os
 
+import ngce
 from ngce.cmdr import CMDRConfig
 from ngce.pmdm.a.A05_B_RevalueRaster import  MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN, YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID, FIELD_INFO, \
     AREA, IS_CLASSIFIED, RANGE, FIRST_RETURNS, SECOND_RETURNS, THIRD_RETURNS, \
@@ -114,6 +115,64 @@ def clipRastersToBoundary(start_dir, boundary_path):
                 
     doTime(a, "\tClip rasters {}".format(start_dir))
 
+
+def createQARasterMosaicDataset(md_name, gdb_path, spatial_reference, input_folder, mxd):
+    md_path = os.path.join(gdb_path, md_name)
+    try:
+        a = datetime.datetime.now()
+        
+        if arcpy.Exists(md_path):
+#             arcpy.RemoveRastersFromMosaicDataset_management(in_mosaic_dataset=md_path,
+#                                                             where_clause="",
+#                                                             update_boundary="NO_BOUNDARY",
+#                                                             mark_overviews_items="NO_MARK_OVERVIEW_ITEMS",
+#                                                             delete_overview_images="DELETE_OVERVIEW_IMAGES",
+#                                                             delete_item_cache="DELETE_ITEM_CACHE",
+#                                                             remove_items="REMOVE_MOSAICDATASET_ITEMS",
+#                                                             update_cellsize_ranges="NO_CELL_SIZES")
+#             a = doTime(a, "\tRemoved rasters from existing MD {}".format(md_name))
+            arcpy.AddMessage("\tMD Exists: {}".format(md_path))
+        else:
+            # Create a MD in same SR as LAS Dataset
+            arcpy.CreateMosaicDataset_management(in_workspace=gdb_path,
+                                                 in_mosaicdataset_name=md_name,
+                                                 coordinate_system=spatial_reference,
+                                                 num_bands="",
+                                                 pixel_type="",
+                                                 product_definition="NONE",
+                                                 product_band_definitions="")
+            
+            arcpy.SetMosaicDatasetProperties_management(in_mosaic_dataset=md_path, rows_maximum_imagesize="4100", columns_maximum_imagesize="15000", allowed_compressions="None;JPEG;LZ77;LERC", default_compression_type="LERC", JPEG_quality="75", LERC_Tolerance="0.01", resampling_type="CUBIC", clip_to_footprints="NOT_CLIP", footprints_may_contain_nodata="FOOTPRINTS_DO_NOT_CONTAIN_NODATA", clip_to_boundary="CLIP", color_correction="NOT_APPLY", allowed_mensuration_capabilities="Basic", default_mensuration_capabilities="Basic", allowed_mosaic_methods="NorthWest;Center;LockRaster;ByAttribute;Nadir;Viewpoint;Seamline;None", default_mosaic_method="NorthWest", order_field="", order_base="", sorting_order="ASCENDING", mosaic_operator="FIRST", blend_width="10", view_point_x="600", view_point_y="300", max_num_per_mosaic="2000", cell_size_tolerance="0.8", cell_size="10 10", metadata_level="BASIC", transmission_fields="Name;MinPS;MaxPS;LowPS;HighPS;Tag;GroupName;ProductName;CenterX;CenterY;ZOrder;Shape_Length;Shape_Area;Thumbnail", use_time="DISABLED", start_time_field="", end_time_field="", time_format="", geographic_transform="", max_num_of_download_items="20", max_num_of_records_returned="1000", data_source_type="GENERIC", minimum_pixel_contribution="1", processing_templates="None", default_processing_template="None", time_interval="", time_interval_units="")
+            a = doTime(a, "\tCreated MD {}".format(md_name))
+          
+            arcpy.AddRastersToMosaicDataset_management(in_mosaic_dataset=md_path,
+                                                       raster_type="Raster Dataset",
+                                                       input_path=input_folder,
+                                                       update_cellsize_ranges="UPDATE_CELL_SIZES",
+                                                       update_boundary="UPDATE_BOUNDARY",
+                                                       update_overviews="NO_OVERVIEWS",
+                                                       maximum_pyramid_levels="",
+                                                       maximum_cell_size="0",
+                                                       minimum_dimension="150",
+                                                       spatial_reference="",
+                                                       filter="#",
+                                                       sub_folder="SUBFOLDERS",
+                                                       duplicate_items_action="EXCLUDE_DUPLICATES",
+                                                       build_pyramids="BUILD_PYRAMIDS",
+                                                       calculate_statistics="CALCULATE_STATISTICS",
+                                                       build_thumbnails="BUILD_THUMBNAILS",
+                                                       operation_description="#",
+                                                       force_spatial_reference="NO_FORCE_SPATIAL_REFERENCE",
+                                                       estimate_statistics="ESTIMATE_STATISTICS",
+                                                       aux_inputs="")
+            
+            a = doTime(a, "\tAdded Rasters to MD {}".format(md_name))
+        
+                        
+    except:
+        pass
+
+    return [md_path, md_name]
 '''
 ---------------------------------------------
 fix the field name
@@ -131,13 +190,13 @@ Takes a set of footprints and merges them into a boundary
 Optionally summarizes statistics
 ---------------------------------------------
 '''
-def createBoundaryFeatureClass(las_footprint, target_lasd_boundary, statistics_fields="", alter_field_infos=None):
+def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statistics_fields="", alter_field_infos=None):
     a = datetime.datetime.now()
     aa = a
-    lasd_boundary_1 = "{}1".format(target_lasd_boundary)
+    lasd_boundary_1 = "{}1".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_1, True)
     arcpy.AddMessage("\tDissolving with statistics: {}".format(statistics_fields))
-    arcpy.Dissolve_management(in_features=las_footprint, out_feature_class=lasd_boundary_1, statistics_fields=statistics_fields)
+    arcpy.Dissolve_management(in_features=raster_footprint, out_feature_class=lasd_boundary_1, statistics_fields=statistics_fields)
     a = doTime(a, "\tDissolved to {}".format(lasd_boundary_1))
     
     if alter_field_infos is not None:
@@ -149,33 +208,33 @@ def createBoundaryFeatureClass(las_footprint, target_lasd_boundary, statistics_f
     
         a = doTime(a, "\tRenamed summary fields")
     
-    lasd_boundary_2 = "{}2".format(target_lasd_boundary)
+    lasd_boundary_2 = "{}2".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_2, True)
     arcpy.Buffer_analysis(in_features=lasd_boundary_1, out_feature_class=lasd_boundary_2, buffer_distance_or_field="10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
     
     
-    lasd_boundary_3 = "{}3".format(target_lasd_boundary)
+    lasd_boundary_3 = "{}3".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_3, True)
     arcpy.EliminatePolygonPart_management(in_features=lasd_boundary_2, out_feature_class=lasd_boundary_3, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
     deleteFileIfExists(lasd_boundary_2, True)
     
-    lasd_boundary_4 = "{}4".format(target_lasd_boundary)
+    lasd_boundary_4 = "{}4".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_4, True)
     arcpy.SimplifyPolygon_cartography(in_features=lasd_boundary_3, out_feature_class=lasd_boundary_4, algorithm="BEND_SIMPLIFY", tolerance="20 Meters", minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
     deleteFileIfExists(lasd_boundary_3, True)
     
-    deleteFileIfExists(target_lasd_boundary, True)
-    arcpy.Buffer_analysis(in_features=lasd_boundary_4, out_feature_class=target_lasd_boundary, buffer_distance_or_field="-10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
+    deleteFileIfExists(target_raster_boundary, True)
+    arcpy.Buffer_analysis(in_features=lasd_boundary_4, out_feature_class=target_raster_boundary, buffer_distance_or_field="-10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
     deleteFileIfExists(lasd_boundary_4, True)
     
     if alter_field_infos is not None and len(alter_field_infos) > 0:
         fields = ";".join([field[1] for field in alter_field_infos])
-        arcpy.JoinField_management(in_data=target_lasd_boundary, in_field="OBJECTID", join_table=lasd_boundary_1, join_field="OBJECTID", fields=fields)
+        arcpy.JoinField_management(in_data=target_raster_boundary, in_field="OBJECTID", join_table=lasd_boundary_1, join_field="OBJECTID", fields=fields)
         # Utility.addToolMessages()
         
     deleteFileIfExists(lasd_boundary_1, True)
     
-    a = doTime(aa, "Dissolved las footprints to dataset boundary {} ".format(target_lasd_boundary))
+    a = doTime(aa, "Dissolved las footprints to dataset boundary {} ".format(target_raster_boundary))
     
 
 '''
@@ -326,10 +385,10 @@ def checkNullFields(las_footprint):
     a = doTime(a, "Checked for nulls on las footprints {}".format(las_footprint))
 
 
-def addProjectInfo(las_footprint, lasd_boundary, project_ID, project_path, project_UID):
+def addProjectInfo(raster_footprint, raster_boundary, project_ID, project_path, project_UID):
     if len(project_path) > 999:
         project_path = project_path[0:999]
-    for table in [las_footprint, lasd_boundary]:
+    for table in [raster_footprint, raster_boundary]:
         for field in [[CMDRConfig.PROJECT_ID, "TEXT", "50", project_ID],
                       [CMDRConfig.PROJECT_DIR, "TEXT", "1000", project_path],
                       [CMDRConfig.PROJECT_GUID, "GUID", "", project_UID]
@@ -345,7 +404,7 @@ and migrate, summarize all of the statistics that go
 along with this set of las files
 ---------------------------------------------
 '''
-def createLasdBoundaryAndFootprints(fgdb_path, target_path, project_ID, project_path, project_UID):
+def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, project_path, project_UID):
     a = datetime.datetime.now()
     
     stat_out_folder = os.path.join(target_path, STAT_FOLDER)
@@ -376,16 +435,16 @@ def createLasdBoundaryAndFootprints(fgdb_path, target_path, project_ID, project_
     
     
     las_footprint = getLasFootprintPath(fgdb_path)
+    lasd_boundary = getLasdBoundaryPath(fgdb_path)
+    if not arcpy.Exists(las_footprint):
+        
     las_footprint_1 = os.path.join(fgdb_path, "{}1".format(las_footprint))
     deleteFileIfExists(las_footprint_1, True)
     arcpy.Merge_management(inputs=b_file_list, output=las_footprint_1)
     
     a = doTime(a, "Merged las footprints {}".format(las_footprint_1))
     
-    lasd_boundary = getLasdBoundaryPath(fgdb_path)
-    lasd_boundary_temp = os.path.join(fgdb_path, "LASDatasetBoundary")
-    
-    createBoundaryFeatureClass(las_footprint_1, lasd_boundary_temp)
+        createBoundaryFeatureClass(las_footprint_1, lasd_boundary)
     a = datetime.datetime.now()
     
     # Merge the other footprints before clipping
@@ -400,29 +459,58 @@ def createLasdBoundaryAndFootprints(fgdb_path, target_path, project_ID, project_
     deleteFileIfExists(las_footprint, True)
     arcpy.Clip_analysis(in_features=las_footprint_1, clip_features=lasd_boundary, out_feature_class=las_footprint, cluster_tolerance="")
     deleteFileIfExists(las_footprint_1, True)
+        deleteFileIfExists(lasd_boundary, True)
     a = doTime(a, "Clipped las footprints to dataset boundary {} ".format(las_footprint))
     
+    if not arcpy.Exists(lasd_boundary):
     summary_string, field_alter = getStatsFields()
     createBoundaryFeatureClass(las_footprint, lasd_boundary, summary_string, field_alter)
     
     addProjectInfo(las_footprint, lasd_boundary, project_ID, project_path, project_UID)
     
-    a = datetime.datetime.now()
-    # Clip rasters in ELEVATION since they used a convex hull
-    start_dir = os.path.join(target_path, "ELEVATION")
-    clipRastersToBoundary(start_dir, lasd_boundary)
+
+
+def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_folder, mxd):
+    mosaics = []
+    stats_methods = ["PULSE_COUNT", "POINT_COUNT", "PREDOMINANT_LAST_RETURN", "PREDOMINANT_CLASS", "INTENSITY_RANGE", "Z_RANGE"]
+    for method in stats_methods:
+        for dataset_name in ['ALL', "FIRST", "LAST"]:
+            name = dataset_name
+                            
+            if not isClassified:
+                # Using a generic name for non-classified data
+                name = ""
+            
+            
+            md_name = method
+            if len(name) > 0:
+                md_name = "{}_{}".format(method, name)
+            
+            input_folder = os.path.join(target_folder, method, name)
+            
+            
+            mosaics.append(createQARasterMosaicDataset(md_name, gdb_path, spatial_reference, input_folder, mxd))
     
-    a = doTime(a, "Clipped ELEVATION to dataset boundary {} ".format(lasd_boundary))
-
-
-# if __name__ == '__main__':
-#     fgdb_path = r'E:\NGCE\RasterDatasets\OK_SugarCreek_2008\DERIVED\OK_SugarCreek_2008.gdb'
-# #     spatial_reference = r'E:\NGCE\RasterDatasets\OK_SugarCreek_2008\DELIVERED\LAS_CLASSIFIED\CR_NAD83UTM14N_NAVD88Meters.prj'
-#     target_path = r'E:\NGCE\RasterDatasets\OK_SugarCreek_2008\DERIVED'
-#     ProjectID = "eric"
-# #     isClassified = True
-#     ProjectUID = None
+    return mosaics
+#     a = datetime.datetime.now()
+    
+    # DO this later once the elevation products are needed
+#     # Clip rasters in ELEVATION since they used a convex hull
+#     start_dir = os.path.join(target_path, "ELEVATION")
+#     clipRastersToBoundary(start_dir, lasd_boundary)
 #     
-#     createLasdBoundaryAndFootprints(fgdb_path, target_path)
-#     # appendLasdStats(fgdb_path, spatial_reference, target_path, ProjectID, isClassified, ProjectUID)
+#     a = doTime(a, "Clipped ELEVATION to dataset boundary {} ".format(lasd_boundary))
+
+
+if __name__ == '__main__':
+    fgdb_path = r'E:\NGCE\RasterDatasets\OK_SugarCreek_2008\DERIVED\OK_SugarCreek_2008.gdb'
+#     spatial_reference = r'E:\NGCE\RasterDatasets\OK_SugarCreek_2008\DELIVERED\LAS_CLASSIFIED\CR_NAD83UTM14N_NAVD88Meters.prj'
+    target_path = r'E:\NGCE\RasterDatasets\OK_SugarCreek_2008\DERIVED'
+    project_ID = "OK_SugarCreek_2008"
+#     isClassified = True
+    project_UID = None
+    project_path = r'E:\NGCE\RasterDatasets\OK_SugarCreek_2008'
+     
+    createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, project_path, project_UID)
+    # appendLasdStats(fgdb_path, spatial_reference, target_path, ProjectID, isClassified, ProjectUID)
     
