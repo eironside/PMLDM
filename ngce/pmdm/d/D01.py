@@ -263,10 +263,8 @@ if __name__ == '__main__':
         inputs = collect_table_inputs(job_id)
         project_id, project_dir = inputs[0], inputs[1]
 
-        # Create Directory For Script Results
+        # Reference DERIVED Directory
         derived_dir = os.path.join(project_dir, DERIVED)
-        base_dir = os.path.join(derived_dir, D01)
-        os.mkdir(base_dir)
 
         # Reference LASD
         target_lasd = os.path.join(derived_dir, project_id + '.lasd')
@@ -276,6 +274,10 @@ if __name__ == '__main__':
 
         # Determine Grid Dimensions For Fishnet
         row, col = grid_calc()
+
+        # Create Directory For Script Results
+        base_dir = os.path.join(derived_dir, D01)
+        os.mkdir(base_dir)
 
         # Collect Processing Extent Dictionary
         extent_dict = collect_extents(target_lasd, base_dir, row, col)
