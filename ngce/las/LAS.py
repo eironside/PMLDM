@@ -257,8 +257,13 @@ class QALasInfo(object):
     
     def isValidSpatialReference(self):
         sr = self.getSpatialReference()
+        
         result = False
         if sr is not None:
+            try:
+                sr.factoryCode
+            except:
+                sr = arcpy.SpatialReference(sr)
             result = (sr.factoryCode is not None and sr.factoryCode > 0)
             if sr.factoryCode is None:
                 arcpy.AddMessage("Spatial reference exists, but WKID (EPSG Code) is None. The custom projection for this project may not be able to be converted when published to the master.")
@@ -273,8 +278,14 @@ class QALasInfo(object):
 
     def isUnknownSpatialReference(self):
         sr = self.getSpatialReference()
+        
+            
         result = False
         if sr is not None:
+            try:
+                sr.name
+            except:
+                sr = arcpy.SpatialReference(sr)
             result = sr.name is None or sr.name.lower() == 'unknown'
             if result:
                 arcpy.AddMessage("Spatial reference is UNKNOWN, please add a .prj file to the las directory or spatial reference information to the las files.")

@@ -10,7 +10,6 @@ import string
 import uuid
 import platform
 import sys
-import platform
 
 from pmdm import RunUtil
 from ngce.folders.FoldersConfig import chars, repls
@@ -419,6 +418,34 @@ def getVertCSInfo(spatialReference):
     if vert_unit_name is not None:
         vert_unit_name = str(vert_unit_name).strip().replace("'", "")         
     return vert_cs_name, vert_unit_name
+
+
+def getString(str_value):
+    result = None
+    if str_value is not None:
+        result  = str(str_value).strip().upper()
+        if len(result)<=0:
+            result = None
+    
+    return result
+    
+def getSRValues(spatial_ref):
+    horz_cs_name = None
+    horz_cs_unit_name = None
+    horz_cs_factory_code = None
+    vert_cs_name, vert_unit_name = None, None
+    
+    if spatial_ref is not None:
+        horz_cs_name = getString(spatial_ref.name)
+        horz_cs_unit_name = getString(spatial_ref.linearUnitName)
+        horz_cs_factory_code = getString(spatial_ref.factoryCode)
+        vert_cs_name, vert_unit_name = getVertCSInfo(spatial_ref)
+        
+        vert_cs_name = getString(vert_cs_name)
+        vert_unit_name = getString(vert_unit_name)
+    
+    return horz_cs_name, horz_cs_unit_name, horz_cs_factory_code, vert_cs_name, vert_unit_name
+
     
 def clearFolder(folder):
     if os.path.exists(folder):

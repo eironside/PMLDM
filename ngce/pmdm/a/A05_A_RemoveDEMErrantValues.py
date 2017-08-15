@@ -83,9 +83,9 @@ from ngce.pmdm.a.A05_B_RevalueRaster import FIELD_INFO, MIN, MAX, V_NAME, V_UNIT
     H_NAME, H_UNIT, H_WKID, doTime
 
 
-PROCESS_DELAY = 2
-PROCESS_CHUNKS = 4  # files per thread. Factor of 2 please
-PROCESS_SPARES = 0  # processors to leave as spares, no more than 4!
+PROCESS_DELAY = 10
+PROCESS_CHUNKS = 6  # files per thread. Factor of 2 please
+PROCESS_SPARES = 1  # processors to leave as spares, no more than 4!
 
 def getBoundData(bound_path):
     
