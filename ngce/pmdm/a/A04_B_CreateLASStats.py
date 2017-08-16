@@ -541,9 +541,15 @@ def createVectorBoundaryC(f_path, vector_bound_path, isClassified, stat_props=No
     a = datetime.now()
     # arcpy.AddMessage("\tBoundary '{}'".format(vector_bound_path))
      
+    vector_bound_left, vector_bound_right = os.path.splitext(vector_bound_path)
+    vector_bound_1_path = "{}1{}".format(vector_bound_left, vector_bound_right) 
     deleteFileIfExists(vector_bound_path, useArcpy=True)
+    deleteFileIfExists(vector_bound_1_path, useArcpy=True)
      
-    arcpy.RasterDomain_3d(in_raster=f_path, out_feature_class=vector_bound_path, out_geometry_type="POLYGON")
+     
+    arcpy.RasterDomain_3d(in_raster=f_path, out_feature_class=vector_bound_1_path, out_geometry_type="POLYGON")
+    arcpy.EliminatePolygonPart_management(in_features=vector_bound_1_path, out_feature_class=vector_bound_path, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
+    deleteFileIfExists(vector_bound_1_path, useArcpy=True)
       
     footprint_area = 0
     for row in arcpy.da.SearchCursor(vector_bound_path, ["SHAPE@"]):  # @UndefinedVariable

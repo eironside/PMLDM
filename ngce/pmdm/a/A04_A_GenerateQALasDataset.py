@@ -15,7 +15,6 @@ import traceback
 import A04_B_CreateLASStats
 from ngce import Utility
 from ngce.cmdr import CMDR
-from ngce.cmdr.CMDR import ProjectJob
 from ngce.folders import ProjectFolders
 from ngce.las import LAS
 from ngce.pmdm import RunUtil
@@ -342,7 +341,7 @@ def updateCMDR(ProjectJob, project, las_qainfo, updatedBoundary):
         contract = Contract.getContract(las_qainfo.ProjectID)
         Contract.updateAOI(contract, updatedBoundary)
 
-# TODO fix the publish
+# @TODO: fix the publish
 #           Publish = CMDR.Publish()
 #           publish = Publish.getPublish(las_qainfo.ProjectID)
 #           Publish.updateAOI(publish, updatedBoundary)
@@ -446,8 +445,46 @@ def checkSpatialOnLas(start_dir, target_path, doRasters, isClassified):
         
     return result
     
+def isLayerExist(mxd, df, lyr_name):
+    for lyr in arcpy.mapping.ListLayers(mxd, "*", df):
+        if lyr.name == lyr_name:
+            return True
+    return False
     
+def createMXD(las_qainfo, target_path, project_ID):
+    mxd = None
+    try:    
+        las_footprint_path = A04_C_ConsolidateLASInfo.getLasFootprintPath(las_qainfo.filegdb_path)
+        lasd_boundary_path = A04_C_ConsolidateLASInfo.getLasdBoundaryPath(las_qainfo.filegdb_path)
+        lasd_path = las_qainfo.las_dataset_path
+        out_map_file_path = os.path.join(target_path, "{}.mxd".format(project_ID))
+        
+        if not os.path.exists(out_map_file_path):
+            mxd = arcpy.mapping.MapDocument(r"./blank.mxd")
+            mxd.saveACopy(out_map_file_path)
             
+        mxd = arcpy.mapping.MapDocument(out_map_file_path)
+        mxd.relativePaths = True
+        
+        df = mxd.activeDataFrame
+        
+        if not isLayerExist(mxd, df, "LAS Footprints"):
+            lyr_footprint = arcpy.MakeFeatureLayer_management(las_footprint_path, "LAS Footprints").getOutput(0)
+            arcpy.mapping.AddLayer(df, lyr_footprint, 'BOTTOM')
+        
+        if not isLayerExist(mxd, df, "LAS Boundary"):
+            lyr_boundary = arcpy.MakeFeatureLayer_management(lasd_boundary_path, "LAS Boundary").getOutput(0)
+            arcpy.mapping.AddLayer(df, lyr_boundary, 'BOTTOM')
+        
+        if not isLayerExist(mxd, df, "LAS Dataset"):
+            lyr_lasd = arcpy.MakeLasDatasetLayer_management(lasd_path, "LAS Dataset").getOutput(0)
+            arcpy.mapping.AddLayer(df, lyr_lasd, 'TOP')
+        
+        mxd.save()      
+    except:
+        pass      
+            
+    return mxd
 
 def processProject(ProjectJob, project, doRasters):
     aaa = datetime.datetime.now()
@@ -517,10 +554,12 @@ def processProject(ProjectJob, project, doRasters):
             createLasStatistics(fileList, target_path, las_qainfo.lasd_spatial_ref, las_qainfo.isClassified, doRasters)
         
         # Create the project's las dataset. Don't do this before you validated that each .las file has a .lasx
-        if arcpy.Exists(las_qainfo.las_dataset_path):
-            arcpy.AddMessage("Deleting existing LAS Dataset {}".format(las_qainfo.las_dataset_path))
-            arcpy.Delete_management(las_qainfo.las_dataset_path)
-        
+            if os.path.exists(las_qainfo.las_dataset_path):
+                arcpy.AddMessage("Using existing LAS Dataset {}".format(las_qainfo.las_dataset_path))
+                # arcpy.AddMessage("Deleting existing LAS Dataset {}".format(las_qainfo.las_dataset_path))
+                # arcpy.Delete_management(las_qainfo.las_dataset_path)
+            else:
+                a = datetime.datetime.now()
             # note: don't use method in A04_B because we don't want to compute statistics this time
         arcpy.CreateLasDataset_management(input=las_qainfo.las_directory,
                                           out_las_dataset=las_qainfo.las_dataset_path,
@@ -531,8 +570,9 @@ def processProject(ProjectJob, project, doRasters):
                                           relative_paths="RELATIVE_PATHS",
                                           create_las_prj="FILES_MISSING_PROJECTION")
         Utility.addToolMessages()
+                a = doTime(a, "Created LAS Dataset '{}'".format(las_qainfo.las_dataset_path))
+                         
                      
-        # get the SR object from LAS Dataset
         desc = arcpy.Describe(las_qainfo.las_dataset_path)
         
             # las_qainfo.lasd_spatial_ref = desc.SpatialReference
@@ -558,7 +598,33 @@ def processProject(ProjectJob, project, doRasters):
 #                 sys.exit(1)
 #             else:
             
-            updatedBoundary = A04_C_ConsolidateLASInfo.createLasdBoundaryAndFootprints(las_qainfo.filegdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID)
+            updatedBoundary = A04_C_ConsolidateLASInfo.createRasterBoundaryAndFootprints(las_qainfo.filegdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID)
+    
+            mxd = createMXD(las_qainfo, target_path, ProjectID)
+            
+            if doRasters:
+                mosaics = A04_C_ConsolidateLASInfo.createQARasterMosaics(las_qainfo.isClassified, las_qainfo.filegdb_path, las_qainfo.lasd_spatial_ref, target_path, mxd)
+                if mxd is not None:
+                    a = datetime.datetime.now()
+                    try:
+                        mxd_path = mxd.filePath
+                        df = mxd.activeDataFrame
+                        for [md_path, md_name] in mosaics:
+                            if not isLayerExist(mxd, df, md_name):
+                                lyr_md = arcpy.MakeMosaicLayer_management(in_mosaic_dataset=md_path, out_mosaic_layer=md_name).getOutput(0)
+                                arcpy.mapping.AddLayer(df, lyr_md, 'BOTTOM')
+                                lyr_md.visible = False
+                                a = doTime(a, "\tAdded MD {} to MXD {}.".format(md_name, mxd_path))
+                        mxd.save()
+                                
+                    except:
+                        try:
+                            a = doTime(a, "\tfailed to add MD to MXD {}. Is it open?".format(mxd_path))
+                        except:
+                            pass
+            
+            
+              
     
     bbb = datetime.datetime.now()
     td = (bbb - aaa).total_seconds()
@@ -597,6 +663,9 @@ def GenerateQALasDataset(jobID, doRasters):
         processProject(ProjectJob, project, doRasters)
         
         
+        
+        
+        # @TODO: Move this to another standalone script
         # updateCMDR(ProjectJob, project, las_qainfo, updatedBoundary)
                             
     arcpy.CheckInExtension("3D")
@@ -606,40 +675,40 @@ def GenerateQALasDataset(jobID, doRasters):
 
 if __name__ == '__main__':
     
-#     projId = sys.argv[1]
-#      
-#     doRasters = False
-#     if len(sys.argv) > 2:
-#         doRasters = sys.argv[2]
-#          
-#     GenerateQALasDataset(projId, doRasters)
+    projId = sys.argv[1]
+  
+    doRasters = False
+    if len(sys.argv) > 2:
+        doRasters = sys.argv[2]
+      
+    GenerateQALasDataset(projId, doRasters)
     
-    UID = None  # field_ProjectJob_UID
-    wmx_job_id = 1
-    project_Id = "OK_SugarCreek_2008"
-    alias = "Sugar Creek"
-    alias_clean = "SugarCreek"
-    state = "OK"
-    year = 2008
-    parent_dir = r"E:\NGCE\RasterDatasets"
-    archive_dir = r"E:\NGCE\RasterDatasets"
-    project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
-    project_AOI = None
-                
-    ProjectJob = ProjectJob()
-    project = [
-               UID,  # field_ProjectJob_UID
-               wmx_job_id,  # field_ProjectJob_WMXJobID,
-               project_Id,  # field_ProjectJob_ProjID,
-               alias,  # field_ProjectJob_Alias
-               alias_clean,  # field_ProjectJob_AliasClean
-               state ,  # field_ProjectJob_State
-               year ,  # field_ProjectJob_Year
-               parent_dir,  # field_ProjectJob_ParentDir
-               archive_dir,  # field_ProjectJob_ArchDir
-               project_dir,  # field_ProjectJob_ProjDir
-               project_AOI  # field_ProjectJob_SHAPE
-               ]
-     
-     
-    processProject(ProjectJob, project, True)
+#     UID = None  # field_ProjectJob_UID
+#     wmx_job_id = 1
+#     project_Id = "OK_SugarCreek_2008"
+#     alias = "Sugar Creek"
+#     alias_clean = "SugarCreek"
+#     state = "OK"
+#     year = 2008
+#     parent_dir = r"E:\NGCE\RasterDatasets"
+#     archive_dir = r"E:\NGCE\RasterDatasets"
+#     project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
+#     project_AOI = None
+#      
+#     ProjectJob = ProjectJob()
+#     project = [
+#                UID,  # field_ProjectJob_UID
+#                wmx_job_id,  # field_ProjectJob_WMXJobID,
+#                project_Id,  # field_ProjectJob_ProjID,
+#                alias,  # field_ProjectJob_Alias
+#                alias_clean,  # field_ProjectJob_AliasClean
+#                state ,  # field_ProjectJob_State
+#                year ,  # field_ProjectJob_Year
+#                parent_dir,  # field_ProjectJob_ParentDir
+#                archive_dir,  # field_ProjectJob_ArchDir
+#                project_dir,  # field_ProjectJob_ProjDir
+#                project_AOI  # field_ProjectJob_SHAPE
+#                ]
+#          
+#        
+#     processProject(ProjectJob, project, True)
