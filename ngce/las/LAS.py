@@ -19,21 +19,39 @@ LAS_raster_type_20_all_bin_mean_idw = os.path.join(os.path.dirname(os.path.realp
 # Used to add LAS to the project MD
 LAS_raster_type_1_all_bin_mean_idw = os.path.join(os.path.dirname(os.path.realpath(__file__)), LASConfig.LAS_RASTER_TYPE_1_All_Bin_Mean_IDW) 
 
-def validateZRange(minZ, maxZ):
-    arcpy.AddMessage("Checking Min Z value {}".format(minZ))
-    if minZ is None or minZ < MIN_VALID_ELEVATION or minZ > MAX_VALID_ELEVATION:
-        arcpy.AddWarning("Min Z is not valid, resetting to default {}".format(MIN_VALID_ELEVATION))
-        minZ = MIN_VALID_ELEVATION
+
+def minValidElevation(vertUnits):
+    return getValidElevation(vertUnits, MIN_VALID_ELEVATION)
+
+def maxValidElevation(vertUnits):
+    return getValidElevation(vertUnits, MAX_VALID_ELEVATION)
+
+def getValidElevation(vertUnits, elevation):
+    result = elevation
+    if vertUnits == "FOOT_US":
+        result = elevation / 0.30480061
+    elif vertUnits == "FOOT_INTL":
+        result = elevation / 0.3048
+    return result
+
+def validateZRange(sr_vert_unit, minZ, maxZ):
+    min_valid_z = minValidElevation(sr_vert_unit)
+    max_valid_z = maxValidElevation(sr_vert_unit)
     
-    arcpy.AddMessage("Checking Max Z value {}".format(maxZ))    
-    if maxZ is None or maxZ < MIN_VALID_ELEVATION or maxZ > MAX_VALID_ELEVATION:
-        arcpy.AddWarning("Max Z is not valid, resetting to default {}".format(MAX_VALID_ELEVATION))
-        maxZ = MAX_VALID_ELEVATION
+    arcpy.AddMessage("Checking Min Z value {} {}".format(minZ, sr_vert_unit))
+    if minZ is None or minZ < min_valid_z or minZ > max_valid_z:
+        arcpy.AddWarning("Min Z is not valid, resetting to default {} {}".format(min_valid_z, sr_vert_unit))
+        minZ = min_valid_z
+    
+    arcpy.AddMessage("Checking Max Z value {} {}".format(maxZ, sr_vert_unit))    
+    if maxZ is None or maxZ < min_valid_z or maxZ > max_valid_z:
+        arcpy.AddWarning("Max Z is not valid, resetting to default {} {}".format(max_valid_z, sr_vert_unit))
+        maxZ = max_valid_z
     
     if minZ > maxZ:
-        arcpy.AddWarning("Min Z > Max Z, resetting to defaults {} -> {}".format(MIN_VALID_ELEVATION, MAX_VALID_ELEVATION))
-        minZ = MIN_VALID_ELEVATION
-        maxZ = MAX_VALID_ELEVATION 
+        arcpy.AddWarning("Min Z > Max Z, resetting to defaults {} -> {} {}".format(min_valid_z, max_valid_z, sr_vert_unit))
+        minZ = min_valid_z
+        maxZ = max_valid_z
     
     return minZ, maxZ
 
@@ -239,8 +257,13 @@ class QALasInfo(object):
     
     def isValidSpatialReference(self):
         sr = self.getSpatialReference()
+        
         result = False
         if sr is not None:
+            try:
+                sr.factoryCode
+            except:
+                sr = arcpy.SpatialReference(sr)
             result = (sr.factoryCode is not None and sr.factoryCode > 0)
             if sr.factoryCode is None:
                 arcpy.AddMessage("Spatial reference exists, but WKID (EPSG Code) is None. The custom projection for this project may not be able to be converted when published to the master.")
@@ -255,8 +278,14 @@ class QALasInfo(object):
 
     def isUnknownSpatialReference(self):
         sr = self.getSpatialReference()
+        
+            
         result = False
         if sr is not None:
+            try:
+                sr.name
+            except:
+                sr = arcpy.SpatialReference(sr)
             result = sr.name is None or sr.name.lower() == 'unknown'
             if result:
                 arcpy.AddMessage("Spatial reference is UNKNOWN, please add a .prj file to the las directory or spatial reference information to the las files.")
