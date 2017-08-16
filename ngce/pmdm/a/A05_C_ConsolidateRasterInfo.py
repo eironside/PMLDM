@@ -38,13 +38,13 @@ from ngce.pmdm.a.A05_B_RevalueRaster import  MEAN, MAX, MIN, STAND_DEV, XMIN, XM
 
 
 def getRasterBoundaryPath(fgdb_path, elev_type=None):
-    result = os.path.join(fgdb_path, "RasterBoundary") 
+    result = os.path.join(fgdb_path, "BoundaryRaster") 
     if elev_type is not None:
         result = "{}_{}".format(result, elev_type)
     return result
 
 def getRasterFootprintPath(fgdb_path, elev_type=None):
-    result = os.path.join(fgdb_path, "RasterFootprint") 
+    result = os.path.join(fgdb_path, "FootprintRaster") 
     if elev_type is not None:
         result = "{}_{}".format(result, elev_type)
     return result

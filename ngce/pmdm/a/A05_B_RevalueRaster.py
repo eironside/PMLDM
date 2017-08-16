@@ -616,6 +616,17 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                         arcpy.AddMessage("Applying projection to raster '{}' {}".format(target_f_path, spatial_ref.exportToString()))
                         arcpy.DefineProjection_management(in_dataset=target_f_path, coor_system=spatial_ref)
                     
+                    arcpy.BuildPyramidsandStatistics_management(in_workspace=target_f_path,
+                                                                build_pyramids="BUILD_PYRAMIDS",
+                                                                calculate_statistics="CALCULATE_STATISTICS",
+                                                                BUILD_ON_SOURCE="BUILD_ON_SOURCE",
+                                                                pyramid_level="-1",
+                                                                SKIP_FIRST="NONE",
+                                                                resample_technique="BILINEAR",
+                                                                compression_type="LZ77",
+                                                                compression_quality="75",
+                                                                skip_existing="SKIP_EXISTING")
+                    
                     # make sure we make a new published copy of this
                     if arcpy.Exists(publish_f_path):
                         arcpy.Delete_management(publish_f_path)
@@ -638,6 +649,17 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                     arcpy.Clip_management(in_raster=publish1_f_path, out_raster=publish_f_path, in_template_dataset=bound_path, nodata_value=nodata, clipping_geometry="ClippingGeometry", maintain_clipping_extent="NO_MAINTAIN_EXTENT")
                     
                     deleteFileIfExists(publish1_f_path, True)
+                    
+                    arcpy.BuildPyramidsandStatistics_management(in_workspace=publish_f_path,
+                                                                build_pyramids="BUILD_PYRAMIDS",
+                                                                calculate_statistics="CALCULATE_STATISTICS",
+                                                                BUILD_ON_SOURCE="BUILD_ON_SOURCE",
+                                                                pyramid_level="-1",
+                                                                SKIP_FIRST="NONE",
+                                                                resample_technique="BILINEAR",
+                                                                compression_type="LZ77",
+                                                                compression_quality="75",
+                                                                skip_existing="SKIP_EXISTING")
                     
                     a = doTime(a, "\tCopied '{}' to '{}'".format(target_f_path, publish_f_path))
                 

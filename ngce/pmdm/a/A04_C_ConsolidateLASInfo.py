@@ -43,11 +43,14 @@ from ngce.raster import RasterConfig
 
 STAT_FOLDER = os.path.join("STATS", "LAS")
 
+
+# @TODO: Calculate 'Version' 
+
 def getLasdBoundaryPath(fgdb_path):
-    return os.path.join(fgdb_path, "LASDatasetBoundary")
+    return os.path.join(fgdb_path, "BoundaryLASDataset")
 
 def getLasFootprintPath(fgdb_path):
-    return os.path.join(fgdb_path, "LASFileFootprint")
+    return os.path.join(fgdb_path, "FootprintLASFile")
 
 def doTime(a, msg):
     b = datetime.datetime.now()
@@ -437,6 +440,8 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
     las_footprint = getLasFootprintPath(fgdb_path)
     lasd_boundary = getLasdBoundaryPath(fgdb_path)
     if not arcpy.Exists(las_footprint):
+        lasd_boundary_B = "{}B".format(lasd_boundary)
+        deleteFileIfExists(lasd_boundary_B, True)
         
     las_footprint_1 = os.path.join(fgdb_path, "{}1".format(las_footprint))
     deleteFileIfExists(las_footprint_1, True)
@@ -444,7 +449,7 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
     
     a = doTime(a, "Merged las footprints {}".format(las_footprint_1))
     
-        createBoundaryFeatureClass(las_footprint_1, lasd_boundary)
+        createBoundaryFeatureClass(las_footprint_1, lasd_boundary_B)
     a = datetime.datetime.now()
     
     # Merge the other footprints before clipping
@@ -453,22 +458,41 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
     
     a = doTime(a, "Merged las footprints {}".format(las_footprint_1))
     
+        lasd_boundary_C = "{}C".format(lasd_boundary)
+        deleteFileIfExists(lasd_boundary_C, True)
+        createBoundaryFeatureClass(las_footprint_1, lasd_boundary_C)
+        
+        lasd_boundary_SD = "{}_SD".format(lasd_boundary)
+        deleteFileIfExists(lasd_boundary_SD, True)
+        arcpy.SymDiff_analysis(in_features=lasd_boundary_B, update_features=lasd_boundary_B, out_feature_class=lasd_boundary_SD, join_attributes="ONLY_FID")
+        
+#         deleteFileIfExists(lasd_boundary_B, True)
+#         deleteFileIfExists(lasd_boundary_C, True)
+
+        a = doTime(a, "Created symetrical difference in boundaries {}".format(lasd_boundary_SD))
+        
     checkNullFields(las_footprint_1)
     a = datetime.datetime.now()
     
     deleteFileIfExists(las_footprint, True)
-    arcpy.Clip_analysis(in_features=las_footprint_1, clip_features=lasd_boundary, out_feature_class=las_footprint, cluster_tolerance="")
+        arcpy.Clip_analysis(in_features=las_footprint_1, clip_features=lasd_boundary_B, out_feature_class=las_footprint, cluster_tolerance="")
     deleteFileIfExists(las_footprint_1, True)
-        deleteFileIfExists(lasd_boundary, True)
+        
+        # deleteFileIfExists(lasd_boundary, True)
     a = doTime(a, "Clipped las footprints to dataset boundary {} ".format(las_footprint))
     
     if not arcpy.Exists(lasd_boundary):
+        
+        deleteFileIfExists(lasd_boundary, True)
+        
     summary_string, field_alter = getStatsFields()
     createBoundaryFeatureClass(las_footprint, lasd_boundary, summary_string, field_alter)
     
     addProjectInfo(las_footprint, lasd_boundary, project_ID, project_path, project_UID)
     
 
+
+        
 
 def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_folder, mxd):
     mosaics = []

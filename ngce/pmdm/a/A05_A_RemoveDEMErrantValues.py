@@ -239,7 +239,7 @@ def getRasterBoundData(bound_path, elev_type, add_buffer=True):
     
     z_min, z_max = bufferZValues(z_min, z_max, add_buffer)
     
-    return z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, is_classified
+    return z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid
 
 
 

@@ -112,14 +112,16 @@ def getRasterStats(ProjectUID, ProjectID, curr_raster, raster_path, group, eleva
 def addStandardMosaicDatasetFields(md_path):
     arcpy.AddMessage("Adding fields to Mosaic Dataset '{}'".format(md_path))
     # Add the required metadata fields to the Master/Project Mosaic Dataset
-    Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.PROJECT_ID, field_length="100", field_alias=CMDRConfig.PROJECT_ID.replace("_", " "), add_index=True)
+#     Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.PROJECT_ID, field_length="100", field_alias=CMDRConfig.PROJECT_ID.replace("_", " "), add_index=True)
     Utility.addAndCalcFieldDate(dataset_path=md_path, field_name=CMDRConfig.PROJECT_DATE, field_alias=CMDRConfig.PROJECT_DATE.replace("_", " "), add_index=True)
     Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.RASTER_PATH, field_length="800", field_alias=CMDRConfig.RASTER_PATH.replace("_", " "), add_index=True)
     Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.PROJECT_SOURCE, field_length="20", field_alias=CMDRConfig.PROJECT_SOURCE.replace("_", " "), add_index=True)
-    Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.PROJECT_SR_XY_NAME, field_length="100", field_alias=CMDRConfig.PROJECT_SR_XY_NAME.replace("_", " "), add_index=True)
-    Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.PROJECT_SR_XY_UNITS, field_length="20", field_alias=CMDRConfig.PROJECT_SR_XY_UNITS.replace("_", " "), add_index=True)
-    Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.PROJECT_SR_XY_CODE, field_length="100", field_alias=CMDRConfig.PROJECT_SR_XY_CODE.replace("_", " "), add_index=True)
-    Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.PROJECT_SR_Z_UNITS, field_length="100", field_alias=CMDRConfig.PROJECT_SR_Z_UNITS.replace("_", " "), add_index=True)
+#     Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.PROJECT_SR_XY_NAME, field_length="100", field_alias=CMDRConfig.PROJECT_SR_XY_NAME.replace("_", " "), add_index=True)
+#     Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.PROJECT_SR_XY_UNITS, field_length="20", field_alias=CMDRConfig.PROJECT_SR_XY_UNITS.replace("_", " "), add_index=True)
+#     Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.PROJECT_SR_XY_CODE, field_length="100", field_alias=CMDRConfig.PROJECT_SR_XY_CODE.replace("_", " "), add_index=True)
+#     Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.PROJECT_SR_Z_NAME, field_length="100", field_alias=CMDRConfig.PROJECT_SR_Z_NAME.replace("_", " "), add_index=True)
+#     Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.PROJECT_SR_Z_UNITS, field_length="100", field_alias=CMDRConfig.PROJECT_SR_Z_UNITS.replace("_", " "), add_index=True)
+#     Utility.addAndCalcFieldText(dataset_path=md_path, field_name=CMDRConfig.FILE_NAME, field_length="100", field_alias=CMDRConfig.FILE_NAME.replace("_", " "), add_index=True)
     
     arcpy.EnableEditorTracking_management(in_dataset=md_path, creator_field="created_user", creation_date_field="created_date", last_editor_field="last_edited_user", last_edit_date_field="last_edited_date", add_fields="ADD_FIELDS", record_dates_in="UTC")
     Utility.addToolMessages()
