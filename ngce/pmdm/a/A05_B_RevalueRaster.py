@@ -13,6 +13,10 @@ from ngce import Utility
 from ngce.raster import RasterConfig
 
 
+arcpy.env.parallelProcessingFactor = "80%"
+
+Utility.setArcpyEnv(True)
+
 STAT_FOLDER = os.path.join("STATS", "RASTER")
 STAT_FOLDER_ORG = "ORIGINAL"
 STAT_FOLDER_DER = "DERIVED"
@@ -569,6 +573,7 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
                 
 
 def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, minZ, maxZ, bound_path, spatial_ref=None):
+    Utility.setArcpyEnv(is_overwrite_output=True)
     a = datetime.now()
     nodata = RasterConfig.NODATA_DEFAULT     
     
@@ -607,8 +612,6 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                     outSetNull.save(target_f_path)
                     del outSetNull, rasterObject
                 
-                    # Set the no data default value on the input raster
-                    arcpy.SetRasterProperties_management(target_f_path, data_type="#", statistics="#", stats_file="#", nodata="1 {}".format(nodata))
                     if spatial_ref is not None:
                         arcpy.AddMessage("Applying projection to raster '{}' {}".format(target_f_path, spatial_ref))
                         if str(spatial_ref).lower().endswith(".prj"):
@@ -616,16 +619,20 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                         arcpy.AddMessage("Applying projection to raster '{}' {}".format(target_f_path, spatial_ref.exportToString()))
                         arcpy.DefineProjection_management(in_dataset=target_f_path, coor_system=spatial_ref)
                     
-                    arcpy.BuildPyramidsandStatistics_management(in_workspace=target_f_path,
-                                                                build_pyramids="BUILD_PYRAMIDS",
-                                                                calculate_statistics="CALCULATE_STATISTICS",
-                                                                BUILD_ON_SOURCE="BUILD_ON_SOURCE",
-                                                                pyramid_level="-1",
-                                                                SKIP_FIRST="NONE",
-                                                                resample_technique="BILINEAR",
-                                                                compression_type="LZ77",
-                                                                compression_quality="75",
-                                                                skip_existing="SKIP_EXISTING")
+                    # Set the no data default value on the input raster
+                    arcpy.SetRasterProperties_management(in_raster=target_f_path, data_type="ELEVATION", nodata="1 {}".format(nodata))    
+                    arcpy.CalculateStatistics_management(in_raster_dataset=target_f_path, x_skip_factor="1", y_skip_factor="1", ignore_values="", skip_existing="OVERWRITE", area_of_interest="Feature Set")
+#                     arcpy.BuildPyramidsandStatistics_management(in_workspace=target_f_path,
+#                                                                 build_pyramids="BUILD_PYRAMIDS",
+#                                                                 calculate_statistics="CALCULATE_STATISTICS",
+#                                                                 BUILD_ON_SOURCE="BUILD_ON_SOURCE",
+#                                                                 pyramid_level="-1",
+#                                                                 SKIP_FIRST="NONE",
+#                                                                 resample_technique="BILINEAR",
+#                                                                 compression_type="LZ77",
+#                                                                 compression_quality="75",
+#                                                                 skip_existing="SKIP_EXISTING")
+                    
                     
                     # make sure we make a new published copy of this
                     if arcpy.Exists(publish_f_path):
@@ -650,16 +657,18 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                     
                     deleteFileIfExists(publish1_f_path, True)
                     
-                    arcpy.BuildPyramidsandStatistics_management(in_workspace=publish_f_path,
-                                                                build_pyramids="BUILD_PYRAMIDS",
-                                                                calculate_statistics="CALCULATE_STATISTICS",
-                                                                BUILD_ON_SOURCE="BUILD_ON_SOURCE",
-                                                                pyramid_level="-1",
-                                                                SKIP_FIRST="NONE",
-                                                                resample_technique="BILINEAR",
-                                                                compression_type="LZ77",
-                                                                compression_quality="75",
-                                                                skip_existing="SKIP_EXISTING")
+                    arcpy.SetRasterProperties_management(in_raster=publish_f_path, data_type="ELEVATION", nodata="1 {}".format(nodata))
+                    arcpy.CalculateStatistics_management(in_raster_dataset=publish_f_path, x_skip_factor="1", y_skip_factor="1", ignore_values="", skip_existing="OVERWRITE", area_of_interest="Feature Set")
+#                     arcpy.BuildPyramidsandStatistics_management(in_workspace=publish_f_path,
+#                                                                 build_pyramids="BUILD_PYRAMIDS",
+#                                                                 calculate_statistics="CALCULATE_STATISTICS",
+#                                                                 BUILD_ON_SOURCE="BUILD_ON_SOURCE",
+#                                                                 pyramid_level="-1",
+#                                                                 SKIP_FIRST="NONE",
+#                                                                 resample_technique="BILINEAR",
+#                                                                 compression_type="LZ77",
+#                                                                 compression_quality="75",
+#                                                                 skip_existing="SKIP_EXISTING")
                     
                     a = doTime(a, "\tCopied '{}' to '{}'".format(target_f_path, publish_f_path))
                 

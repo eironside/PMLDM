@@ -84,6 +84,31 @@ PROCESS_DELAY = 10
 PROCESS_CHUNKS = 6  # files per thread. Factor of 2 please
 PROCESS_SPARES = 1  # processors to leave as spares, no more than 4!
 
+arcpy.env.parallelProcessingFactor = "80%"
+
+Utility.setArcpyEnv(True)
+
+def isSpatialRefSameForAll(InputFolder):
+    arcpy.env.workspace = InputFolder
+    rasters = arcpy.ListRasters("*")
+    count = len(rasters)
+    
+    SpatRefFirstRaster = None
+    SRMatchFlag = True
+    
+    
+    for raster in rasters:
+        describe = arcpy.Describe(raster)
+        SRef = describe.SpatialReference.exportToString()
+        if SpatRefFirstRaster is None:
+            SpatRefFirstRaster = SRef
+        if SRef != SpatRefFirstRaster:
+            SRMatchFlag = False
+            arcpy.AddError("Raster has a PCSCode (EPSG code) that is different than first raster: {}".format(raster))
+    
+    return SRMatchFlag, count
+
+
 def getSRErrorMessage(sr_type, horz_name_isValid, vert_name_isValid, horz_unit_isValid, vert_unit_isValid):
     msg = None
     if not horz_name_isValid:
@@ -192,15 +217,17 @@ def checkSpatialOnRaster(start_dir, elev_type, target_path, v_name, v_unit, h_na
         arcpy.AddMessage("         Found a valid spatial reference in a {} file. Using this as the spatial reference: {}".format(elev_type, Utility.getSpatialReferenceInfo(ras_spatial_ref)))
         result = ras_spatial_ref
         
+    
+        
     return result
 
 def bufferZValues(z_min, z_max, add_buffer=True):
     if add_buffer:
-        arcpy.AddMessage("\tRaster Z is between {} and {}, adding 10% buffer on each end...".format(z_min, z_max))
+        arcpy.AddMessage("\tZ is between {} and {}, adding 10% buffer on each end...".format(z_min, z_max))
         z_min = (z_min * 0.9 if z_min > 0 else z_min * 1.1)
         z_max = (z_max * 1.2 if z_max > 0 else z_max * 0.8)
     else:
-        arcpy.AddMessage("\tRaster Z is between {} and {}.".format(z_min, z_max))
+        arcpy.AddMessage("\tZ is between {} and {}.".format(z_min, z_max))
         
     if z_min < 0 :
         arcpy.AddMessage("WARNING: Z MIN is less than 0")
@@ -392,10 +419,13 @@ def createFolders(target_path):
     A04_A_GenerateQALasDataset.createFolder(target_path, value_field, dataset_name, True)
 
 
-def getFileProcessList(start_dir, elev_type, target_path, publish_path, return_first=False):
+def getFileProcessList(start_dir, elev_type, target_path, publish_path, return_first=False, check_sr=False):
     createFolders(target_path)
     
     workspace = arcpy.env.workspace  # @UndefinedVariable
+    
+    SpatRefFirstRaster = None
+    SRMatchFlag = True
     
     try:
         fileList = []
@@ -403,6 +433,7 @@ def getFileProcessList(start_dir, elev_type, target_path, publish_path, return_f
         for root, dirs, files in os.walk(start_dir):  # @UnusedVariable
             arcpy.env.workspace = root
             rasters = arcpy.ListRasters("*", "ALL")
+            
             for f_name in rasters:
                 # GRIDs show up inside themselves, ignore files with same name as end of root
                 if not (root.upper().endswith(f_name.upper())):
@@ -412,7 +443,15 @@ def getFileProcessList(start_dir, elev_type, target_path, publish_path, return_f
                     if A05_B_RevalueRaster.isProcessFile(f_path, elev_type, target_path, publish_path):
                         index = index + 1
                         fileList.append(f_path)
-                        # arcpy.AddMessage("\t\t{}. {}".format(index, f_path))
+                        
+                        if check_sr:
+                            describe = arcpy.Describe(f_path)
+                            SRef = describe.SpatialReference.exportToString()
+                            if SpatRefFirstRaster is None:
+                                SpatRefFirstRaster = SRef
+                            elif SRef != SpatRefFirstRaster:
+                                SRMatchFlag = False
+                                arcpy.AddError("ERROR: Raster file '{}' has a different spatial reference: \n\tFirst Raster: {}\n\tThis Raster: {}".format(f_path, SpatRefFirstRaster, SRef))
                     
             del rasters
     
@@ -421,6 +460,9 @@ def getFileProcessList(start_dir, elev_type, target_path, publish_path, return_f
     finally:
         arcpy.env.workspace = workspace
         
+    if check_sr:
+        return fileList, SRMatchFlag
+    else:
     return fileList
 
 
@@ -442,6 +484,12 @@ def validateRasterSpaitialRef(ProjectFolder, start_dir, elev_type, target_path, 
         las_qainfo.lasd_spatial_ref = None
         arcpy.AddError("ERROR: Spatial Reference for the {} files is not standard: '{}'".format(elev_type, Utility.getSpatialReferenceInfo(las_qainfo.lasd_spatial_ref)))
         arcpy.AddError("ERROR:   Please add a valid projection file (.prj) to the DELIVERED\{} folder.".format(elev_type))
+    
+    if las_qainfo.lasd_spatial_ref is not None:
+        f_list, all_matching = getFileProcessList(start_dir, elev_type, target_path, None, return_first=False, check_sr=True)  # @UnusedVariable
+        if not all_matching:
+            las_qainfo.lasd_spatial_ref = None
+            arcpy.AddError("Not all raster files have same spatial reference. Please make sure all files have the same spatial reference.")
     
     return las_qainfo.lasd_spatial_ref
 

@@ -32,7 +32,6 @@ import arcpy
 import datetime
 import os
 
-import ngce
 from ngce.cmdr import CMDRConfig
 from ngce.pmdm.a.A05_B_RevalueRaster import  MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN, YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID, FIELD_INFO, \
     AREA, IS_CLASSIFIED, RANGE, FIRST_RETURNS, SECOND_RETURNS, THIRD_RETURNS, \
@@ -440,6 +439,8 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
     las_footprint = getLasFootprintPath(fgdb_path)
     lasd_boundary = getLasdBoundaryPath(fgdb_path)
     if not arcpy.Exists(las_footprint):
+        # Delete the boundary if the footprints don't exist (have to recreate anyway)
+        deleteFileIfExists(lasd_boundary, True)
         lasd_boundary_B = "{}B".format(lasd_boundary)
         deleteFileIfExists(lasd_boundary_B, True)
         
@@ -463,11 +464,24 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
         createBoundaryFeatureClass(las_footprint_1, lasd_boundary_C)
         
         lasd_boundary_SD = "{}_SD".format(lasd_boundary)
+        lasd_boundary_SD1 = "{}_SD1".format(lasd_boundary)
+        lasd_boundary_SD2 = "{}_SD2".format(lasd_boundary)
+        lasd_boundary_SD3 = "{}_SD3".format(lasd_boundary)
         deleteFileIfExists(lasd_boundary_SD, True)
-        arcpy.SymDiff_analysis(in_features=lasd_boundary_B, update_features=lasd_boundary_B, out_feature_class=lasd_boundary_SD, join_attributes="ONLY_FID")
+        deleteFileIfExists(lasd_boundary_SD1, True)
+        deleteFileIfExists(lasd_boundary_SD2, True)
+        deleteFileIfExists(lasd_boundary_SD3, True)
+        # Replace a layer/table view name with a path to a dataset (which can be a layer file) or create the layer/table view within the script
+        arcpy.SymDiff_analysis(in_features=lasd_boundary_B, update_features=lasd_boundary_C, out_feature_class=lasd_boundary_SD1, join_attributes="ONLY_FID", cluster_tolerance="3 Meters")
+        arcpy.Buffer_analysis(in_features=lasd_boundary_SD1, out_feature_class=lasd_boundary_SD2, buffer_distance_or_field="-3 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="NONE", dissolve_field="", method="PLANAR")
+        arcpy.MultipartToSinglepart_management(in_features=lasd_boundary_SD2, out_feature_class=lasd_boundary_SD3)
+        arcpy.Buffer_analysis(in_features=lasd_boundary_SD3, out_feature_class=lasd_boundary_SD, buffer_distance_or_field="3 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="NONE", dissolve_field="", method="PLANAR")
+        arcpy.DeleteField_management(in_table=lasd_boundary_SD, drop_field="FID_BoundaryLASDatasetB;FID_BoundaryLASDatasetC;BUFF_DIST;ORIG_FID")
         
-#         deleteFileIfExists(lasd_boundary_B, True)
-#         deleteFileIfExists(lasd_boundary_C, True)
+        deleteFileIfExists(lasd_boundary_C, True)
+        deleteFileIfExists(lasd_boundary_SD1, True)
+        deleteFileIfExists(lasd_boundary_SD2, True)
+        deleteFileIfExists(lasd_boundary_SD3, True)
 
         a = doTime(a, "Created symetrical difference in boundaries {}".format(lasd_boundary_SD))
         
@@ -477,8 +491,9 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
     deleteFileIfExists(las_footprint, True)
         arcpy.Clip_analysis(in_features=las_footprint_1, clip_features=lasd_boundary_B, out_feature_class=las_footprint, cluster_tolerance="")
     deleteFileIfExists(las_footprint_1, True)
+        deleteFileIfExists(lasd_boundary_B, True)
         
-        # deleteFileIfExists(lasd_boundary, True)
+        deleteFileIfExists(lasd_boundary, True)
     a = doTime(a, "Clipped las footprints to dataset boundary {} ".format(las_footprint))
     
     if not arcpy.Exists(lasd_boundary):

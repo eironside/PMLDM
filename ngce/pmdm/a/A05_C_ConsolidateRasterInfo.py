@@ -82,6 +82,19 @@ def alterField(in_table, field, new_field_name, new_field_alias):
 
 
 
+
+def alterFields(alter_field_infos, table):
+    a = datetime.datetime.now()
+    if alter_field_infos is not None:
+        for alter_field_info in alter_field_infos:
+            try:
+                alterField(table, alter_field_info[0], alter_field_info[1], alter_field_info[2])
+            except:
+                pass
+        
+    a = doTime(a, "\tAltered fields")
+    return a
+
 '''
 ---------------------------------------------
 Takes a set of footprints and merges them into a boundary
@@ -97,14 +110,7 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
     arcpy.Dissolve_management(in_features=raster_footprint, out_feature_class=raster_boundary_1, dissolve_field=FIELD_INFO[ELEV_TYPE][0], statistics_fields=statistics_fields)
     a = doTime(a, "\tDissolved to {}".format(raster_boundary_1))
     
-    if alter_field_infos is not None:
-        for alter_field_info in alter_field_infos:
-            try:
-                alterField(raster_boundary_1, alter_field_info[0], alter_field_info[1], alter_field_info[2])                 
-            except:
-                pass
-    
-        a = doTime(a, "\tRenamed summary fields")
+    alterFields(alter_field_infos, raster_boundary_1)
     
     raster_boundary_2 = "{}2".format(target_raster_boundary)
     deleteFileIfExists(raster_boundary_2, True)
@@ -257,6 +263,16 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
             
             deleteFileIfExists(raster_footprint, True)
             arcpy.Merge_management(inputs=b_file_list, output=raster_footprint)
+            
+            field_alter = []
+            for base_field in FIELD_INFO:
+                field_name = base_field[0]
+                new_field_name = base_field[0]
+                new_field_alias = base_field[1]
+                new_field = [field_name, new_field_name, new_field_alias]
+                
+                field_alter.append(new_field)
+            alterFields(field_alter, raster_footprint)
             
             a = doTime(a, "Merged raster footprints {}".format(raster_footprint))
             

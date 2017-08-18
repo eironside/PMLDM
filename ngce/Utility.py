@@ -471,7 +471,7 @@ def setArcpyEnv(is_overwrite_output):
     # Turn off pyramid creation because a GDAL bug with Floating-pt NoData values is causing issues
     arcpy.env.pyramid = RasterConfig.NONE
     arcpy.env.resamplingmethod = RasterConfig.BILINEAR
-    arcpy.env.compression = RasterConfig.COMPRESSION_LZ77
+    arcpy.env.compression = RasterConfig.NONE
     arcpy.env.tileSize = RasterConfig.TILE_SIZE_256
     arcpy.env.nodata = RasterConfig.NODATA_DEFAULT
 

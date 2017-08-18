@@ -15,6 +15,7 @@ import traceback
 import A04_B_CreateLASStats
 from ngce import Utility
 from ngce.cmdr import CMDR
+from ngce.cmdr.CMDR import ProjectJob
 from ngce.folders import ProjectFolders
 from ngce.las import LAS
 from ngce.pmdm import RunUtil
@@ -23,9 +24,11 @@ from ngce.pmdm.a.A04_B_CreateLASStats import STAT_FOLDER, doTime, \
     deleteFileIfExists
 
 
-PROCESS_DELAY = 2
+PROCESS_DELAY = 10
 PROCESS_CHUNKS = 4  # files per thread
-PROCESS_SPARES = 3  # processors to leave as spares
+PROCESS_SPARES = 2  # processors to leave as spares
+
+arcpy.env.parallelProcessingFactor = "80%"
 
 arcpy.env.overwriteOutput = True
 # TOOLS_PATH = r"Q:\elevation\WorkflowManager\Tools\ngce\pmdm\a"
@@ -57,7 +60,7 @@ def createFolder(target_path, parent, children, deleteIfExists=False):
 Create a standard set of analysis folders before the threads start
 ------------------------------------------------------------
 '''
-def createFolders(target_path):
+def createFolders(target_path, isClassified):
     value_field = ["ELEVATION"]
     dataset_name = ["FIRST", "LAST", "ALAST"]
     createFolder(target_path, value_field, dataset_name)
@@ -72,6 +75,12 @@ def createFolders(target_path):
     
     value_field = ["STATS"]
     dataset_name = ['LAS', 'RASTER']
+    createFolder(target_path, value_field, dataset_name)
+
+    value_field = ["LAS_UNCLASSIFIED"]
+    if isClassified:
+        value_field = ["LAS_CLASSIFIED"]
+    dataset_name = ['', 'LASD']
     createFolder(target_path, value_field, dataset_name)
 
 '''
@@ -471,14 +480,23 @@ def createMXD(las_qainfo, target_path, project_ID):
         if not isLayerExist(mxd, df, "LAS Footprints"):
             lyr_footprint = arcpy.MakeFeatureLayer_management(las_footprint_path, "LAS Footprints").getOutput(0)
             arcpy.mapping.AddLayer(df, lyr_footprint, 'BOTTOM')
+            arcpy.AddMessage("Added layer to mxd: {}".format(lyr_footprint))
         
         if not isLayerExist(mxd, df, "LAS Boundary"):
             lyr_boundary = arcpy.MakeFeatureLayer_management(lasd_boundary_path, "LAS Boundary").getOutput(0)
             arcpy.mapping.AddLayer(df, lyr_boundary, 'BOTTOM')
+            arcpy.AddMessage("Added layer to mxd: {}".format(lyr_boundary))
         
         if not isLayerExist(mxd, df, "LAS Dataset"):
             lyr_lasd = arcpy.MakeLasDatasetLayer_management(lasd_path, "LAS Dataset").getOutput(0)
             arcpy.mapping.AddLayer(df, lyr_lasd, 'TOP')
+            arcpy.AddMessage("Added layer to mxd: {}".format(lyr_lasd))
+        
+        if not isLayerExist(mxd, df, "LAS Boundary Difference"):
+            lasd_boundary_SD = "{}_SD".format(lasd_boundary_path)
+            lyr_diff = arcpy.MakeFeatureLayer_management(lasd_boundary_SD, "LAS Boundary Difference").getOutput(0)
+            arcpy.mapping.AddLayer(df, lyr_diff, 'TOP')
+            arcpy.AddMessage("Added layer to mxd: {}".format(lyr_diff))
         
         mxd.save()      
     except:
@@ -496,13 +514,14 @@ def processProject(ProjectJob, project, doRasters):
     
     target_path = ProjectFolder.derived.path
     
-    createFolders(target_path)
+    
     
     # Get the LAS QA Info to determine if it is classified or not
     las_qainfo = getLasQAInfo(ProjectFolder)
     if las_qainfo.num_las_files <= 0:
         arcpy.AddError("Project with Job ID {} has no .las files in DELIVERED LAS_CLASSIFIED or LAS_UNCLASSIFIED folders, CANNOT CONTINUE.".format(ProjectFolder.projectId))
     else:
+        createFolders(target_path, las_qainfo.isClassified)
         
         # Make the STAT folder if it doesn't already exist
         stat_out_folder = os.path.join(target_path, STAT_FOLDER)

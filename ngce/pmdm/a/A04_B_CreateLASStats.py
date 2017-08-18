@@ -8,9 +8,12 @@ import copy
 import csv
 from datetime import datetime
 import os
+from shutil import copyfile
 import sys
 import time
 
+from ngce import Utility
+from ngce.las import LASConfig
 from ngce.pmdm.a import A05_B_RevalueRaster
 from ngce.pmdm.a.A05_B_RevalueRaster import MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN, YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID, FIELD_INFO, \
     AREA, NAME, PATH, IS_CLASSIFIED, POINT_COUNT, POINT_PERCENT, POINT_SPACING, \
@@ -20,6 +23,10 @@ from ngce.raster import RasterConfig
 
 
 RasterConfig.NODATA_DEFAULT
+
+arcpy.env.parallelProcessingFactor = "80%"
+
+Utility.setArcpyEnv(True)
 
 SAMPLE_TYPE = "CELLSIZE"
 CELL_SIZE = 10  # Meters
@@ -42,11 +49,28 @@ def isProcessFile(f_path, target_path, doRasters, isClassified):
         f_name = os.path.split(os.path.splitext(f_path)[0])[1]
         stat_out_folder = os.path.join(target_path, STAT_FOLDER)
         
-        lasx_path = "{}x".format(f_path)
+        las_type_folder = "LAS_CLASSIFIED"
+        if not isClassified:
+            las_type_folder = "LAS_UNCLASSIFIED"
+        
+        target_lasd_path = os.path.join(target_path, las_type_folder, "LASD")
+        out_lasd_path = os.path.join(target_lasd_path, "{}.lasd".format(f_name))
+        
+        target_las_path = os.path.join(target_path, las_type_folder, "LAS")
+        out_las_path = os.path.join(target_las_path, "LAS", "{}.las".format(f_name))
+        out_lasx_path = os.path.join(target_las_path, "LAS", "{}.lasx".format(f_name))
         
         # LASX Exists    
-        if not os.path.exists(lasx_path):
+        if not os.path.exists(out_lasx_path):
             process_file = True
+        
+        # LAS Exists    
+        if not os.path.exists(out_las_path):
+            process_file = True
+        
+#         # LASD Exists    
+#         if not os.path.exists(out_lasd_path):
+#             process_file = True
         
         # stat file exists
         stat_file_path = os.path.join(stat_out_folder, "S_{}.txt".format(f_name))
@@ -136,27 +160,135 @@ def deleteFileIfExists(f_path, useArcpy=False):
         pass
     
     
-'''
---------------------------------------------------------------------------------
-Creates the las Dataset. Used in multiple places.
---------------------------------------------------------------------------------
-'''
-def createLasDataset(f_path, spatial_reference, lasd_path):
+# '''
+# --------------------------------------------------------------------------------
+# Creates the las Dataset. Used in multiple places.
+# target_path = "<projectdir>\DERIVED"
+# --------------------------------------------------------------------------------
+# '''
+# 
+# def extractLas(f_name, isClassified, in_lasd_path, out_lasd_path, out_las_path, out_lasx_path=None):
+#     a = datetime.now()
+#     if not os.path.exists(out_lasd_path):
+#         lasd_layer = in_lasd_path
+#         if isClassified:
+#             lasd_layer = "{}_lasd_layer".format(f_name)
+#             arcpy.MakeLasDatasetLayer_management(in_lasd_path, lasd_layer, "0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", "'Last Return';'First of Many';'Last of Many';'Single Return';1;2;3;4;5", "INCLUDE_UNFLAGGED", "INCLUDE_SYNTHETIC", "INCLUDE_KEYPOINT", "EXCLUDE_WITHHELD", "")
+#         a = doTime(a, "\tCreated LASD layer '{}'".format(lasd_layer))
+# #         compute_stats = "NO_COMPUTE_STATS"
+#         rearrange = "MAINTAIN_POINTS"
+#         if out_lasx_path is not None and not os.path.exists(out_lasx_path):
+#             rearrange = "REARRANGE_POINTS"
+#         compute_stats = "COMPUTE_STATS"
+#         arcpy.ExtractLas_3d(lasd_layer, out_las_path, "DEFAULT", "", "PROCESS_EXTENT", "", "MAINTAIN_VLR", rearrange, compute_stats, out_lasd_path)
+#         a = doTime(a, "\tExtracted LAS to '{}'".format(out_las_path))
+    
+
+def createLasDataset(f_name, f_path, spatial_reference, target_path, isClassified):
     a = datetime.now()
-    if not os.path.exists(lasd_path):
-        arcpy.AddMessage("\t  Creating LASD: '{}' '{}' {}'".format(f_path, spatial_reference, lasd_path))
+    aa = a
+    las_type_folder = "LAS_CLASSIFIED"
+    if not isClassified:
+        las_type_folder = "LAS_UNCLASSIFIED"
+    target_las_path = os.path.join(target_path, las_type_folder)
+    target_lasd_path = os.path.join(target_las_path, "LASD")
+    out_lasd_path = os.path.join(target_lasd_path, "{}.lasd".format(f_name))
+    temp1_lasd_path = os.path.join(target_lasd_path, "{}_temp1.lasd".format(f_name))
+    
+    
+    out_las_path = os.path.join(target_las_path, "{}.las".format(f_name))
+    out_las_rear_path = os.path.join(target_las_path, "{}Rearrange.las".format(f_name))
+    out_lasx_path = os.path.join(target_las_path, "{}.lasx".format(f_name))
+    
+    if not os.path.exists(out_las_path) or not os.path.exists(out_lasx_path):
+        deleteFileIfExists(temp1_lasd_path)
+        
+        arcpy.AddMessage("\t  Creating LASD: '{}' '{}' {}'".format(f_path, spatial_reference, out_lasd_path))
         arcpy.CreateLasDataset_management(input=f_path,
                                           spatial_reference=spatial_reference,
-                                          out_las_dataset=lasd_path,
+                                          out_las_dataset=temp1_lasd_path,
                                           folder_recursion="NO_RECURSION",
                                           in_surface_constraints="",
-                                          compute_stats="COMPUTE_STATS",
+                                          compute_stats="NO_COMPUTE_STATS",
                                           relative_paths="ABSOLUTE_PATHS",
                                           create_las_prj="FILES_MISSING_PROJECTION")
         
-        doTime(a, "\tCreated LASD {}".format(lasd_path))
+        a = doTime(a, "\tCreated LASD {}".format(temp1_lasd_path))
 
+        deleteFileIfExists(out_lasd_path)
+        deleteFileIfExists(out_las_path)
+        deleteFileIfExists(out_las_rear_path)
+        deleteFileIfExists(out_lasx_path)
 
+        lasd_layer = temp1_lasd_path
+        if isClassified:
+            lasd_layer = "{}_lasd_layer".format(f_name)
+            lasd_layer = arcpy.MakeLasDatasetLayer_management(temp1_lasd_path, lasd_layer, "0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", "'Last Return';'First of Many';'Last of Many';'Single Return';1;2;3;4;5", "INCLUDE_UNFLAGGED", "INCLUDE_SYNTHETIC", "INCLUDE_KEYPOINT", "EXCLUDE_WITHHELD", "")
+                
+        arcpy.ExtractLas_3d(lasd_layer, target_las_path, "DEFAULT", "", "PROCESS_EXTENT", "", "MAINTAIN_VLR", "REARRANGE_POINTS", "COMPUTE_STATS", out_lasd_path)
+        
+        a = doTime(a, "\tExtracted LAS to '{}'".format(out_las_path))
+        
+    in_prj_path = "{}.prj".format(os.path.split(f_path)[0])
+    out_prj_path = os.path.join(target_las_path, "{}.prj".format(f_name))
+    if os.path.exists(in_prj_path):
+        copyfile(in_prj_path, out_prj_path)
+        a = doTime(a, "\tCopied LAS projection file '{}'".format(out_prj_path))
+    
+    deleteFileIfExists(temp1_lasd_path)
+    
+    a = doTime(aa, "\tCompleted LASD '{}'".format(out_lasd_path))
+
+# 
+# def classifyGround(lasd_path, las_v_unit):
+#     methods = ["CONSERVATIVE", 'STANDARD', "AGGRESSIVE"]
+#     veg_classes = {3:5, 4:25, 5:50}
+#     
+#     for method in methods:
+#         ground_lasd_layer = "gnd_{}_lasd_layer".format(method)    
+#         arcpy.MakeLasDatasetLayer_management(lasd_path, ground_lasd_layer, "0;1;2", "'Last Return';'Last of Many';'Single Return'", "INCLUDE_UNFLAGGED", "INCLUDE_SYNTHETIC", "INCLUDE_KEYPOINT", "EXCLUDE_WITHHELD", "")
+#         arcpy.ClassifyLasGround_3d (in_las_dataset=ground_lasd_layer, method="CONSERVATIVE", reuse_ground="REUSE_GROUND", compute_stats="COMPUTE_STATS", extent="DEFAULT", process_entire_files="PROCESS_ENTIRE_FILES")
+#         
+#         classify_lasd_layer = "cbh_{}_lasd_layer".format(method)    
+#         arcpy.MakeLasDatasetLayer_management(lasd_path, classify_lasd_layer, "0;1;2", "'Last Return';'First of Many';'Last of Many';'Single Return';1;2;3;4;5", "INCLUDE_UNFLAGGED", "INCLUDE_SYNTHETIC", "INCLUDE_KEYPOINT", "EXCLUDE_WITHHELD", "")
+#         arcpy.ClassifyLasByHeight_3d(in_las_dataset=classify_lasd_layer,
+#                                      ground_source="GROUND",
+#                                      height_classification="3 5;4 25;6 50",
+#                                      noise="ALL_NOISE",
+#                                      compute_stats="NO_COMPUTE_STATS",
+#                                      extent="DEFAULT",
+#                                      process_entire_files="PROCESS_ENTIRE_FILES", boundary="")
+#         
+#     
+# def classifyNoise(lasd_path, las_v_unit):
+#     max_z = 6200
+#     
+#     a = datetime.now()
+#     
+#     if str(las_v_unit).upper() == "Survey Feet".upper():
+#         max_z = max_z / (1200 / 3937)
+#     elif str(las_v_unit).upper() == "International Feet".upper():
+#         max_z = max_z / 0.3048
+#         
+#     for clazz in range(0, 19):
+#         if clazz <> 7 and clazz < 18:
+#             lasd_layer = "{}_lasd_layer".format(clazz)    
+#             arcpy.MakeLasDatasetLayer_management(lasd_path, lasd_layer, "{}".format(clazz), "'Last Return';'First of Many';'Last of Many';'Single Return';1;2;3;4;5", "INCLUDE_UNFLAGGED", "INCLUDE_SYNTHETIC", "INCLUDE_KEYPOINT", "EXCLUDE_WITHHELD", "")
+#             desc = arcpy.Describe(lasd_layer)
+#             point_count = desc.pointCount
+#             if point_count > 0:
+#                 
+#                 arcpy.AddMessage("Removing noise from {} class {} points".format(point_count, clazz))
+#                 arcpy.ClassifyLasByHeight_3d(in_las_dataset=lasd_layer,
+#                                              ground_source="GROUND",
+#                                              height_classification="{} {}".format(clazz, max_z),
+#                                              noise="ALL_NOISE",
+#                                              compute_stats="NO_COMPUTE_STATS",
+#                                              extent="DEFAULT",
+#                                              process_entire_files="PROCESS_ENTIRE_FILES", boundary="")
+#                 a = doTime(a, "Removed noise from {} class {} points".format(point_count, clazz))                 
+#     
+#     
 '''
 --------------------------------------------------------------------------------
 Exports the .las file statistics into a .txt file 
@@ -782,14 +914,21 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters)
 
     f_name = os.path.split(os.path.splitext(f_path)[0])[1]
     
-    lasd_path = "{}d".format(f_path)
-    lasx_path = "{}x".format(f_path)
+    las_folder = "LAS_CLASSIFIED"
+    if not isClassified:
+        las_folder = "LAS_UNCLASSIFIED"
         
-    if os.path.exists(lasx_path):
-        arcpy.AddMessage("\tlasx file exists: {}".format(lasx_path))
+    out_lasd_path = os.path.join(target_path, las_folder, "LASD", "{}.lasd".format(f_name))
+    out_las_path = os.path.join(target_path, las_folder, "LAS", "{}.las".format(f_name))
+    out_lasx_path = "{}x".format(out_las_path)
+        
+    if os.path.exists(out_lasx_path) and os.path.exists(out_las_path) and os.path.exists(out_lasd_path):
+        arcpy.AddMessage("\tlasx, las, and lasd file exists: \n\t{}\n\t{}\n\t{}".format(out_lasx_path, out_las_path, out_lasd_path))
     else:
-        deleteFileIfExists(lasd_path)
-        createLasDataset(f_path, spatial_reference, lasd_path)
+        deleteFileIfExists(out_lasd_path)
+        deleteFileIfExists(out_las_path)
+        deleteFileIfExists(out_lasx_path)
+        createLasDataset(f_name, f_path, spatial_reference, target_path, isClassified)
     
     # Make the STAT folder if it doesn't already exist
     stat_out_folder = os.path.join(target_path, STAT_FOLDER)
@@ -801,7 +940,7 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters)
     if os.path.exists(stat_file_path):
         arcpy.AddMessage("\tStat file exists: {}".format(stat_file_path))
     else:
-        createLasDatasetStats(lasd_path, f_path, spatial_reference, stat_file_path)
+        createLasDatasetStats(out_lasd_path, f_path, spatial_reference, stat_file_path)
     
     # Export Point File Information
     point_file_path = os.path.join(stat_out_folder, "I_{}.shp".format(f_name))    
@@ -815,7 +954,7 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters)
     
     lasd_all = None
     
-    lasd_last, lasd_first = exportElevation(target_path, isClassified, f_name, lasd_path)
+    lasd_last, lasd_first = exportElevation(target_path, isClassified, f_name, out_lasd_path)
     
     # Export the boundary shape file
     vector_bound_path = os.path.join(stat_out_folder, "B_{}.shp".format(f_name))
@@ -910,7 +1049,7 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters)
         stats_methods = ["PULSE_COUNT", "POINT_COUNT", "PREDOMINANT_LAST_RETURN", "PREDOMINANT_CLASS", "INTENSITY_RANGE", "Z_RANGE"]
         for dataset_name in ['_ALL', "_FIRST", "_LAST"]:
             name = dataset_name
-            lasd = lasd_path
+            lasd = out_lasd_path
                             
             if not isClassified:
                 # Using a generic name for non-classified data
@@ -941,15 +1080,15 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters)
                     if isClassified:
                         if name == "_LAST":
                             if lasd_last is None:
-                                lasd_last = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_last", class_code="0;2;8;9;10;11;12", return_values="'Last Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
+                                lasd_last = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_last", class_code="0;2;8;9;10;11;12", return_values="'Last Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                             lasd = lasd_last
                         elif name == "_FIRST":
                             if lasd_first is None:
-                                lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
+                                lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                             lasd = lasd_first
                         elif name == '_ALL':
                             if lasd_all is None:
-                                lasd_all = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_All", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="'Last Return';'First of Many';'Last of Many';'Single Return';1;2;3;4;5", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
+                                lasd_all = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_All", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="'Last Return';'First of Many';'Last of Many';'Single Return';1;2;3;4;5", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                             lasd = lasd_all
 
                     arcpy.LasPointStatsAsRaster_management(lasd, out_raster_path, method, SAMPLE_TYPE, CELL_SIZE)
@@ -995,7 +1134,7 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters)
     
     doTime(aa, "   Completed {}".format(f_path))
     try:
-        del f_name, lasd_path, lasx_path, stat_out_folder, stat_file_path, point_file_path, lasd_all, lasd_last, lasd_first, value_field, name, lasd, out_folder, out_raster, out_raster_path, dataset_name, vector_bound_path, stat_props, minz, maxz, meanz, stdevz, out_raster1_path
+        del f_name, out_lasd_path, out_lasx_path, stat_out_folder, stat_file_path, point_file_path, lasd_all, lasd_last, lasd_first, value_field, name, lasd, out_folder, out_raster, out_raster_path, dataset_name, vector_bound_path, stat_props, minz, maxz, meanz, stdevz, out_raster1_path
     except:
         pass
 
