@@ -71,6 +71,7 @@ from ngce import Utility
 from ngce.cmdr import CMDR
 from ngce.cmdr.CMDR import ProjectJob
 from ngce.folders import ProjectFolders
+from ngce.folders.FoldersConfig import DTM, DSM, DLM, INT
 from ngce.las import LAS
 from ngce.pmdm import RunUtil
 from ngce.pmdm.a import A05_B_RevalueRaster, A04_A_GenerateQALasDataset, \
@@ -414,7 +415,7 @@ def createFolders(target_path):
     dataset_name = ['RASTER']
     A04_A_GenerateQALasDataset.createFolder(target_path, value_field, dataset_name)
     
-    value_field = ["DTM", "DSM", "DHM"]
+    value_field = [DTM, DSM, DLM, INT]
     dataset_name = ['TEMP']
     A04_A_GenerateQALasDataset.createFolder(target_path, value_field, dataset_name, True)
 
@@ -500,7 +501,7 @@ def processProject(ProjectJob, project, ProjectUID):
     ProjectID = ProjectJob.getProjectID(project)
     ProjectUID = ProjectJob.getUID(project)
 
-    elev_types = ["DTM", "DSM"]
+    elev_types = [DTM, DSM, DLM, INT]
     target_path = ProjectFolder.derived.path
     publish_path = ProjectFolder.published.path
     fgdb_path = ProjectFolder.derived.fgdb_path
@@ -513,8 +514,22 @@ def processProject(ProjectJob, project, ProjectUID):
     
     z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, is_classified = getLasdBoundData(lasd_boundary)  # @UnusedVariable
     for elev_type in elev_types:
-        start_dir = os.path.join(ProjectFolder.delivered.path, elev_type)
         
+        start_dir = os.path.join(ProjectFolder.delivered.path, elev_type)
+        f_name = getFileProcessList(start_dir, elev_type, target_path, publish_path, return_first=True, check_sr=False)
+        if f_name is None:
+            arcpy.AddMessage("Trying DERIVED source. No {} rasters found to re-svalue in {}.".format(elev_type, start_dir))
+            if elev_type == DSM:
+                start_dir = os.path.join(ProjectFolder.derived.path, "ELEVATION", "LAST")
+            elif elev_type == DLM:
+                start_dir = os.path.join(ProjectFolder.derived.path, "ELEVATION", "ALAST")
+            elif elev_type == INT:
+                start_dir = os.path.join(ProjectFolder.derived.path, "INTENSITY", "FIRST")
+            f_name = getFileProcessList(start_dir, elev_type, target_path, publish_path, return_first=True, check_sr=False)
+        
+        if f_name is None:
+            arcpy.AddWarning("No {} rasters found to re-svalue in {}".format(elev_type, start_dir))
+        else:
         spatial_ref = validateRasterSpaitialRef(ProjectFolder, start_dir, elev_type, target_path, v_name, v_unit, h_name, h_unit, h_wkid)
         
         if spatial_ref is not None:

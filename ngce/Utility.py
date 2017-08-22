@@ -342,7 +342,20 @@ def getFieldValues(in_table, field_name, where_clause=None, append_string=""):
 
 
 def getVertCSInfo(spatialReference):
+    sr = spatialReference
+    try:
+        sr = spatialReference.exportToString()
+    except:
+        try:
+            sr = arcpy.SpatialReference(spatialReference)
     sr = spatialReference.exportToString()
+        except:
+            try:
+                sr = arcpy.SpatialReference()
+                sr.loadFromString(spatialReference)
+                sr = spatialReference.exportToString()
+            except:
+                sr = spatialReference
     pos = 0
     count = 0
     openBr = []

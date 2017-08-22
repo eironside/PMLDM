@@ -48,6 +48,9 @@ NODATA_DEFAULT = NODATA_340282346639E38
 
 Intl_ft2mtrs_function_chain = r"Intl_FeetToMeters.rft.xml"
 US_ft2mtrs_function_chain = r"US_FeetToMeters.rft.xml"
+Height_3_function_chain = r"Digital_Height_Model_3.rft.xml"
+Height_1_function_chain = r"Digital_Height_Model_1.rft.xml"
+Canopy_Density_function_chain = r"Canopy_Density.rft.xml"
 
 
 

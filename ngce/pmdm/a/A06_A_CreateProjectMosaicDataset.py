@@ -46,7 +46,7 @@ import os
 
 from ngce import Utility
 from ngce.cmdr import CMDR, CMDRConfig
-from ngce.cmdr.CMDRConfig import DSM, DTM, DHM
+from ngce.cmdr.CMDRConfig import DSM, DTM, DHM, INT
 from ngce.folders import ProjectFolders
 from ngce.las import LAS
 from ngce.pmdm.a import A04_C_ConsolidateLASInfo, A05_A_RemoveDEMErrantValues, A05_C_ConsolidateRasterInfo, \
@@ -83,7 +83,7 @@ def mergeFootprints(las_footprints, raster_footprints, el_type, fgdb_path):
         
         arcpy.SimplifyPolygon_cartography(in_features=temp_path1, out_feature_class=output_path,
                                             algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters",
-                                            error_option="RESOLVE_ERRORS", collapsed_point_option="KEEP_COLLAPSED_POINTS")
+                                            error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
         Utility.addToolMessages()
     
     out_layer = arcpy.MakeFeatureLayer_management(in_features=output_path, out_layer="FootprintAll_DTM_LAS", where_clause="el_type IS NULL")
@@ -259,7 +259,7 @@ def addLasFilesToMosaicDataset(out_las_dataset, las_folder, las_v_name, las_v_un
             
             # If the LAS have Z-units of FOOT_INTL or FOOT_US then append the appropriate function to their
             # function chain to convert the elevation values from feet to meters                                
-            if las_v_unit.upper() == "Survey Feet".upper() or las_v_unit.upper() == "International Feet".upper():
+    if las_v_unit.upper().endswith("Feet".upper()):
                 where_clause = "ItemTS > " + str(MaxItemTSValue) + " AND CATEGORY = 1"
         arcpy.AddMessage("Inserting a function to convert LAS Feet to Meters, since LAS has Z_Unit of:    {}".format(las_v_unit))
                 arcpy.AddMessage("\nMosaic Layer where clause: {0}".format(where_clause))
@@ -267,10 +267,10 @@ def addLasFilesToMosaicDataset(out_las_dataset, las_folder, las_v_name, las_v_un
                 Utility.addToolMessages()
                 
                 # Use the applicable function chain for either Foot_US or Foot_Intl
-                if las_v_unit.upper() == "Survey Feet".upper():
-                        functionChainDef = Raster.Us_ft2mtrs_function_chain_path
+        if las_v_unit.upper() == "International Feet".upper():
+            functionChainDef = Raster.Intl_ft2mtrs_function_chain_path
                 else:
-                        functionChainDef = Raster.Intl_ft2mtrs_function_chain_path  # Intl_ft2mtrs_function_chain
+            functionChainDef = Raster.Us_ft2mtrs_function_chain_path
                         
         arcpy.EditRasterFunction_management("ProjectMDLayer1", edit_mosaic_dataset_item="EDIT_MOSAIC_DATASET_ITEM", edit_options="INSERT", function_chain_definition=functionChainDef, location_function_name="#")
                 Utility.addToolMessages()
@@ -310,9 +310,22 @@ def getDates(dateDeliver, dateStart, dateEnd, project_year):
     return dateDeliver, dateStart, dateEnd
 
 
+def createReferenceddMosaicDataset(in_md_path, out_md_path, spatial_ref, raster_v_unit):
+    a = datetime.now()
+    arcpy.CreateReferencedMosaicDataset_management(in_dataset=in_md_path, out_mosaic_dataset=out_md_path, coordinate_system=spatial_ref, number_of_bands="1", pixel_type="32_BIT_FLOAT", where_clause="TypeID <> 3", in_template_dataset="", extent="", select_using_features="SELECT_USING_FEATURES", lod_field="", minPS_field="", maxPS_field="", pixelSize="", build_boundary="BUILD_BOUNDARY")
+    
+    raster_function_path = Raster.Height_function_chain_path
+    
+    arcpy.EditRasterFunction_management(out_md_path, edit_mosaic_dataset_item="EDIT_MOSAIC_DATASET", edit_options="INSERT", function_chain_definition=raster_function_path, location_function_name="#")
+    Utility.addToolMessages()
+    
+    arcpy.CalculateStatistics_management(in_raster_dataset=out_md_path, x_skip_factor="1", y_skip_factor="1", ignore_values="", skip_existing="OVERWRITE", area_of_interest="Feature Set")
+    # setMosaicDatasetProperties(out_md_path)
+    arcpy.AddMessage("\tNOTE: !!! Please edit the DHM function change to replace the DTM with this project's DTM mosaic dataset and recaclculate statistics on the DHM mosaic dataset.\n\n\t{}\n".format(out_md_path))
+    doTime(a, "Created DHM '{}'".format(out_md_path))
+
 def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, imagePath, md_name, md_path, SpatRefMD):
     filegdb_path = os.path.join(publish_path, filegdb_name)
-    count_rasters, md_cellsize = 0,0
     
     # If the file gdb doesn't exist, then create it
     if os.path.exists(filegdb_path):
@@ -346,7 +359,7 @@ def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, 
         arcpy.AddMessage("Raster vertical unit is {}, adding conversion function.".format(raster_v_unit))
         arcpy.EditRasterFunction_management(md_path, edit_mosaic_dataset_item="EDIT_MOSAIC_DATASET_ITEM", edit_options="INSERT", function_chain_definition=Raster.Intl_ft2mtrs_function_chain_path, location_function_name="#")
         Utility.addToolMessages()
-    elif raster_v_unit.upper() == "Survey Feet".upper():
+    elif raster_v_unit.upper().endswith("Feet".upper()):
         arcpy.AddMessage("Raster vertical unit is {}, adding conversion function.".format(raster_v_unit))
         arcpy.EditRasterFunction_management(md_path, edit_mosaic_dataset_item="EDIT_MOSAIC_DATASET_ITEM", edit_options="INSERT", function_chain_definition=Raster.Us_ft2mtrs_function_chain_path, location_function_name="#")
         Utility.addToolMessages()
@@ -486,6 +499,8 @@ def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path):
 
 def processProject(ProjectJob, project, ProjectUID, dateDeliver, dateStart, dateEnd):
     a = datetime.now()
+    aa = a
+    
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
     ProjectID = ProjectJob.getProjectID(project)
     project_year = ProjectJob.getYear(project)
@@ -513,9 +528,11 @@ def processProject(ProjectJob, project, ProjectUID, dateDeliver, dateStart, date
         
     dateDeliver, dateStart, dateEnd = getDates(dateDeliver, dateStart, dateEnd, project_year)
                     
-    ImageDirectories = [DSM, DTM]
+            
+    ImageDirectories = [DSM, DTM, INT]
     md_paths = {}
     for imageDir in ImageDirectories:
+        
         raster_z_min, raster_z_max, raster_v_name, raster_v_unit, raster_h_name, raster_h_unit, raster_h_wkid = A05_A_RemoveDEMErrantValues.getRasterBoundData(raster_boundary_md, imageDir, False)
         filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)
         filegdb_name = "{}_{}.gdb".format(filegdb_name, imageDir)
@@ -523,6 +540,11 @@ def processProject(ProjectJob, project, ProjectUID, dateDeliver, dateStart, date
         filegdb_path = os.path.join(publish_folder.path, filegdb_name)
         md_name = imageDir
         md_path = os.path.join(filegdb_path, md_name)
+        
+        md_paths[imageDir] = md_path
+        if arcpy.Exists(md_path):
+            arcpy.AddMessage("Mosaic exists: {}".format(md_path))
+        else:
         derived_fgdb_path = os.path.join(ProjectFolder.derived.fgdb_path)
         
         raster_footprint_path = A05_C_ConsolidateRasterInfo.getRasterFootprintPath(fgdb_path, imageDir)
@@ -535,9 +557,6 @@ def processProject(ProjectJob, project, ProjectUID, dateDeliver, dateStart, date
         elif ras_count <= 0:
             arcpy.AddError("No rasters for selected elevation type {}.".format(imageDir))
         else:
-            if imageDir == DSM:
-                do_dhm = True
-            
             arcpy.AddMessage("Working on {} rasters for elevation type {}.".format(ras_count, imageDir))            
                    
             count_rasters, md_cellsize = createMosaicDatasetAndAddRasters(raster_v_unit, publish_folder.path, filegdb_name, imagePath, md_name, md_path, SpatRefMD)
@@ -562,7 +581,7 @@ def processProject(ProjectJob, project, ProjectUID, dateDeliver, dateStart, date
             
             arcpy.AddMessage("Mosaic dataset has {} rasters {} overviews and {} las files.".format(count_rasters, count_overviews, count_las))
             doTime(a, "completed building mosaic dataset {}".format(md_path))
-            md_paths.append(md_path)
+            
         
 #             # @TODO: Add a spatial reference check
 #             if PCSCodeZeroFlag == 1:
@@ -570,11 +589,27 @@ def processProject(ProjectJob, project, ProjectUID, dateDeliver, dateStart, date
 #                 arcpy.AddWarning("*** PCSCode = 0 indicates a non-standard datum or unit of measure.     ***")
 #                 arcpy.AddError("One or more rasters has a PCSCode (EPSG code) of 0.")
 
+    if md_paths[DSM] is None:
+        arcpy.AddError("DSM doesnt exist, DHM cant be created.")
+    else:
+        imageDir = DHM
+        filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)
+        filegdb_name = "{}_{}.gdb".format(filegdb_name, imageDir)
+        target_path = os.path.join(publish_folder.path, imageDir) 
+        filegdb_path = os.path.join(publish_folder.path, filegdb_name)
+        md_name = imageDir
+        dhm_md_path = os.path.join(filegdb_path, md_name)
 
+        if not os.path.exists(filegdb_path):
+            arcpy.CreateFileGDB_management(publish_folder.path, filegdb_name)
     
+        if arcpy.Exists(dhm_md_path):
+            arcpy.AddError("DHM already exists.")
+        else:
+            createReferenceddMosaicDataset(md_paths[DSM], dhm_md_path, SpatRefMD, raster_v_unit)
         
         
-    arcpy.AddMessage("Operation complete")
+    doTime(aa, "A06 A Operation complete")
 
 
 if __name__ == '__main__':

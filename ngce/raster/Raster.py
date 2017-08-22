@@ -16,6 +16,8 @@ from ngce.raster import RasterConfig
 boundary_interval = "{} Meters".format(RasterConfig.SIMPLIFY_INTERVAL)  # Length to simplify the boundary shapes
 Intl_ft2mtrs_function_chain_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), RasterConfig.Intl_ft2mtrs_function_chain)
 Us_ft2mtrs_function_chain_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), RasterConfig.US_ft2mtrs_function_chain)
+Height_function_chain_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), RasterConfig.Height_1_function_chain)
+Canopy_Density_function_chain_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), RasterConfig.Canopy_Density_function_chain)
     
 arcpy.env.overwriteOutput = False
 arcpy.env.pyramid = RasterConfig.NONE

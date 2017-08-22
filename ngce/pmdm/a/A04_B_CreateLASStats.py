@@ -13,7 +13,6 @@ import sys
 import time
 
 from ngce import Utility
-from ngce.las import LASConfig
 from ngce.pmdm.a import A05_B_RevalueRaster
 from ngce.pmdm.a.A05_B_RevalueRaster import MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN, YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID, FIELD_INFO, \
     AREA, NAME, PATH, IS_CLASSIFIED, POINT_COUNT, POINT_PERCENT, POINT_SPACING, \
@@ -30,6 +29,7 @@ Utility.setArcpyEnv(True)
 
 SAMPLE_TYPE = "CELLSIZE"
 CELL_SIZE = 10  # Meters
+ELE_CELL_SIZE = 10  # Meters
 FOOTPRINT_BUFFER_DIST = 25  # Meters
 
 STAT_FOLDER = os.path.join("STATS", "LAS")
@@ -41,7 +41,7 @@ KEY_LIST = [MAX, MEAN, MIN, RANGE, STAND_DEV, XMIN, YMIN, XMAX, YMAX, V_NAME, V_
 Determines if a file needs to be processed or not by looking at all the derivatives
 --------------------------------------------------------------------------------
 '''
-def isProcessFile(f_path, target_path, doRasters, isClassified):
+def isProcessFile(f_path, target_path, doRasters=True, isClassified=True, createRasters=False):
     process_file = False
     
     if f_path is not None and os.path.exists(f_path) and os.path.exists(target_path):
@@ -53,12 +53,12 @@ def isProcessFile(f_path, target_path, doRasters, isClassified):
         if not isClassified:
             las_type_folder = "LAS_UNCLASSIFIED"
         
-        target_lasd_path = os.path.join(target_path, las_type_folder, "LASD")
+        target_las_path = os.path.join(target_path, las_type_folder)
+        target_lasd_path = os.path.join(target_las_path, "LASD")
         out_lasd_path = os.path.join(target_lasd_path, "{}.lasd".format(f_name))
         
-        target_las_path = os.path.join(target_path, las_type_folder, "LAS")
-        out_las_path = os.path.join(target_las_path, "LAS", "{}.las".format(f_name))
-        out_lasx_path = os.path.join(target_las_path, "LAS", "{}.lasx".format(f_name))
+        out_las_path = os.path.join(target_las_path, "{}.las".format(f_name))
+        out_lasx_path = os.path.join(target_las_path, "{}.lasx".format(f_name))
         
         # LASX Exists    
         if not os.path.exists(out_lasx_path):
@@ -68,9 +68,9 @@ def isProcessFile(f_path, target_path, doRasters, isClassified):
         if not os.path.exists(out_las_path):
             process_file = True
         
-#         # LASD Exists    
-#         if not os.path.exists(out_lasd_path):
-#             process_file = True
+        # LASD Exists    
+        if not os.path.exists(out_lasd_path):
+            process_file = True
         
         # stat file exists
         stat_file_path = os.path.join(stat_out_folder, "S_{}.txt".format(f_name))
@@ -114,6 +114,49 @@ def isProcessFile(f_path, target_path, doRasters, isClassified):
             clip_raster_path = os.path.join(out_folder, "C_{}{}.tif".format(f_name, name))
             if not os.path.exists(clip_raster_path) and not os.path.exists(out_raster_path):
                 process_file = True
+        
+        if createRasters:
+            value_field = "ELEVATION"
+            for dataset_name in ["_ALAST"]:
+                name = dataset_name
+                                                
+                if not isClassified:
+                    # Using a generic name for non-classified data
+                    name = ""
+                
+                out_folder = os.path.join(target_path, value_field)
+                if len(name) > 0:
+                    out_folder = os.path.join(target_path, value_field, name[1:])
+                    
+                if not os.path.exists(out_folder):
+                    process_file = True
+                
+                out_raster = os.path.join(out_folder, "{}{}".format(f_name, name))
+                out_raster_path = "{}.tif".format(out_raster)
+                clip_raster_path = os.path.join(out_folder, "C_{}{}.tif".format(f_name, name))
+                if not os.path.exists(clip_raster_path) and not os.path.exists(out_raster_path):
+                    process_file = True
+            
+            value_field = "INTENSITY"
+            for dataset_name in ["_FIRST"]:
+                name = dataset_name
+                                                
+                if not isClassified:
+                    # Using a generic name for non-classified data
+                    name = ""
+                
+                out_folder = os.path.join(target_path, value_field)
+                if len(name) > 0:
+                    out_folder = os.path.join(target_path, value_field, name[1:])
+                    
+                if not os.path.exists(out_folder):
+                    process_file = True
+                
+                out_raster = os.path.join(out_folder, "{}{}".format(f_name, name))
+                out_raster_path = "{}.tif".format(out_raster)
+                clip_raster_path = os.path.join(out_folder, "C_{}{}.tif".format(f_name, name))
+                if not os.path.exists(clip_raster_path) and not os.path.exists(out_raster_path):
+                    process_file = True
         
         # Create the QA statistics files
         if doRasters:
@@ -193,14 +236,14 @@ def createLasDataset(f_name, f_path, spatial_reference, target_path, isClassifie
     target_las_path = os.path.join(target_path, las_type_folder)
     target_lasd_path = os.path.join(target_las_path, "LASD")
     out_lasd_path = os.path.join(target_lasd_path, "{}.lasd".format(f_name))
-    temp1_lasd_path = os.path.join(target_lasd_path, "{}_temp1.lasd".format(f_name))
+    temp1_lasd_path = os.path.join(target_lasd_path, "temp1_{}.lasd".format(f_name))
     
     
     out_las_path = os.path.join(target_las_path, "{}.las".format(f_name))
-    out_las_rear_path = os.path.join(target_las_path, "{}Rearrange.las".format(f_name))
+    out_las_rear_path = os.path.join(target_las_path, "Rearrange_{}.las".format(f_name))
     out_lasx_path = os.path.join(target_las_path, "{}.lasx".format(f_name))
     
-    if not os.path.exists(out_las_path) or not os.path.exists(out_lasx_path):
+    if not os.path.exists(out_las_path) or not os.path.exists(out_lasx_path) or not os.path.exists(out_lasd_path):
         deleteFileIfExists(temp1_lasd_path)
         
         arcpy.AddMessage("\t  Creating LASD: '{}' '{}' {}'".format(f_path, spatial_reference, out_lasd_path))
@@ -855,18 +898,23 @@ def exportIntesity(target_path, isClassified, f_name, lasd_path):
                 if lasd_first is None:
                     lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                 lasd = lasd_first
-        arcpy.LasDatasetToRaster_conversion(in_las_dataset=lasd, out_raster=out_raster_path, value_field=value_field, interpolation_type="BINNING AVERAGE LINEAR", data_type="FLOAT", sampling_type="CELLSIZE", sampling_value=1, z_factor="1")
+        arcpy.LasDatasetToRaster_conversion(in_las_dataset=lasd, out_raster=out_raster_path, value_field=value_field, interpolation_type="BINNING AVERAGE LINEAR", data_type="FLOAT", sampling_type="CELLSIZE", sampling_value=ELE_CELL_SIZE, z_factor="1")
         arcpy.BuildPyramidsandStatistics_management(in_workspace=out_raster_path, build_pyramids="BUILD_PYRAMIDS", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="BUILD_ON_SOURCE", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="CUBIC", compression_type="LZ77", compression_quality="75", skip_existing="SKIP_EXISTING")
         doTime(a, "\tCreated INT {}".format(out_raster))
     return lasd_first
 
 
-def exportElevation(target_path, isClassified, f_name, lasd_path):
+def exportElevation(target_path, isClassified, f_name, lasd_path, createRasters=False):
     lasd_last = None
     lasd_first = None
+    lasd_alast = None
     value_field = "ELEVATION"
+    dataset_names = ["_FIRST", "_LAST"]
+    if createRasters:
+        dataset_names = ["_FIRST", "_LAST", "_ALAST"]
     
-    for dataset_name in ["_FIRST", "_LAST"]:
+    
+    for dataset_name in dataset_names:
         name = dataset_name
         lasd = lasd_path
         if not isClassified:
@@ -893,26 +941,92 @@ def exportElevation(target_path, isClassified, f_name, lasd_path):
                     if lasd_last is None:
                         lasd_last = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_last", class_code="0;2;8;9;10;11;12", return_values="'Last Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                     lasd = lasd_last
-#                 elif name == "_ALAST":
-#                     if lasd_alast is None:
-#                         lasd_alast = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_alast", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="'Last Return';'Last of Many';'Single Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
-#                     lasd = lasd_alast
+                elif name == "_ALAST":
+                    if lasd_alast is None:
+                        lasd_alast = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_alast", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="'Last Return';'Last of Many';'Single Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
+                    lasd = lasd_alast
                 elif name == "_FIRST":
                     if lasd_first is None:
                         lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                     lasd = lasd_first
             
-            arcpy.LasDatasetToRaster_conversion(in_las_dataset=lasd, out_raster=out_raster_path, value_field=value_field, interpolation_type="BINNING AVERAGE LINEAR", data_type="FLOAT", sampling_type="CELLSIZE", sampling_value=1, z_factor="1")
-            arcpy.BuildPyramidsandStatistics_management(in_workspace=out_raster_path, build_pyramids="BUILD_PYRAMIDS", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="BUILD_ON_SOURCE", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="CUBIC", compression_type="LZ77", compression_quality="75", skip_existing="SKIP_EXISTING")
+            cell_size = getCellSize(spatial_reference, ELE_CELL_SIZE, createRasters)
+            
+            arcpy.LasDatasetToRaster_conversion(in_las_dataset=lasd, out_raster=out_raster_path, value_field=value_field, interpolation_type="BINNING AVERAGE LINEAR", data_type="FLOAT", sampling_type="CELLSIZE", sampling_value=cell_size, z_factor="1")
+            arcpy.BuildPyramidsandStatistics_management(in_workspace=out_raster_path, build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="BUILD_ON_SOURCE", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="BILINEAR", compression_type="NONE", compression_quality="75", skip_existing="SKIP_EXISTING")
             doTime(a, "\tCreated ELE {}".format(out_raster))
     
     return lasd_last, lasd_first
 
-def processFile(f_path, target_path, spatial_reference, isClassified, doRasters):
+
+def exportIntensity(target_path, isClassified, f_name, lasd_path, createRasters=False):
+    lasd_first = None
+    value_field = "INTENSITY"
+    
+    for dataset_name in ["_FIRST"]:
+        name = dataset_name
+        lasd = lasd_path
+        if not isClassified:
+            # Using a generic name for non-classified data
+            name = ""
+        out_folder = os.path.join(target_path, value_field)
+        if len(name) > 0:
+            out_folder = os.path.join(target_path, value_field, name[1:])
+        if not os.path.exists(out_folder):
+            os.makedirs(out_folder)
+        out_raster = os.path.join(out_folder, "{}{}".format(f_name, name))
+        out_raster_path = "{}.tif".format(out_raster)
+        clip_raster_path = os.path.join(out_folder, "C_{}{}.tif".format(f_name, name))
+        
+        if os.path.exists(clip_raster_path):
+            arcpy.AddMessage("\tRast file exists: {}".format(clip_raster_path))
+        elif os.path.exists(out_raster_path):
+            arcpy.AddMessage("\tRast file exists: {}".format(out_raster_path))
+        else:
+            a = datetime.now()
+            # do this here to avoid arcpy penalty if they all exist
+            if isClassified:
+#                 if name == "_LAST":
+#                     if lasd_last is None:
+#                         lasd_last = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_last", class_code="0;2;8;9;10;11;12", return_values="'Last Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
+#                     lasd = lasd_last
+#                 elif name == "_ALAST":
+#                     if lasd_alast is None:
+#                         lasd_alast = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_alast", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="'Last Return';'Last of Many';'Single Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
+#                     lasd = lasd_alast
+                if name == "_FIRST":
+                    if lasd_first is None:
+                        lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
+                    lasd = lasd_first
+            
+            cell_size = getCellSize(spatial_reference, ELE_CELL_SIZE, createRasters)
+            arcpy.LasDatasetToRaster_conversion(in_las_dataset=lasd, out_raster=out_raster_path, value_field=value_field, interpolation_type="BINNING AVERAGE LINEAR", data_type="FLOAT", sampling_type="CELLSIZE", sampling_value=cell_size, z_factor="1")
+            arcpy.BuildPyramidsandStatistics_management(in_workspace=out_raster_path, build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="BUILD_ON_SOURCE", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="BILINEAR", compression_type="NONE", compression_quality="75", skip_existing="SKIP_EXISTING")
+            doTime(a, "\tCreated ELE {}".format(out_raster))
+    
+    return lasd_first
+
+def getCellSize(spatial_reference, cell_size, createRasters=False):
+    if createRasters:
+        cell_size = 1
+    if spatial_reference is not None:
+        try:
+            vert_cs_name, vert_unit_name = Utility.getVertCSInfo(spatial_reference)  # @UnusedVariable
+            if vert_unit_name is not None:
+                cell_size = CELL_SIZE / (1200 / 3937)
+                if vert_unit_name.upper() == "International Feet".upper():
+                    cell_size = CELL_SIZE / 0.3048
+        except:
+            pass
+    return cell_size
+
+def processFile(f_path, target_path, spatial_reference, isClassified, doRasters, createRasters=False):
     
     aa = datetime.now()
 
     f_name = os.path.split(os.path.splitext(f_path)[0])[1]
+    
+    cell_size = getCellSize(spatial_reference, CELL_SIZE)
     
     las_folder = "LAS_CLASSIFIED"
     if not isClassified:
@@ -954,7 +1068,9 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters)
     
     lasd_all = None
     
-    lasd_last, lasd_first = exportElevation(target_path, isClassified, f_name, out_lasd_path)
+    lasd_last, lasd_first = exportElevation(target_path, isClassified, f_name, out_lasd_path, createRasters)
+    if createRasters:
+        lasd_first = exportIntensity(target_path, isClassified, f_name, out_lasd_path, createRasters)
     
     # Export the boundary shape file
     vector_bound_path = os.path.join(stat_out_folder, "B_{}.shp".format(f_name))
@@ -1091,14 +1207,14 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters)
                                 lasd_all = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_All", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="'Last Return';'First of Many';'Last of Many';'Single Return';1;2;3;4;5", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                             lasd = lasd_all
 
-                    arcpy.LasPointStatsAsRaster_management(lasd, out_raster_path, method, SAMPLE_TYPE, CELL_SIZE)
+                    arcpy.LasPointStatsAsRaster_management(lasd, out_raster_path, method, SAMPLE_TYPE, cell_size)
                         
                     if ((method is "PULSE_COUNT") or (method is "POINT_COUNT")):
                         # divide the cells by cell size squared, overwrite
                         
                         os.rename(out_raster_path, out_raster1_path)
                         ras1 = arcpy.Raster(out_raster1_path)
-                        ras = ras1 / (CELL_SIZE ^ 2)
+                        ras = ras1 / (cell_size ^ 2)
                         del ras1
                         ras.save(out_raster_path)
                         arcpy.Delete_management(out_raster1_path)
@@ -1174,7 +1290,8 @@ if __name__ == '__main__':
     target_path = None
     spatial_reference = None
     isClassified = True
-    doRasters = False
+    doRasters = True
+    createRasters = False
     checkedOut = False
     
     if len(sys.argv) >= 2:
@@ -1192,12 +1309,15 @@ if __name__ == '__main__':
     if len(sys.argv) >= 6:
         doRasters = sys.argv[5]
     
+    if len(sys.argv) >= 7:
+        createRasters = sys.argv[6]
+    
     arcpy.AddMessage("  f_paths='{}',target_path='{}',spatial_reference='{}',isClassified='{}',doRasters='{}'".format(f_paths, target_path, spatial_reference, isClassified, doRasters))
     
     f_paths = str(f_paths).split(",")
      
     for f_path in f_paths:    
-        if not isProcessFile(f_path, target_path, doRasters, isClassified):
+        if not isProcessFile(f_path, target_path, doRasters, isClassified, createRasters):
             arcpy.AddMessage("\tAll las file artifacts exist. Ignoring: {}".format(f_path))
         else:
             if not checkedOut:
@@ -1206,7 +1326,7 @@ if __name__ == '__main__':
                 arcpy.CheckOutExtension("Spatial")
                 checkedOut = True
                 
-            processFile(f_path, target_path, spatial_reference, isClassified, doRasters)
+            processFile(f_path, target_path, spatial_reference, isClassified, doRasters, createRasters)
 
     if checkedOut:
         arcpy.CheckInExtension("3D")

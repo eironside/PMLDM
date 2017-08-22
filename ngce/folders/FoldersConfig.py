@@ -37,6 +37,8 @@ contour_dir = "CONTOUR"
 DTM = "DTM"
 DSM = "DSM"
 DHM = "DHM"
+DLM = "DLM"
+INT = "INTENSITY"
 
 demFirst_dir = DSM
 demFirstTiff_dir = "TIF_{}".format(DSM)

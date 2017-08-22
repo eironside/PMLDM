@@ -10,6 +10,7 @@ import sys
 import time
 
 from ngce import Utility
+from ngce.folders.FoldersConfig import INT
 from ngce.raster import RasterConfig
 
 
@@ -576,6 +577,9 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
     Utility.setArcpyEnv(is_overwrite_output=True)
     a = datetime.now()
     nodata = RasterConfig.NODATA_DEFAULT     
+    isInt = (elev_type == INT)
+    if isInt:
+        minZ, maxZ = 0, 255
     
     f_name, target_f_path, publish_f_path, stat_out_folder, stat_file_path, bound_out_folder, vector_bound_path = getFilePaths(f_path, elev_type, target_path, publish_path)  # @UnusedVariable
     
@@ -593,7 +597,8 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
     if raster_props[BAND_COUNT] <> 1:
         arcpy.AddMessage("Skipping Raster {}, not 1 band image.".format(f_path))
     else:
-        if not (raster_props[PIXEL_TYPE] == PIXEL_TYPE_F32 or raster_props[PIXEL_TYPE] == PIXEL_TYPE_D64):
+        # Intensity may be another type
+        if not isInt and not (raster_props[PIXEL_TYPE] == PIXEL_TYPE_F32 or raster_props[PIXEL_TYPE] == PIXEL_TYPE_D64):
             arcpy.AddMessage("Skipping Raster '{}', '{}' not Float32 type image.".format(f_path, raster_props[PIXEL_TYPE]))
         else:
             if not (raster_props[FORMAT] == "TIFF" or raster_props[FORMAT] == "GRID" or raster_props[FORMAT] == "IMAGINE Image" or raster_props[FORMAT] == "FGDBR"):

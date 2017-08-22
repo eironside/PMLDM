@@ -83,13 +83,18 @@ def createFolders(target_path, isClassified):
     dataset_name = ['', 'LASD']
     createFolder(target_path, value_field, dataset_name)
 
+    
+    value_field = ["DLM"]
+    dataset_name = ['']
+    createFolder(target_path, value_field, dataset_name)
+
 '''
 ------------------------------------------------------------
 iterate through the list of .las files and generate individual file
 statistics datasets for each
 ------------------------------------------------------------
 '''
-def createLasStatistics(fileList, target_path, spatial_reference=None, isClassified=True, doRasters=False, runAgain=True):
+def createLasStatistics(fileList, target_path, spatial_reference=None, isClassified=True, doRasters=False, createRasters=False, runAgain=True):
     a = datetime.datetime.now()
     path = os.path.join(TOOLS_PATH, "A04_B_CreateLASStats.py")
     Utility.printArguments(["fileList", "target_path", "spatial_reference", "isClassified", "doRasters"],
@@ -119,7 +124,7 @@ def createLasStatistics(fileList, target_path, spatial_reference=None, isClassif
             indx = indx + len(f_paths)
             
             arcpy.AddMessage('\tcreateLasStatistics: Working on {}/{}: {}'.format(indx, total, f_path))
-            args = [f_path, target_path, spatial_reference, "{}".format(isClassified), "{}".format(doRasters)]
+            args = [f_path, target_path, spatial_reference, "{}".format(isClassified), "{}".format(doRasters), "{}".format(createRasters)]
             
             try:
                 processList.append(RunUtil.runToolx64_async(path, args, "A04_B", target_path))
@@ -504,9 +509,9 @@ def createMXD(las_qainfo, target_path, project_ID):
             
     return mxd
 
-def processProject(ProjectJob, project, doRasters):
+def processProject(ProjectJob, project, doRasters=False, createRasters=False):
     aaa = datetime.datetime.now()
-    updatedBoundary = None
+    lasd_boundary = None
     
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
     ProjectID = ProjectJob.getProjectID(project)
@@ -570,7 +575,7 @@ def processProject(ProjectJob, project, doRasters):
     #             arcpy.AddMessage("Using projection (coordinate system) from las files if available.")
         
         fileList = getLasFileProcessList(las_qainfo.las_directory, target_path, doRasters, las_qainfo.isClassified)
-            createLasStatistics(fileList, target_path, las_qainfo.lasd_spatial_ref, las_qainfo.isClassified, doRasters)
+            createLasStatistics(fileList, target_path, las_qainfo.lasd_spatial_ref, las_qainfo.isClassified, doRasters, createRasters)
         
         # Create the project's las dataset. Don't do this before you validated that each .las file has a .lasx
             if os.path.exists(las_qainfo.las_dataset_path):
@@ -617,12 +622,12 @@ def processProject(ProjectJob, project, doRasters):
 #                 sys.exit(1)
 #             else:
             
-            updatedBoundary = A04_C_ConsolidateLASInfo.createRasterBoundaryAndFootprints(las_qainfo.filegdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID)
+            lasd_boundary, las_footprint = A04_C_ConsolidateLASInfo.createRasterBoundaryAndFootprints(las_qainfo.filegdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID)
     
             mxd = createMXD(las_qainfo, target_path, ProjectID)
             
             if doRasters:
-                mosaics = A04_C_ConsolidateLASInfo.createQARasterMosaics(las_qainfo.isClassified, las_qainfo.filegdb_path, las_qainfo.lasd_spatial_ref, target_path, mxd)
+                mosaics = A04_C_ConsolidateLASInfo.createQARasterMosaics(las_qainfo.isClassified, las_qainfo.filegdb_path, las_qainfo.lasd_spatial_ref, target_path, mxd, las_footprint, lasd_boundary)
                 if mxd is not None:
                     a = datetime.datetime.now()
                     try:
@@ -649,7 +654,7 @@ def processProject(ProjectJob, project, doRasters):
     td = (bbb - aaa).total_seconds()
     arcpy.AddMessage("Completed {} in {}".format(las_qainfo.las_dataset_path, td))
     
-    return las_qainfo, updatedBoundary
+    return las_qainfo, lasd_boundary
 
 
 
@@ -695,12 +700,16 @@ def GenerateQALasDataset(jobID, doRasters):
 if __name__ == '__main__':
     
     projId = sys.argv[1]
-  
+  	doRasters = False
+	createRasters = False
+
     doRasters = False
     if len(sys.argv) > 2:
         doRasters = sys.argv[2]
-      
-    GenerateQALasDataset(projId, doRasters)
+    if len(sys.argv) > 2:
+        createRasters = sys.argv[2]
+
+    GenerateQALasDataset(projId, doRasters, createRasters)
     
 #     UID = None  # field_ProjectJob_UID
 #     wmx_job_id = 1

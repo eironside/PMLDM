@@ -32,12 +32,13 @@ import arcpy
 import datetime
 import os
 
+from ngce import Utility
 from ngce.cmdr import CMDRConfig
 from ngce.pmdm.a.A05_B_RevalueRaster import  MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN, YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID, FIELD_INFO, \
     AREA, IS_CLASSIFIED, RANGE, FIRST_RETURNS, SECOND_RETURNS, THIRD_RETURNS, \
     FOURTH_RETURNS, SINGLE_RETURNS, FIRST_OF_MANY_RETURNS, LAST_OF_MANY_RETURNS, \
     ALL_RETURNS, POINT_COUNT, POINT_SPACING, NAME
-from ngce.raster import RasterConfig
+from ngce.raster import RasterConfig, Raster
 
 
 STAT_FOLDER = os.path.join("STATS", "LAS")
@@ -72,6 +73,15 @@ def deleteFileIfExists(f_path, useArcpy=False):
     
     
 
+
+def importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path):
+    if footprint_path is not None:
+        arcpy.ImportMosaicDatasetGeometry_management(md_path, target_featureclass_type="FOOTPRINT", target_join_field="Name", input_featureclass=footprint_path, input_join_field="name")
+        Utility.addToolMessages()
+    if lasd_boundary_path is not None:
+        arcpy.ImportMosaicDatasetGeometry_management(md_path, target_featureclass_type="BOUNDARY", target_join_field="OBJECTID", input_featureclass=lasd_boundary_path, input_join_field="OBJECTID")
+        Utility.addToolMessages()
+        
 '''
 ---------------------------------------------
 Clips a derived raster to a given footprint.
@@ -118,7 +128,7 @@ def clipRastersToBoundary(start_dir, boundary_path):
     doTime(a, "\tClip rasters {}".format(start_dir))
 
 
-def createQARasterMosaicDataset(md_name, gdb_path, spatial_reference, input_folder, mxd):
+def createQARasterMosaicDataset(md_name, gdb_path, spatial_reference, input_folder, mxd, footprint_path=None, lasd_boundary_path=None):
     md_path = os.path.join(gdb_path, md_name)
     try:
         a = datetime.datetime.now()
@@ -168,11 +178,18 @@ def createQARasterMosaicDataset(md_name, gdb_path, spatial_reference, input_fold
                                                        estimate_statistics="ESTIMATE_STATISTICS",
                                                        aux_inputs="")
             
+            
+            try:
+                importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path)
+            except:
+                arcpy.AddWarning("Failed to update MD boundaries for '{}'".format(md_path))
+                
+            
             a = doTime(a, "\tAdded Rasters to MD {}".format(md_name))
         
                         
     except:
-        pass
+        arcpy.AddWarning("Failed to create MD for QA Raster Layer '{}'. Please remove any locks and delete related intermediate files".format(md_path))
 
     return [md_path, md_name]
 '''
@@ -505,15 +522,32 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
     
     addProjectInfo(las_footprint, lasd_boundary, project_ID, project_path, project_UID)
     
+    return lasd_boundary, las_footprint
+        
+def createReferenceddMosaicDataset(in_md_path, out_md_path, spatial_ref, raster_v_unit):
+    a = datetime.datetime.now()
+    arcpy.CreateReferencedMosaicDataset_management(in_dataset=in_md_path, out_mosaic_dataset=out_md_path, coordinate_system=spatial_ref, number_of_bands="1", pixel_type="32_BIT_SIGNED", where_clause="", in_template_dataset="", extent="", select_using_features="SELECT_USING_FEATURES", lod_field="", minPS_field="", maxPS_field="", pixelSize="", build_boundary="BUILD_BOUNDARY")
+    
+    raster_function_path = Raster.Canopy_Density_function_chain_path
 
+    arcpy.EditRasterFunction_management(in_mosaic_dataset=out_md_path, edit_mosaic_dataset_item="EDIT_MOSAIC_DATASET", edit_options="REPLACE", function_chain_definition=raster_function_path, location_function_name="")
+    Utility.addToolMessages()
+    
+    # arcpy.CalculateStatistics_management(in_raster_dataset=out_md_path, x_skip_factor="1", y_skip_factor="1", ignore_values="", skip_existing="OVERWRITE", area_of_interest="Feature Set")
+    
+    arcpy.AddMessage("\tNOTE: !!! Please edit the DHM function change to replace the DTM with this project's DTM mosaic dataset.\n\n\t{}\n".format(out_md_path))
+    doTime(a, "Created DHM '{}'".format(out_md_path))
 
         
 
-def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_folder, mxd):
+def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_folder, mxd, footprint_path=None, lasd_boundary_path=None):
     mosaics = []
+    simple_footprint_path = None
+    simple_lasd_boundary_path = None
+    
     stats_methods = ["PULSE_COUNT", "POINT_COUNT", "PREDOMINANT_LAST_RETURN", "PREDOMINANT_CLASS", "INTENSITY_RANGE", "Z_RANGE"]
     for method in stats_methods:
-        for dataset_name in ['ALL', "FIRST", "LAST"]:
+        for dataset_name in ["LAST", 'ALL', "FIRST"]:
             name = dataset_name
                             
             if not isClassified:
@@ -527,8 +561,44 @@ def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_fold
             
             input_folder = os.path.join(target_folder, method, name)
             
+            try:
+                if simple_footprint_path is None:
+                    simple_footprint_path = "{}_Simple".format(footprint_path)
+                    arcpy.SimplifyPolygon_cartography(in_features=footprint_path, out_feature_class=simple_footprint_path,
+                                                    algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters",
+                                                    error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
+                    Utility.addToolMessages()
+                
+                if simple_lasd_boundary_path is None:
+                    simple_lasd_boundary_path = "{}_Simple".format(lasd_boundary_path)
+                    arcpy.SimplifyPolygon_cartography(in_features=lasd_boundary_path, out_feature_class=simple_lasd_boundary_path,
+                                                    algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters",
+                                                    error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
+                    Utility.addToolMessages()
+            except:
+                arcpy.AddWarning("Failed to create simplified footprints and boundaries in '{}'".format(gdb_path))
+                
+            mosaics.append(createQARasterMosaicDataset(md_name, gdb_path, spatial_reference, input_folder, mxd, simple_footprint_path, simple_lasd_boundary_path))
+    
+    
+    
+    
+    
+    
+    md_name = "CANOPY_DENSITY"
+    dhm_md_path = os.path.join(gdb_path, md_name)
+    
+    if arcpy.Exists(dhm_md_path):
+        arcpy.AddMessage("{} already exists.".format(md_name))
+    else:
+        pc_all_md_path = os.path.join(gdb_path, "POINT_COUNT_ALL")
+        vert_cs_name, vert_unit_name = Utility.getVertCSInfo(spatial_reference)
+        # No need to update boundary and footprints since it will inherit from the original
+        createReferenceddMosaicDataset(pc_all_md_path, dhm_md_path, spatial_reference, vert_unit_name)
+        mosaics.append(pc_all_md_path)
             
-            mosaics.append(createQARasterMosaicDataset(md_name, gdb_path, spatial_reference, input_folder, mxd))
+    deleteFileIfExists(simple_footprint_path, True)
+    deleteFileIfExists(simple_lasd_boundary_path, True)
     
     return mosaics
 #     a = datetime.datetime.now()
