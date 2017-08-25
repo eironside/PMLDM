@@ -32,9 +32,13 @@ import arcpy
 import datetime
 import os
 
+from ngce.Utility import deleteFileIfExists, doTime, alterFields
 from ngce.cmdr import CMDRConfig
-from ngce.pmdm.a.A05_B_RevalueRaster import  MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN, YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID, FIELD_INFO, AREA, RANGE, NAME, NODATA_VALUE, ELEV_TYPE, WIDTH, HEIGHT, MEAN_CELL_WIDTH, MEAN_CELL_HEIGHT, BAND_COUNT, FORMAT, HAS_RAT, IS_INT, IS_TEMP, PIXEL_TYPE, UNCOMP_SIZE, \
-    STAT_FOLDER, PATH
+from ngce.raster.RasterConfig import FIELD_INFO, ELEV_TYPE, PATH, NAME, V_NAME, \
+    V_UNIT, H_NAME, H_UNIT, H_WKID, NODATA_VALUE, AREA, MAX, MEAN, MIN, RANGE, \
+    STAND_DEV, XMIN, YMIN, XMAX, YMAX, WIDTH, HEIGHT, MEAN_CELL_WIDTH, \
+    MEAN_CELL_HEIGHT, BAND_COUNT, FORMAT, HAS_RAT, IS_INT, IS_TEMP, PIXEL_TYPE, \
+    UNCOMP_SIZE, STAT_RASTER_FOLDER
 
 
 def getRasterBoundaryPath(fgdb_path, elev_type=None):
@@ -48,52 +52,6 @@ def getRasterFootprintPath(fgdb_path, elev_type=None):
     if elev_type is not None:
         result = "{}_{}".format(result, elev_type)
     return result
-
-def doTime(a, msg):
-    b = datetime.datetime.now()
-    td = (b - a).total_seconds()
-    arcpy.AddMessage("{} in {}".format(msg, td))
-
-    return datetime.datetime.now()
-
-
-def deleteFileIfExists(f_path, useArcpy=False):
-    try:
-        if useArcpy:
-            if arcpy.Exists(f_path):
-                arcpy.Delete_management(f_path)
-        else:
-            if os.path.exists(f_path):
-                os.remove(f_path)
-    except:
-        pass
-
-
-'''
----------------------------------------------
-fix the field name
----------------------------------------------
-'''
-def alterField(in_table, field, new_field_name, new_field_alias):
-    try:
-        arcpy.AlterField_management(in_table=in_table, field=field, new_field_name=new_field_name, new_field_alias=new_field_alias)
-    except:
-        pass
-
-
-
-
-def alterFields(alter_field_infos, table):
-    a = datetime.datetime.now()
-    if alter_field_infos is not None:
-        for alter_field_info in alter_field_infos:
-            try:
-                alterField(table, alter_field_info[0], alter_field_info[1], alter_field_info[2])
-            except:
-                pass
-        
-    a = doTime(a, "\tAltered fields")
-    return a
 
 '''
 ---------------------------------------------
@@ -235,7 +193,7 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
     raster_footprint = None
     raster_boundary = None
         
-    stat_out_folder = os.path.join(target_path, STAT_FOLDER, elev_type)
+    stat_out_folder = os.path.join(target_path, STAT_RASTER_FOLDER, elev_type)
     if not os.path.exists(stat_out_folder):
         arcpy.AddMessage("Raster statistics for elevation type don't exist: {}".format(stat_out_folder))
     else:

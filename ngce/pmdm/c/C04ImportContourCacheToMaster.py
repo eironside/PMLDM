@@ -13,20 +13,31 @@ from ngce.folders import ProjectFolders
 
 def ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceName, update=False, runCount=0):
     cache_dir = ContourConfig.CACHE_FOLDER
-    Utility.printArguments(["WMX Job ID", "serverConnectionFilePath", "cache_dir", "masterServiceName", "update", "runCount"],
-                           [jobID, serverConnectionFilePath, cache_dir, masterServiceName, update, runCount], "C04 ImportContourCacheToMaster")
+    Utility.printArguments(
+        ["WMX Job ID",
+         "serverConnectionFilePath",
+         "cache_dir",
+         "masterServiceName",
+         "update",
+         "runCount"],
+        [jobID,
+         serverConnectionFilePath,
+         cache_dir,
+         masterServiceName,
+         update,
+         runCount],
+        "C04 ImportContourCacheToMaster"
+    )
     
     Utility.setWMXJobDataAsEnvironmentWorkspace(jobID)
     
     ProjectJob = CMDR.ProjectJob()
     project, ProjectUID = ProjectJob.getProject(jobID)
     
-    
     if project is not None:
         projectID = ProjectJob.getProjectID(project)
         
         ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
-        
         ContourFolder = ProjectFolder.derived.contour_path
         PublishFolder = ProjectFolder.published.path
         contourMerged_Name = (ContourConfig.MERGED_FGDB_NAME).format(projectID)
@@ -34,13 +45,9 @@ def ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceNam
         contourMxd_Name = ContourConfig.CONTOUR_MXD_NAME 
         contourMxd_path = os.path.join(PublishFolder, contourMxd_Name)
         ContourFC = os.path.join(contourMerged_file_gdb_path, ContourConfig.CONTOUR_FC_WEBMERC)
-                                 
         ContourBoundFC = os.path.join(contourMerged_file_gdb_path, ContourConfig.CONTOUR_BOUND_FC_WEBMERC)
-        
         projectServiceName = "{}_{}".format(projectID, ContourConfig.CONTOUR_2FT_SERVICE_NAME)  # arcpy.GetParameterAsText(3)
         projectFolder = ProjectJob.getState(project)  # arcpy.GetParameterAsText(4)
-        
-        
         
         # Get input parameters
         projectCache = os.path.join(ContourConfig.CACHE_FOLDER, projectServiceName, "Layers")
@@ -63,14 +70,37 @@ def ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceNam
         cachingInstances = ContourConfig.CACHE_INSTANCES  # This should be increased based on server resources
         #-------------------------------------------------------------------------------
         #-------------------------------------------------------------------------------
-        Utility.printArguments(["projectCache", "areaOfInterest", "projectFolder", "projectServiceName", "ContourBoundFC","masterService"],
-                           [projectCache, areaOfInterest, projectFolder, projectServiceName, ContourBoundFC,masterService], "C04 ImportContourCacheToMaster")
+        Utility.printArguments(
+            ["projectCache",
+             "areaOfInterest",
+             "projectFolder",
+             "projectServiceName",
+             "ContourBoundFC",
+             "masterService"],
+            [projectCache,
+             areaOfInterest,
+             projectFolder,
+             projectServiceName,
+             ContourBoundFC,
+             masterService],
+            "C04 ImportContourCacheToMaster"
+        )
         
         # Import cache tiles from a project service into the master service
         ts = time.time()
         st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
         arcpy.AddMessage("Import started at: {0}".format(st))
-        arcpy.ImportMapServerCache_server(input_service=masterService, source_cache_type="CACHE_DATASET", source_cache_dataset=projectCache, source_tile_package="", upload_data_to_server="DO_NOT_UPLOAD", scales=scales, num_of_caching_service_instances=cachingInstances, area_of_interest=areaOfInterest, overwrite="OVERWRITE")
+        arcpy.ImportMapServerCache_server(
+            input_service=masterService,
+            source_cache_type="CACHE_DATASET",
+            source_cache_dataset=projectCache,
+            source_tile_package="",
+            upload_data_to_server="DO_NOT_UPLOAD",
+            scales=scales,
+            num_of_caching_service_instances=cachingInstances,
+            area_of_interest=areaOfInterest,
+            overwrite="OVERWRITE"
+        )
         ts = time.time()
         st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
         arcpy.AddMessage("Import completed at: {0}".format(st))
@@ -84,9 +114,11 @@ def ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceNam
     arcpy.AddMessage("Operation complete")
 
 if __name__ == '__main__':
-    # jobID = arcpy.GetParameterAsText(0)
-    jobID = 4801
-    serverConnectionFile = "C:\\Users\\eric5946\\AppData\\Roaming\\ESRI\\Desktop10.3\\ArcCatalog\\arcgis on NGCEDEV_6080 (publisher).ags"
-    cache_dir = ""  # "r"C:\arcgisserver\directories\arcgiscache"
-    masterServiceName = "MASTER\ELEVATION_1M"   
+    jobID = arcpy.GetParameterAsText(0)
+	serverConnectionFile = arcpy.GetParameterAsText(0)
+ 	masterServiceName = arcpy.GetParameterAsText(0)
+    # jobID = 4801
+    #serverConnectionFile = "C:\\Users\\eric5946\\AppData\\Roaming\\ESRI\\Desktop10.3\\ArcCatalog\\arcgis on NGCEDEV_6080 (publisher).ags"
+    #masterServiceName = "MASTER\ELEVATION_1M"   
+
     ImportContourCacheToMaster(jobID, serverConnectionFile, masterServiceName)

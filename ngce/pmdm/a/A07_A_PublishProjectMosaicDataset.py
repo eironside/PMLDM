@@ -31,11 +31,14 @@ serviceTags =
 # *
 #-------------------------------------------------------------------------------
 import arcpy
+from datetime import datetime
 import os
-import sys
+import sys  # @UnusedImport
 
 from ngce import Utility
+from ngce.Utility import doTime
 from ngce.cmdr import CMDR
+from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders, FoldersConfig
 from ngce.raster import Raster
 import xml.dom.minidom as DOM 
@@ -123,7 +126,7 @@ def processJob(ProjectJob, project, ProjectUID,serverConnectionFile, serverFunct
     serviceDescription = "for project '{}' within state {} published in {}.".format(ProjectAlias, ProjectState, ProjectYear)
     serviceTags = ",".join([ProjectID, ProjectAliasClean, ProjectState, str(ProjectYear)])
     
-    md_list = [FoldersConfig.DTM, FoldersConfig.DSM]
+    md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.DCM, FoldersConfig.INT]
     for md_name in md_list:
         
         filegdb_name = "{}_{}.gdb".format(ProjectFolder.published.fgdb_name, md_name)
@@ -184,7 +187,8 @@ def processJob(ProjectJob, project, ProjectUID,serverConnectionFile, serverFunct
                                     break
                     
                             # if Hillshade is found then re-order the list
-                            if foundHillshade:
+                            # Don't apply hillshade to intensity
+                            if foundHillshade and md_name<> FoldersConfig.INT:
                                 ssFunctionsLst.insert(0, ssFunctionsLst.pop(i))
                                 arcpy.AddMessage("Re-ordered SS Functions so Hillshade is default")
                                 
@@ -259,138 +263,53 @@ def processJob(ProjectJob, project, ProjectUID,serverConnectionFile, serverFunct
     #
 
 
-def PublishMosaicDataset(jobID, serverConnectionFile, serverFunctionPath, update=False, runCount=0):
-    Utility.printArguments(["jobID", "serverConnectionFile", "serverFunctionPath", "update","runCount"], [jobID, serverConnectionFile, serverFunctionPath, update, runCount], "A07 PublishMosaicDataset")
+def PublishMosaicDataset(strJobId, serverConnectionFile, serverFunctionPath, update=False, runCount=0):
+    aa = datetime.now()
+    Utility.printArguments(["jobID", "serverConnectionFile", "serverFunctionPath", "update", "runCount"], [strJobId, serverConnectionFile, serverFunctionPath, update, runCount], "A07 PublishMosaicDataset")
     
-#     serverConnectionFile = None
-    startupType = None
+    ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
     
-    
-    Utility.setWMXJobDataAsEnvironmentWorkspace(jobID)
-    
-    ProjectJob = CMDR.ProjectJob()
-    project, ProjectUID = ProjectJob.getProject(jobID)  # @UnusedVariable
-    
-    if project is not None:
         processJob(ProjectJob, project, ProjectUID)
-    else:
-        arcpy.AddError("Project not found in the CMDR. Please add this to the CMDR before proceeding.")
             
-    arcpy.AddMessage("Operation complete")
+    doTime(aa, "Operation Complete: A06 Publish Mosaic Dataset")
 
   
 if __name__ == '__main__':
-    serverConnectionFile = r"C:\Users\eric5946\AppData\Roaming\ESRI\Desktop10.5\ArcCatalog\arcgis on localhost_6080 (admin).ags"
-    serverFunctionPath = r"C:\inetpub\wwwroot\ngce\raster\ServerSide_Functions"
-#     jobID = sys.argv[1]
-#     serverConnectionFile = sys.argv[2]
-#     serverFunctionPath = sys.argv[3] 
-# 
-#     
-#     
-#     PublishMosaicDataset(jobID, serverConnectionFile, serverFunctionPath)  
 
+     jobID = sys.argv[1]
+     serverConnectionFile = sys.argv[2]
+     serverFunctionPath = sys.argv[3] 
 
-    dateStart, dateEnd = None, None
-    dateDeliver = "04/09/1971"
-    ProjectUID = None  # field_ProjectJob_UID
-    wmx_job_id = 1
-    project_Id = "OK_SugarCreek_2008"
-    alias = "Sugar Creek"
-    alias_clean = "SugarCreek"
-    state = "OK"
-    year = 2008
-    parent_dir = r"E:\NGCE\RasterDatasets"
-    archive_dir = r"E:\NGCE\RasterDatasets"
-    project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
-    project_AOI = None
-    ProjectJob = CMDR.ProjectJob()
-    project = [
-               ProjectUID,  # field_ProjectJob_UID
-               wmx_job_id,  # field_ProjectJob_WMXJobID,
-               project_Id,  # field_ProjectJob_ProjID,
-               alias,  # field_ProjectJob_Alias
-               alias_clean,  # field_ProjectJob_AliasClean
-               state ,  # field_ProjectJob_State
-               year ,  # field_ProjectJob_Year
-               parent_dir,  # field_ProjectJob_ParentDir
-               archive_dir,  # field_ProjectJob_ArchDir
-               project_dir,  # field_ProjectJob_ProjDir
-               project_AOI  # field_ProjectJob_SHAPE
-               ]
-    processJob(ProjectJob, project, ProjectUID,serverConnectionFile, serverFunctionPath, update=False, runCount=0)
+     PublishMosaicDataset(jobID, serverConnectionFile, serverFunctionPath)  
 
-
-
-
-
-
-# if __name__ == '__main__':
-#     
-#     arcpy.AddMessage(inspect.getfile(inspect.currentframe()))
-#     arcpy.AddMessage(sys.version)
-#     arcpy.AddMessage(sys.executable)
-#     
-#     executedFrom = sys.executable.upper()
-#     
-#     if not ("ARCMAP" in executedFrom or "ARCCATALOG" in executedFrom or "RUNTIME" in executedFrom):
-#         arcpy.AddMessage("Getting parameters from command line...")
-# 
-#         # Read user input
-#         #
-#         serverConnectionFile = sys.argv[1] 
-#         arcpy.AddMessage("\nServer Connection file: {0}\n".format(serverConnectionFile))
-#                 
-#         mdPath = sys.argv[2] 
-#         arcpy.AddMessage("Mosaic Dataset: {0}\n".format(mdPath))
-#         
-#         serviceName = sys.argv[3] 
-#         arcpy.AddMessage("Service Name: {0}\n".format(serviceName))
-# 
-#         startupType = sys.argv[4] 
-#         arcpy.AddMessage("Startup Type: {0}\n".format(startupType))
-# 
-#         enableDownload = sys.argv[5] 
-#         arcpy.AddMessage("Enable Download:  {0}\n".format(enableDownload))
-#         
-#         folderName = sys.argv[6] 
-#         arcpy.AddMessage("Server Folder Name: {0}\n".format(folderName))
-#         
-#         ssFunctions = sys.argv[7] 
-#         #arcpy.AddMessage("Server-side functions: {0}\n".format(ssFunctions))
-# 
-#         serviceDescription = sys.argv[8] 
-#         arcpy.AddMessage("Service Description: {0}\n".format(serviceDescription))
-# 
-#         serviceTags = sys.argv[9] 
-#     else:
-#         arcpy.AddMessage("Getting parameters from GetParameterAsText...")
-#         # Read user input
-#         #
-#         serverConnectionFile = arcpy.GetParameterAsText(0) 
-#         arcpy.AddMessage("\nServer Connection file: {0}\n".format(serverConnectionFile))
-#                 
-#         mdPath = arcpy.GetParameterAsText(1) 
-#         arcpy.AddMessage("Mosaic Dataset: {0}\n".format(mdPath))
-#         
-#         serviceName = arcpy.GetParameterAsText(2) 
-#         arcpy.AddMessage("Service Name: {0}\n".format(serviceName))
-# 
-#         startupType = arcpy.GetParameterAsText(3) 
-#         arcpy.AddMessage("Startup Type: {0}\n".format(startupType))
-# 
-#         enableDownload = arcpy.GetParameterAsText(4) 
-#         arcpy.AddMessage("Enable Download:  {0}\n".format(enableDownload))
-#         
-#         folderName = arcpy.GetParameterAsText(5) 
-#         arcpy.AddMessage("Server Folder Name: {0}\n".format(folderName))
-#         
-#         ssFunctions = arcpy.GetParameterAsText(6) 
-#         #arcpy.AddMessage("Server-side functions: {0}\n".format(ssFunctions))
-# 
-#         serviceDescription = arcpy.GetParameterAsText(7) 
-#         arcpy.AddMessage("Service Description: {0}\n".format(serviceDescription))
-# 
-#         serviceTags = arcpy.GetParameterAsText(8) 
-#     main(serverConnectionFile, mdPath, serviceName, startupType, enableDownload, folderName, ssFunctions, serviceDescription, serviceTags)
-#     
+#    serverConnectionFile = r"C:\Users\eric5946\AppData\Roaming\ESRI\Desktop10.5\ArcCatalog\arcgis on localhost_6080 (admin).ags"
+#    serverFunctionPath = r"C:\inetpub\wwwroot\ngce\raster\ServerSide_Functions"
+#
+#    dateStart, dateEnd = None, None
+#    dateDeliver = "04/09/1971"
+#    ProjectUID = None  # field_ProjectJob_UID
+#    wmx_job_id = 1
+#    project_Id = "OK_SugarCreek_2008"
+#    alias = "Sugar Creek"
+#    alias_clean = "SugarCreek"
+#    state = "OK"
+#    year = 2008
+#    parent_dir = r"E:\NGCE\RasterDatasets"
+#    archive_dir = r"E:\NGCE\RasterDatasets"
+#    project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
+#    project_AOI = None
+#    ProjectJob = CMDR.ProjectJob()
+#    project = [
+#               ProjectUID,  # field_ProjectJob_UID
+#               wmx_job_id,  # field_ProjectJob_WMXJobID,
+#               project_Id,  # field_ProjectJob_ProjID,
+#               alias,  # field_ProjectJob_Alias
+#               alias_clean,  # field_ProjectJob_AliasClean
+#               state ,  # field_ProjectJob_State
+#               year ,  # field_ProjectJob_Year
+#               parent_dir,  # field_ProjectJob_ParentDir
+#               archive_dir,  # field_ProjectJob_ArchDir
+#               project_dir,  # field_ProjectJob_ProjDir
+#               project_AOI  # field_ProjectJob_SHAPE
+#               ]
+#    processJob(ProjectJob, project, ProjectUID,serverConnectionFile, serverFunctionPath, update=False, runCount=0)

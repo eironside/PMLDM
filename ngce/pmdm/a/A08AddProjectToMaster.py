@@ -25,12 +25,14 @@ ProjectMDs = Project Mosaic Dataset(s)
 # *
 #-------------------------------------------------------------------------------
 import arcpy
+from datetime import datetime
 import os
 
 from ngce import Utility
+from ngce.Utility import doTime
 from ngce.cmdr import CMDR, CMDRConfig
+from ngce.cmdr.CMDR import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders, FoldersConfig
-from ngce.raster import RasterConfig
 
 
 # arcpy.env.parallelProcessingFactor = "0"
@@ -71,11 +73,7 @@ def DefineBuildOverviews (cellsizeOVR, MasterMD, MasterMD_overview_path, AreaToB
     return
 
 
-# jobID = arcpy.GetParameterAsText(0)
-# jobID = 16002
-def AddProjectToMaster(jobID, masterParentDir, masterService):
-    Utility.printArguments(["WMX Job ID", "masterParentDir", "masterService"],
-                           [jobID, masterParentDir, masterService], "A08 AddPrjectToMaster")
+def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
     masterServiceFolder = None
     masterName = masterService
     index = masterService.find("/")
@@ -88,24 +86,18 @@ def AddProjectToMaster(jobID, masterParentDir, masterService):
     
     master_md_name = masterName  # RasterConfig.MASTER_MD_NAME
     
-    Utility.setWMXJobDataAsEnvironmentWorkspace(jobID)
-    
-    ProjectJob = CMDR.ProjectJob()
-    project, ProjectUID = ProjectJob.getProject(jobID)  # @UnusedVariable
-    
-    
     Utility.printArguments(["Master Folder", "Master Name", "Master MD Name"],
                            [masterServiceFolder, masterName, master_md_name], "A08 AddPrjectToMaster")
     
-    if project is not None:
+    
         ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
-        projectID = ProjectJob.getProjectID(project)
+#         projectID = ProjectJob.getProjectID(project)
         
         
         ProjectMDs_fgdb_path = ProjectFolder.published.fgdb_path
         arcpy.AddMessage("Project file GDB Path: {}".format(ProjectMDs_fgdb_path))
         
-        md_list = [FoldersConfig.DTM, FoldersConfig.DSM]
+    md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.INT]
           
         # Ensure the master_md_path exists
         for md_name in md_list:
@@ -274,46 +266,54 @@ def AddProjectToMaster(jobID, masterParentDir, masterService):
             else:
                 arcpy.AddWarning("Project Mosaic Dataset path is not found '{}'. Please create it before proceeding.".format(projectMD_path))
         # For loop
-        #
-    else:
-        arcpy.AddError("Project not found in the CMDR. Please add this to the CMDR before proceeding.")     
     
     
-    arcpy.AddMessage("Operation complete")
+
+
+def AddProjectToMaster(strJobId, masterParentDir, masterService):
+    aa = datetime.now()
+    Utility.printArguments(["WMX Job ID", "masterParentDir", "masterService"],
+                           [strJobId, masterParentDir, masterService], "A08 AddPrjectToMaster")
+    
+    ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
+    
+    processJob(ProjectJob, project, ProjectUID)
+    
+    doTime(aa, "Operation Complete: A06 Publish Mosaic Dataset")
 
 
 if __name__ == '__main__':
-    MasterMDs_parent_path = "\\\\ngcedev\DAS1\RasterData\Elevation\LiDar"
-    master_md_name = "MASTER\ELEVATION_1M"
-    AddProjectToMaster(7604, MasterMDs_parent_path, master_md_name)
+     jobID = sys.argv[1]
+     MasterMDs_parent_path = sys.argv[2]
+     master_md_name = sys.argv[3] 
+ 
+     AddProjectToMaster(jobID, MasterMDs_parent_path, master_md_name)
 
-
-
-
-# if __name__ == '__main__':
-#     arcpy.AddMessage(inspect.getfile(inspect.currentframe()))
-#     arcpy.AddMessage(sys.version)
-#     arcpy.AddMessage(sys.executable)
-#     executedFrom = sys.executable.upper()
-#     
-#     if not ("ARCMAP" in executedFrom or "ARCCATALOG" in executedFrom or "RUNTIME" in executedFrom):
-#         arcpy.AddMessage("Getting parameters from command line...")
-# 
-#         # The Master MD 
-#         master_md_path = sys.argv[1]
-#         arcpy.AddMessage("Master Mosaic Dataset:       {0}".format(master_md_path))
-# 
-#         # The Project MD to be ingested into the Master MD
-#         ProjectMDs = sys.argv[2]
-#         arcpy.AddMessage("Project Mosaic Dataset:       {0}".format(ProjectMDs))
-#     else:
-#         arcpy.AddMessage("Getting parameters from GetParameterAsText...")
-#         # The Master MD 
-#         master_md_path = arcpy.GetParameterAsText(0)
-#         arcpy.AddMessage("Master Mosaic Dataset:       {0}".format(master_md_path))
-# 
-#         # The Project MD to be ingested into the Master MD
-#         ProjectMDs = arcpy.GetParameterAsText(1)
-#         arcpy.AddMessage("Project Mosaic Dataset:       {0}".format(ProjectMDs))
-# 
-#     main(master_md_path, ProjectMDs)
+#    MasterMDs_parent_path = "\\\\ngcedev\DAS1\RasterData\Elevation\LiDar"
+#    master_md_name = "MASTER\ELEVATION_1M"
+#    ProjectUID = None  # field_ProjectJob_UID
+#    wmx_job_id = 1
+#    project_Id = "OK_SugarCreek_2008"
+#    alias = "Sugar Creek"
+#    alias_clean = "SugarCreek"
+#    state = "OK"
+#    year = 2008
+#    parent_dir = r"E:\NGCE\RasterDatasets"
+#    archive_dir = r"E:\NGCE\RasterDatasets"
+#    project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
+#    project_AOI = None
+#    ProjectJob = CMDR.ProjectJob()
+#    project = [
+#               ProjectUID,  # field_ProjectJob_UID
+#               wmx_job_id,  # field_ProjectJob_WMXJobID,
+#               project_Id,  # field_ProjectJob_ProjID,
+#               alias,  # field_ProjectJob_Alias
+#               alias_clean,  # field_ProjectJob_AliasClean
+#               state ,  # field_ProjectJob_State
+#               year ,  # field_ProjectJob_Year
+#               parent_dir,  # field_ProjectJob_ParentDir
+#               archive_dir,  # field_ProjectJob_ArchDir
+#               project_dir,  # field_ProjectJob_ProjDir
+#               project_AOI  # field_ProjectJob_SHAPE
+#               ]
+#    processJob(ProjectJob, project, ProjectUID, MasterMDs_parent_path, master_md_name)

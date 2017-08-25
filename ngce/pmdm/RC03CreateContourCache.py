@@ -15,4 +15,4 @@ serverConnectionFile = arcpy.GetParameterAsText(1)
 args = [jobID,serverConnectionFile]
 
 #C03CreateContourCache.CreateContourCache(jobID, serverConnectionFile)
-RunUtil.runTool(PATH, args)
+RunUtil.runTool(PATH, args, log_path=RunUtil.getLogFolderFromWMXJobID(jobID))

@@ -4,19 +4,24 @@ Created on Dec 2, 2015
 @author: eric5946
 '''
 import arcpy
+from datetime import datetime
 import os
 import sys
 
 from ngce import Utility
+from ngce.Utility import doTime
 from ngce.cmdr import CMDR
 
 
 def AddPrjectToCMDR(strProjID, strAlias, strState, strYear, strJobId, strParentDir, strArchiveDir):
     Utility.printArguments(["ProjID", "Alias", "State", "Year", "JobID", "ParentDir", "ArchiveDir"],
                            [strProjID, strAlias, strState, strYear, strJobId, strParentDir, strArchiveDir], "A02 AddPrjectToCMDR")
-        
+    a = datetime.now()
+    aa = a
     # build attributes from parameters
-    if strProjID is not None:
+    if strProjID is None:
+        arcpy.AddError("Project ID is empty. Please supply a project ID.")
+    else:
         
         # alias has spaces and invalid characters, Name clean is just the alias without invalid chars
         strAliasClean = Utility.cleanString(strAlias)
@@ -40,7 +45,7 @@ def AddPrjectToCMDR(strProjID, strAlias, strState, strYear, strJobId, strParentD
                                                    project_UID=None,
                                                    project_AOI=project_AOI)
         strUID = Contract.getProjectUID(contract_row)
-        arcpy.AddMessage("Project UID: {}".format(strUID))
+        a = doTime(a, "Added project '" + strProjID + "' to CMDR Contract with UID '" + strUID + "'")
         
         ProjectJob = CMDR.ProjectJob()
         ProjectJob.addOrUpdateProject(wmx_job_id=strJobId,
@@ -54,29 +59,30 @@ def AddPrjectToCMDR(strProjID, strAlias, strState, strYear, strJobId, strParentD
                                       project_dir=strProjDir,
                                       UID=strUID,
                                       project_AOI=project_AOI)
+        a = doTime(a, "Added project '" + strProjID + "' to CMDR Project Job")
         
         Deliver = CMDR.Deliver()
         Deliver.addOrUpdateProject(project_Id=strProjID,
                                    UID=strUID,
                                    project_AOI=project_AOI)
-        
+        a = doTime(a, "Added project '" + strProjID + "' to CMDR Deliver")
         
         QC = CMDR.QC()
         QC.addOrUpdateProject(project_Id=strProjID,
                                    UID=strUID,
                                    project_AOI=project_AOI)
+        a = doTime(a, "Added project '" + strProjID + "' to CMDR QAQC")
         
         Publish = CMDR.Publish()
         Publish.addOrUpdateProject(project_Id=strProjID,
                                    UID=strUID,
                                    project_AOI=project_AOI)
+        a = doTime(a, "Added project '" + strProjID + "' to CMDR Publish")
     
     
-    else:
-        arcpy.AddError("Project name is empty.")    
           
 
-    arcpy.AddMessage("Operation complete")
+    doTime(aa, "Operation Complete: A02 Add Project to CMDR")
 
 
 if __name__ == '__main__':

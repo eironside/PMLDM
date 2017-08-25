@@ -15,11 +15,16 @@ import time
 
 PATH_PYTHON27_32= r"C:\Program Files (x86)\PYTHON27\ArcGIS10.5"
 #PATH_PYTHON27_64= r"C:\Program Files (x86)\PYTHON27\ArcGISx6410.5"
-PATH_PYTHON27_64= r'C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3'
-#WMX_TOOLS = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools"
-WMX_TOOLS = r'C:\Temp'
+PATH_PYTHON27_64 = r"C:\Python27\ArcGISx6410.5"
+WMX_TOOLS = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools"
+#WMX_TOOLS = r"C:\Users\eric5946\workspaceEE\NGCE_PMDM\src-ngce"
 
-def runTool(path, toolArgs, bit32=False):
+
+
+    
+
+
+def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
 
     script_name = os.path.split(path)[1]
     path = r'"{}"'.format(os.path.join(WMX_TOOLS, path))
@@ -44,7 +49,7 @@ def runTool(path, toolArgs, bit32=False):
     logfile = tempfile.NamedTemporaryFile(
         prefix = script_name[:-3] + '__',
         suffix = ".log",
-        dir = r"{}\Logs".format(WMX_TOOLS),
+        dir=os.path.join(log_path, "Logs"),
         delete = False
     )
     args = [exe,path]

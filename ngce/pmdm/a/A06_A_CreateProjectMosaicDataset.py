@@ -47,13 +47,15 @@ import os
 from ngce import Utility
 from ngce.cmdr import CMDR, CMDRConfig
 from ngce.cmdr.CMDRConfig import DSM, DTM, DHM, INT
+from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders
+from ngce.folders.FoldersConfig import DLM, DCM
 from ngce.las import LAS
 from ngce.pmdm.a import A04_C_ConsolidateLASInfo, A05_A_RemoveDEMErrantValues, A05_C_ConsolidateRasterInfo, \
     A04_A_GenerateQALasDataset
 from ngce.pmdm.a.A04_B_CreateLASStats import doTime
 from ngce.raster import Raster, RasterConfig
-from ngce.raster.RasterConfig import PROJECT_SOURCE_LAS
+from ngce.raster.RasterConfig import PROJECT_SOURCE_LAS, MOSAIC_Z_TOLERANCE
 
 
 Utility.setArcpyEnv(True)
@@ -319,10 +321,10 @@ def createReferenceddMosaicDataset(in_md_path, out_md_path, spatial_ref, raster_
     arcpy.EditRasterFunction_management(out_md_path, edit_mosaic_dataset_item="EDIT_MOSAIC_DATASET", edit_options="INSERT", function_chain_definition=raster_function_path, location_function_name="#")
     Utility.addToolMessages()
     
-    arcpy.CalculateStatistics_management(in_raster_dataset=out_md_path, x_skip_factor="1", y_skip_factor="1", ignore_values="", skip_existing="OVERWRITE", area_of_interest="Feature Set")
+    arcpy.CalculateStatistics_management(in_raster_dataset=out_md_path, x_skip_factor="50", y_skip_factor="50", ignore_values="", skip_existing="OVERWRITE", area_of_interest="Feature Set")
     # setMosaicDatasetProperties(out_md_path)
-    arcpy.AddMessage("\tNOTE: !!! Please edit the DHM function change to replace the DTM with this project's DTM mosaic dataset and recaclculate statistics on the DHM mosaic dataset.\n\n\t{}\n".format(out_md_path))
-    doTime(a, "Created DHM '{}'".format(out_md_path))
+    arcpy.AddMessage("\tNOTE: !!! Please edit the raster function !! Replace the DTM with this project's DTM mosaic dataset and recaclculate statistics on the mosaic dataset.\n\n\t{}\n".format(out_md_path))
+    doTime(a, "Created Referenced MD '{}'".format(out_md_path))
 
 def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, imagePath, md_name, md_path, SpatRefMD):
     filegdb_path = os.path.join(publish_path, filegdb_name)
@@ -376,7 +378,7 @@ def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, 
             
 def updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, md_spatial_ref):
     arcpy.JoinField_management(in_data=md_path, in_field="Name", join_table=footprint_path, join_field="name", fields="area;el_type;zran;zmax;zmean;zmin;zdev;width;height;cell_h;cell_w;comp_type;format;pixel;unc_size;xmin;ymin;xmax;ymax;v_name;v_unit;h_name;h_unit;h_wkid;nodata;Project_ID;Project_Dir;Project_GUID;is_class;ra_pt_ct;ra_pt_sp;ra_zmin;ra_zmax;ra_zran")
-            # @TODO: Move this to a metadata method        
+    # @TODO: Move this to a metadata method & extract all the field names out!
             # @TODO: Add a start and an end date?
             # Calculate the value of certain metadata fields using an update cursor:
             fields = [
@@ -466,7 +468,13 @@ def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path):
         Utility.addToolMessages()
         maxMDValue = float(maxResult.getOutput(0))
     
-    if abs((minMDValue - raster_z_min) / raster_z_min) > 0.1 or abs((maxMDValue - raster_z_max) / raster_z_max) > 0.1:
+    zmin_deviation = abs((minMDValue - raster_z_min) / MOSAIC_Z_TOLERANCE)
+    zmax_deviation = abs((maxMDValue - raster_z_max) / MOSAIC_Z_TOLERANCE)
+    if raster_z_min <> 0:
+        zmin_deviation = abs((minMDValue - raster_z_min) / raster_z_min)
+    if raster_z_max <> 0:
+        zmax_deviation = abs((maxMDValue - raster_z_max) / raster_z_max)
+    if zmin_deviation > 0.1 or zmax_deviation > 0.1:
         if not full_calc:
             full_calc = True
             arcpy.AddWarning("Mosaic values for Min/Max are >10% of rasters. Trying full calc statistics \n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
@@ -492,17 +500,43 @@ def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path):
         else:
             arcpy.AddWarning("Mosaic values for Min/Max are >10% of rasters after full calc. Please manually fix statistics. \n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
     
-    if abs((minMDValue - raster_z_min) / raster_z_min) > 0.1 or abs((maxMDValue - raster_z_max) / raster_z_max) > 0.1:
+    zmin_deviation = abs((minMDValue - raster_z_min) / MOSAIC_Z_TOLERANCE)
+    zmax_deviation = abs((maxMDValue - raster_z_max) / MOSAIC_Z_TOLERANCE)
+    if raster_z_min <> 0:
+        zmin_deviation = abs((minMDValue - raster_z_min) / raster_z_min)
+    if raster_z_max <> 0:
+        zmax_deviation = abs((maxMDValue - raster_z_max) / raster_z_max)
+    if zmin_deviation > 0.1 or zmax_deviation > 0.1:
         arcpy.AddWarning("Min/Max MD values ({},{}) still don't match expected values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
     else:
         arcpy.AddMessage("Current Min/Max is within tolerance:\n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
 
-def processProject(ProjectJob, project, ProjectUID, dateDeliver, dateStart, dateEnd):
+def createHeightRefMD(imageDir, publish_folder, md_paths, SpatRefMD, raster_v_unit):
+    # ## DCM is the height above last return (e.g. canopy height)
+    # ## DHM is the height above ground
+        
+    filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)  # @UnusedVariable
+    filegdb_name = "{}_{}.gdb".format(filegdb_name, imageDir)
+#     target_path = os.path.join(publish_folder.path, imageDir) 
+    filegdb_path = os.path.join(publish_folder.path, filegdb_name)
+    md_name = imageDir
+    dhm_md_path = os.path.join(filegdb_path, md_name)
+    
+    if not os.path.exists(filegdb_path):
+        arcpy.CreateFileGDB_management(publish_folder.path, filegdb_name)
+    
+    if arcpy.Exists(dhm_md_path):
+        arcpy.AddMessage("Height Model already exists. {}".format(dhm_md_path))
+    else:
+        createReferenceddMosaicDataset(md_paths[DSM], dhm_md_path, SpatRefMD, raster_v_unit)
+        
+        
+def processJob(ProjectJob, project, ProjectUID, dateDeliver, dateStart, dateEnd):
     a = datetime.now()
     aa = a
     
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
-    ProjectID = ProjectJob.getProjectID(project)
+#     ProjectID = ProjectJob.getProjectID(project)
     project_year = ProjectJob.getYear(project)
     las_qainfo = A04_A_GenerateQALasDataset.getLasQAInfo(ProjectFolder)
     
@@ -520,7 +554,7 @@ def processProject(ProjectJob, project, ProjectUID, dateDeliver, dateStart, date
                                             error_option="RESOLVE_ERRORS", collapsed_point_option="KEEP_COLLAPSED_POINTS")
     Utility.addToolMessages()
     
-    las_z_min, las_z_max, las_v_name, las_v_unit, las_h_name, las_h_unit, las_h_wkid, isClassified = A05_A_RemoveDEMErrantValues.getLasdBoundData(lasd_boundary_path)
+    las_z_min, las_z_max, las_v_name, las_v_unit, las_h_name, las_h_unit, las_h_wkid, isClassified = A05_A_RemoveDEMErrantValues.getLasdBoundData(lasd_boundary_path)  # @UnusedVariable
     
     SpatRefMD = arcpy.SpatialReference()
     SpatRefMD.loadFromString(RasterConfig.SpatRef_WebMercator)
@@ -529,12 +563,12 @@ def processProject(ProjectJob, project, ProjectUID, dateDeliver, dateStart, date
     dateDeliver, dateStart, dateEnd = getDates(dateDeliver, dateStart, dateEnd, project_year)
                     
             
-    ImageDirectories = [DSM, DTM, INT]
+    ImageDirectories = [DSM, DTM, DLM, INT]
     md_paths = {}
     for imageDir in ImageDirectories:
         
-        raster_z_min, raster_z_max, raster_v_name, raster_v_unit, raster_h_name, raster_h_unit, raster_h_wkid = A05_A_RemoveDEMErrantValues.getRasterBoundData(raster_boundary_md, imageDir, False)
-        filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)
+        raster_z_min, raster_z_max, raster_v_name, raster_v_unit, raster_h_name, raster_h_unit, raster_h_wkid = A05_A_RemoveDEMErrantValues.getRasterBoundData(raster_boundary_md, imageDir, False)  # @UnusedVariable
+        filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)  # @UnusedVariable   
         filegdb_name = "{}_{}.gdb".format(filegdb_name, imageDir)
         target_path = os.path.join(publish_folder.path, imageDir) 
         filegdb_path = os.path.join(publish_folder.path, filegdb_name)
@@ -565,6 +599,8 @@ def processProject(ProjectJob, project, ProjectUID, dateDeliver, dateStart, date
             
             count_overviews, count_total = generateOverviews(target_path, md_name, md_path, count_rasters, SpatRefMD, md_cellsize)
                                 
+                count_las=0
+                if imageDir == DTM:
             count_las, count_total = addLasFilesToMosaicDataset(lasd_path, las_qainfo.las_directory, las_v_name, las_v_unit, isClassified, md_path, count_total)
             
             importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path)
@@ -590,45 +626,81 @@ def processProject(ProjectJob, project, ProjectUID, dateDeliver, dateStart, date
 #                 arcpy.AddError("One or more rasters has a PCSCode (EPSG code) of 0.")
 
     if md_paths[DSM] is None:
-        arcpy.AddError("DSM doesnt exist, DHM cant be created.")
+        arcpy.AddWarning("DSM doesnt exist, height models cant be created.")
     else:
-        imageDir = DHM
-        filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)
-        filegdb_name = "{}_{}.gdb".format(filegdb_name, imageDir)
-        target_path = os.path.join(publish_folder.path, imageDir) 
-        filegdb_path = os.path.join(publish_folder.path, filegdb_name)
-        md_name = imageDir
-        dhm_md_path = os.path.join(filegdb_path, md_name)
+        # ## DHM is the height above ground
+        createHeightRefMD(DHM, publish_folder, md_paths, SpatRefMD, raster_v_unit)
+        # ## DCM is the height above last return (e.g. canopy height)
+        createHeightRefMD(DCM, publish_folder, md_paths, SpatRefMD, raster_v_unit)
 
-        if not os.path.exists(filegdb_path):
-            arcpy.CreateFileGDB_management(publish_folder.path, filegdb_name)
-    
-        if arcpy.Exists(dhm_md_path):
-            arcpy.AddError("DHM already exists.")
-        else:
-            createReferenceddMosaicDataset(md_paths[DSM], dhm_md_path, SpatRefMD, raster_v_unit)
+#         imageDir = DHM
+#         filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)  # @UnusedVariable
+#         filegdb_name = "{}_{}.gdb".format(filegdb_name, imageDir)
+#         target_path = os.path.join(publish_folder.path, imageDir) 
+#         filegdb_path = os.path.join(publish_folder.path, filegdb_name)
+#         md_name = imageDir
+#         dhm_md_path = os.path.join(filegdb_path, md_name)
+#         
+#         if not os.path.exists(filegdb_path):
+#             arcpy.CreateFileGDB_management(publish_folder.path, filegdb_name)
+#         
+#         if arcpy.Exists(dhm_md_path):
+#             arcpy.AddMessage("DHM already exists.")
+#         else:
+#             createReferenceddMosaicDataset(md_paths[DSM], dhm_md_path, SpatRefMD, raster_v_unit)
+#             
+#         
+#         imageDir = DCM
+#         filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)  # @UnusedVariable
+#         filegdb_name = "{}_{}.gdb".format(filegdb_name, imageDir)
+#         target_path = os.path.join(publish_folder.path, imageDir) 
+#         filegdb_path = os.path.join(publish_folder.path, filegdb_name)
+#         md_name = imageDir
+#         dhm_md_path = os.path.join(filegdb_path, md_name)
+#         
+#         if not os.path.exists(filegdb_path):
+#             arcpy.CreateFileGDB_management(publish_folder.path, filegdb_name)
+#         
+#         if arcpy.Exists(dhm_md_path):
+#             arcpy.AddMessage("DCM already exists.")
+#         else:
+#             createReferenceddMosaicDataset(md_paths[DSM], dhm_md_path, SpatRefMD, raster_v_unit)
         
         
     doTime(aa, "A06 A Operation complete")
 
 
-if __name__ == '__main__':
+def CreateProjectMDs(strJobId, dateDeliver=None, dateStart=None, dateEnd=None):
+    aa = datetime.now()
+    Utility.printArguments(["WMX Job ID", "dateDeliver", "dateStart", "dateEnd"], [strJobId, dateDeliver, dateStart, dateEnd], "A06 CreateProjectMDs")
+    arcpy.CheckOutExtension("3D")
+    arcpy.CheckOutExtension("Spatial")
      
-	a = datetime.now()
-	dateStart,dateEnd= None, None
-	jobID = sys.argv[1]
-	dateDeliver= sys.argv[2]
+    ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
 	
-	if len(sys.argv)>=4:
-		dateStart= sys.argv[3]
-	if len(sys.argv)>=5:
-		dateEnd = sys.argv[4]     
-	RemoveDEMErrantValues(jobID, dateDeliver, dateStart,dateEnd)
+    processJob(ProjectJob, project, strUID, dateDeliver, dateStart, dateEnd)
     
+    arcpy.CheckInExtension("3D")
+    arcpy.CheckInExtension("Spatial")
+    
+    doTime(aa, "Operation Complete: A06 Create Project MDs")
+
+if __name__ == '__main__':
           
-#         dateStart, dateEnd = None, None
-    #     dateDeliver = "04/09/1971"
-#         UID = None  # field_ProjectJob_UID
+     dateStart, dateEnd = None, None
+#     strJobId = sys.argv[1]
+#     dateDeliver= sys.argv[2]
+#
+#     if len(sys.argv)>=4:
+#         dateStart= sys.argv[3]
+#     if len(sys.argv)>=5:
+#         dateEnd = sys.argv[4]     
+#     CreateProjectMDs(strJobId, dateDeliver, dateStart, dateEnd)
+
+
+
+#	dateDeliver = "04/09/1971"
+#    UID = None  # field_ProjectJob_UID
 #         wmx_job_id = 1
 #         project_Id = "OK_SugarCreek_2008"
 #         alias = "Sugar Creek"

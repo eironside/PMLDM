@@ -4,24 +4,22 @@ Created on Dec 7, 2015
 @author: eric5946
 '''
 import arcpy
-import datetime
-from itertools import izip_longest
+from datetime import datetime
 import os
-import shutil
 import sys
 import time
 import traceback
 
 import A04_B_CreateLASStats
 from ngce import Utility
+from ngce.Utility import doTime, deleteFileIfExists, isSrValueValid
 from ngce.cmdr import CMDR
 from ngce.cmdr.CMDR import ProjectJob
+from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders
 from ngce.las import LAS
 from ngce.pmdm import RunUtil
 from ngce.pmdm.a import A04_C_ConsolidateLASInfo
-from ngce.pmdm.a.A04_B_CreateLASStats import STAT_FOLDER, doTime, \
-    deleteFileIfExists
 
 
 PROCESS_DELAY = 10
@@ -35,59 +33,6 @@ arcpy.env.overwriteOutput = True
 TOOLS_PATH = r"C:\Users\eric5946\workspaceEE\NGCE_PMDM\src-ngce\ngce\pmdm\a"
 
 
-
-def grouper(iterable, n, fillvalue=None):
-    args = [iter(iterable)] * n
-    return izip_longest(*args, fillvalue=fillvalue)
-    
-'''
-------------------------------------------------------------
-Create a given folder and sub folders
-------------------------------------------------------------
-'''
-def createFolder(target_path, parent, children, deleteIfExists=False):
-    for parent in parent:
-        for child in children:
-            out_folder = os.path.join(target_path, parent, child)
-            if deleteIfExists:
-                shutil.rmtree(out_folder, True)
-            if not os.path.exists(out_folder):
-                os.makedirs(out_folder)
-            
-
-'''
-------------------------------------------------------------
-Create a standard set of analysis folders before the threads start
-------------------------------------------------------------
-'''
-def createFolders(target_path, isClassified):
-    value_field = ["ELEVATION"]
-    dataset_name = ["FIRST", "LAST", "ALAST"]
-    createFolder(target_path, value_field, dataset_name)
-    
-    value_field = ["INTENSITY"]
-    dataset_name = ["FIRST"]
-    createFolder(target_path, value_field, dataset_name)
-    
-    value_field = ["PULSE_COUNT", "POINT_COUNT", "PREDOMINANT_LAST_RETURN", "PREDOMINANT_CLASS", "INTENSITY_RANGE", "Z_RANGE"]
-    dataset_name = ['ALL', "FIRST", "LAST"]
-    createFolder(target_path, value_field, dataset_name)
-    
-    value_field = ["STATS"]
-    dataset_name = ['LAS', 'RASTER']
-    createFolder(target_path, value_field, dataset_name)
-
-    value_field = ["LAS_UNCLASSIFIED"]
-    if isClassified:
-        value_field = ["LAS_CLASSIFIED"]
-    dataset_name = ['', 'LASD']
-    createFolder(target_path, value_field, dataset_name)
-
-    
-    value_field = ["DLM"]
-    dataset_name = ['']
-    createFolder(target_path, value_field, dataset_name)
-
 '''
 ------------------------------------------------------------
 iterate through the list of .las files and generate individual file
@@ -95,7 +40,7 @@ statistics datasets for each
 ------------------------------------------------------------
 '''
 def createLasStatistics(fileList, target_path, spatial_reference=None, isClassified=True, doRasters=False, createRasters=False, runAgain=True):
-    a = datetime.datetime.now()
+    a = datetime.now()
     path = os.path.join(TOOLS_PATH, "A04_B_CreateLASStats.py")
     Utility.printArguments(["fileList", "target_path", "spatial_reference", "isClassified", "doRasters"],
                            [fileList, target_path, spatial_reference, isClassified, doRasters], "createLasStatistics")
@@ -118,7 +63,7 @@ def createLasStatistics(fileList, target_path, spatial_reference=None, isClassif
         processList = []
         
         indx = 0
-        for f_paths in grouper(fileList, grouping):
+        for f_paths in Utility.grouper(fileList, grouping):
             f_paths = [x for x in f_paths if x is not None]
             f_path = ",".join(f_paths)
             indx = indx + len(f_paths)
@@ -221,6 +166,7 @@ def getProjectDEMStatistics(las_qainfo):
             las_qainfo.minZ_dtm = r[2]
             las_qainfo.maxZ_dtm = r[3]
 
+    return las_qainfo
 
 def getLasQAInfo(ProjectFolder):
     las_qainfo = None
@@ -290,7 +236,7 @@ Input:
     jobID = The projects WMX Job ID
 -------------------------------------------------------------------------
 '''
-
+# @TODO: Move this to its own script
 def updateCMDR(ProjectJob, project, las_qainfo, updatedBoundary):
     
     bound_XMin = updatedBoundary.extent.XMin
@@ -304,7 +250,7 @@ def updateCMDR(ProjectJob, project, las_qainfo, updatedBoundary):
 
     
     arcpy.AddMessage("Getting DEM Statistics")
-    getProjectDEMStatistics(las_qainfo)
+    las_qainfo = getProjectDEMStatistics(las_qainfo)
     arcpy.AddMessage("Getting SR Info")
     sr_horz_alias = las_qainfo.getSpatialReference().name
     sr_horz_unit = las_qainfo.getSpatialReference().linearUnitName
@@ -362,11 +308,6 @@ def updateCMDR(ProjectJob, project, las_qainfo, updatedBoundary):
 
 
 
-def isSrValueValid(sr_value):
-    result = True
-    if sr_value is None or sr_value == 'UNKNOWN' or sr_value.upper() == 'NONE' or sr_value == '0':
-        result = False
-    return result
 
  
 def checkSpatialOnLas(start_dir, target_path, doRasters, isClassified):
@@ -376,7 +317,7 @@ def checkSpatialOnLas(start_dir, target_path, doRasters, isClassified):
     las_f_path = getLasFileProcessList(start_dir, target_path, doRasters, isClassified, returnFirst=True)
     lasd_f_path = "{}d".format(las_f_path)
     
-    a = datetime.datetime.now()
+    a = datetime.now()
     deleteFileIfExists(lasd_f_path, True)
     arcpy.AddMessage("Testing spatial reference on .las file: '{}' '{}'".format(las_f_path, lasd_f_path))
     
@@ -509,8 +450,8 @@ def createMXD(las_qainfo, target_path, project_ID):
             
     return mxd
 
-def processProject(ProjectJob, project, doRasters=False, createRasters=False):
-    aaa = datetime.datetime.now()
+def processJob(ProjectJob, project, doRasters=False, createRasters=False):
+    aaa = datetime.now()
     lasd_boundary = None
     
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
@@ -526,15 +467,16 @@ def processProject(ProjectJob, project, doRasters=False, createRasters=False):
     if las_qainfo.num_las_files <= 0:
         arcpy.AddError("Project with Job ID {} has no .las files in DELIVERED LAS_CLASSIFIED or LAS_UNCLASSIFIED folders, CANNOT CONTINUE.".format(ProjectFolder.projectId))
     else:
-        createFolders(target_path, las_qainfo.isClassified)
+        ProjectFolders.createAnalysisFolders(target_path, las_qainfo.isClassified)
         
         # Make the STAT folder if it doesn't already exist
-        stat_out_folder = os.path.join(target_path, STAT_FOLDER)
+        
+        stat_out_folder = ProjectFolder.derived.stats_path
         if not os.path.exists(stat_out_folder):
             os.makedirs(stat_out_folder)
             arcpy.AddMessage("created Derived STAT folder '{}'".format(stat_out_folder))
         else:
-            arcpy.AddMessage("STAT folder already exists. Using '{}'".format(stat_out_folder))
+            arcpy.AddMessage("STAT folder '{}'".format(stat_out_folder))
         
         # Make the scratch file GDB for the project
         if not os.path.exists(las_qainfo.filegdb_path):
@@ -583,7 +525,7 @@ def processProject(ProjectJob, project, doRasters=False, createRasters=False):
                 # arcpy.AddMessage("Deleting existing LAS Dataset {}".format(las_qainfo.las_dataset_path))
                 # arcpy.Delete_management(las_qainfo.las_dataset_path)
             else:
-                a = datetime.datetime.now()
+                a = datetime.now()
             # note: don't use method in A04_B because we don't want to compute statistics this time
         arcpy.CreateLasDataset_management(input=las_qainfo.las_directory,
                                           out_las_dataset=las_qainfo.las_dataset_path,
@@ -629,7 +571,7 @@ def processProject(ProjectJob, project, doRasters=False, createRasters=False):
             if doRasters:
                 mosaics = A04_C_ConsolidateLASInfo.createQARasterMosaics(las_qainfo.isClassified, las_qainfo.filegdb_path, las_qainfo.lasd_spatial_ref, target_path, mxd, las_footprint, lasd_boundary)
                 if mxd is not None:
-                    a = datetime.datetime.now()
+                    a = datetime.now()
                     try:
                         mxd_path = mxd.filePath
                         df = mxd.activeDataFrame
@@ -650,7 +592,7 @@ def processProject(ProjectJob, project, doRasters=False, createRasters=False):
             
               
     
-    bbb = datetime.datetime.now()
+    bbb = datetime.now()
     td = (bbb - aaa).total_seconds()
     arcpy.AddMessage("Completed {} in {}".format(las_qainfo.las_dataset_path, td))
     
@@ -658,43 +600,26 @@ def processProject(ProjectJob, project, doRasters=False, createRasters=False):
 
 
 
-def GenerateQALasDataset(jobID, doRasters):
+def GenerateQALasDataset(strJobId, doRasters):
     Utility.printArguments(["WMXJobID"],
-                           [jobID], "A04 GenerateQALasDataset")
-    
+                           [strJobId], "A04 GenerateQALasDataset")
+    aa = datetime.now()
     arcpy.AddMessage("Checking out licenses")
     arcpy.CheckOutExtension("3D")
     arcpy.CheckOutExtension("Spatial")
     
-    arcpy.AddMessage("Getting WMX Job Datastore")
-    Utility.setWMXJobDataAsEnvironmentWorkspace(jobID)
-
-    arcpy.AddMessage("Getting Job from CMDR")
-    ProjectJob = CMDR.ProjectJob()
-    project, ProjectUID = ProjectJob.getProject(jobID)  # @UnusedVariable
-
-    arcpy.AddMessage("Got job {}".format(project))
-    
-    if project is None:
-        arcpy.AddError("Project with Job ID {} not found, CANNOT CONTINUE.".format(jobID)) 
-    else:
-#         ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
-#         ProjectID = ProjectJob.getProjectID(project)
+    ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
         
-#         arcpy.AddMessage("Project '{}' folder '{}'".format(ProjectID, ProjectFolder))
-        
-        # las_qainfo, updatedBoundary = processProject(ProjectJob, project, doRasters)
-        processProject(ProjectJob, project, doRasters)
-        
-        
-        
+    processJob(ProjectJob, project, doRasters=False, createRasters=False)
         
         # @TODO: Move this to another standalone script
         # updateCMDR(ProjectJob, project, las_qainfo, updatedBoundary)
                             
+    arcpy.AddMessage("Checking in licenses")                        
     arcpy.CheckInExtension("3D")
     arcpy.CheckInExtension("Spatial")
-    arcpy.AddMessage("Operation complete")
+    
+    doTime(aa, "Operation Complete: A04 Generate QA LASDataset")
 
 
 if __name__ == '__main__':
@@ -739,4 +664,4 @@ if __name__ == '__main__':
 #                ]
 #          
 #        
-#     processProject(ProjectJob, project, True)
+#     processJob(ProjectJob, project, True)

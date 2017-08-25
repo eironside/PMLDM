@@ -17,4 +17,4 @@ args = [jobID,serverConnectionFilePath,masterServiceName]
 
 #C04ImportContourCacheToMaster.ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceName)
 
-RunUtil.runTool(PATH, args)
+RunUtil.runTool(PATH, args, log_path=RunUtil.getLogFolderFromWMXJobID(jobID))

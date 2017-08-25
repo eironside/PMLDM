@@ -15,4 +15,4 @@ args = [jobID]
 
 #A06CreateProjectMosaicDataset.CreateProjectMosaicDataset(jobID)
 
-RunUtil.runTool(PATH, args)
+RunUtil.runTool(PATH, args, log_path=RunUtil.getLogFolderFromWMXJobID(jobID))

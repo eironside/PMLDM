@@ -4,16 +4,18 @@ Created on Dec 21, 2015
 @author: eric5946
 '''
 import arcpy
+import datetime
+from itertools import izip_longest
 import os
+import platform
 import shutil
 import string
-import uuid
-import platform
 import sys
+import uuid
 
-from pmdm import RunUtil
 from ngce.folders.FoldersConfig import chars, repls
 from ngce.raster import RasterConfig
+from pmdm import RunUtil
 
 arcpy.CheckOutExtension('JTX')
 JobDataWorkspace = {}
@@ -55,18 +57,18 @@ def printArguments(argNameList, argList, argSource=None):
 
     
 def getExistingRecord(in_table, field_names, uidIndex, where_clause=None):
-    try:
-        desc = arcpy.Describe(arcpy.env.workspace)
-        cp = desc.connectionProperties
+#     try:
+#         desc = arcpy.Describe(arcpy.env.workspace)#@UndefinedVariable
+#         cp = desc.connectionProperties
         #arcpy.AddMessage('Environment workspace: workspaceType={}'.format(desc.workspaceType))
         #arcpy.AddMessage('Environment workspace: instance={} database={} version={}'.format(cp.instance, cp.database , cp.version))
-    except:
-        pass
+#     except:
+#         pass
     arcpy.AddMessage("Searching for row from {} where {}".format(in_table, where_clause))
     strUID = None
     row = None
 ##    try:
-    fnindex = 0
+#     fnindex = 0
 ##    for fn in field_names:
 ##        arcpy.AddMessage("Field {} = {} ".format(fnindex, fn))
 ##        fnindex = fnindex + 1
@@ -155,7 +157,7 @@ def setWMXJobDataAsEnvironmentWorkspace(jobId):
         else:
             JobDataWorkspace[jobId] = str(arcpy.GetJobDataWorkspace_wmx(jobId,os.path.join(os.path.dirname(os.path.abspath(__file__)),'WMXAdmin.jtc')))  # @UndefinedVariable
     arcpy.env.workspace = JobDataWorkspace[jobId] 
-    arcpy.AddMessage("Environment workspace: '{}'".format(arcpy.env.workspace))
+    arcpy.AddMessage("Environment workspace: '{}'".format(arcpy.env.workspace))  # @UndefinedVariable
     try:
         desc = arcpy.Describe(JobDataWorkspace[jobId])
         cp = desc.connectionProperties
@@ -275,35 +277,82 @@ FieldType_FLOAT = "FLOAT"
 FieldType_GUID = "GUID"
 FieldType_DATE = "DATE"
 
-def addAndCalcFieldGUID(dataset_path, field_name, field_value=None, field_alias="", add_index=False):
-    addAndCalcField(dataset_path, FieldType_GUID, field_name, field_alias, "500", field_value, add_index)
+def addAndCalcFieldGUID(dataset_path, field_name, field_value=None, field_alias="", add_index=False, debug=False):
+    addAndCalcField(dataset_path=dataset_path,
+                    field_type=FieldType_GUID,
+                    field_length="500",
+                    field_name=field_name,
+                    field_alias=field_alias,
+                    field_value=field_value,
+                    add_index=add_index,
+                    debug=debug)
     
-def addAndCalcFieldText(dataset_path, field_name, field_length, field_value=None, field_alias="", code_block="", add_index=False):
-    addAndCalcField(dataset_path, FieldType_TEXT, field_name, field_alias, field_length, field_value, code_block, add_index)
+def addAndCalcFieldText(dataset_path, field_name, field_length, field_value=None, field_alias="", code_block="", add_index=False, debug=False):
+    addAndCalcField(dataset_path=dataset_path,
+                    field_type=FieldType_TEXT,
+                    field_length=field_length,
+                    field_name=field_name,
+                    field_alias=field_alias,
+                    field_value=field_value,
+                    add_index=add_index,
+                    code_block=code_block,
+                    debug=debug
+                    )
     
-def addAndCalcFieldLong(dataset_path, field_name, field_value=None, field_alias="", add_index=False):
-    addAndCalcField(dataset_path, FieldType_LONG, field_name, field_alias, "", field_value, add_index)
+def addAndCalcFieldLong(dataset_path, field_name, field_value=None, field_alias="", add_index=False, code_block="", debug=False):
+    addAndCalcField(dataset_path=dataset_path,
+                    field_type=FieldType_LONG,
+                    field_name=field_name,
+                    field_alias=field_alias,
+                    field_value=field_value,
+                    code_block=code_block,
+                    debug=debug)
 
-def addAndCalcFieldDouble(dataset_path, field_name, field_value=None, field_alias="", add_index=False):
-    addAndCalcField(dataset_path, FieldType_DOUBLE, field_name, field_alias, "", field_value, add_index)    
+def addAndCalcFieldDouble(dataset_path, field_name, field_value=None, field_alias="", add_index=False, code_block="", debug=False):
+    addAndCalcField(dataset_path=dataset_path,
+                    field_type=FieldType_DOUBLE,
+                    field_name=field_name,
+                    field_alias=field_alias,
+                    field_value=field_value,
+                    add_index=add_index)    
 
-def addAndCalcFieldFloat(dataset_path, field_name, field_value=None, field_alias="", add_index=False):
-    addAndCalcField(dataset_path, FieldType_FLOAT, field_name, field_alias, "", field_value, add_index)
+def addAndCalcFieldFloat(dataset_path, field_name, field_value=None, field_alias="", add_index=False, code_block="", debug=False):
+    addAndCalcField(dataset_path=dataset_path,
+                    field_type=FieldType_FLOAT,
+                    field_name=field_name,
+                    field_alias=field_alias,
+                    field_value=field_value,
+                    add_index=add_index,
+                    code_block=code_block,
+                    debug=debug
+                    )
 
-def addAndCalcFieldDate(dataset_path, field_name, field_value=None, field_alias="", add_index=False):
-    addAndCalcField(dataset_path, FieldType_DATE, field_name, field_alias, "", field_value, add_index)
+def addAndCalcFieldDate(dataset_path, field_name, field_value=None, field_alias="", add_index=False, code_block="", debug=False):
+    addAndCalcField(dataset_path=dataset_path,
+                    field_type=FieldType_DATE,
+                    field_name=field_name,
+                    field_alias=field_alias,
+                    field_value=field_value,
+                    add_index=add_index,
+                    code_block=code_block,
+                    debug=debug
+                    )
     
-def addAndCalcField(dataset_path, field_type, field_name, field_alias="", field_length="", field_value=None, code_block="", add_index=False):
+def addAndCalcField(dataset_path, field_type, field_name, field_alias="", field_length="", field_value=None, code_block="", add_index=False, debug=False):
+    if debug: 
     arcpy.AddMessage("Adding {} field '{}({})' and setting value to '{}'".format(field_type, field_name, field_length, field_value))
     arcpy.AddField_management(dataset_path, field_name, field_type, field_precision="", field_scale="", field_length=field_length, field_alias=field_alias, field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+    if debug:
     addToolMessages()
     
     if add_index:
         arcpy.AddIndex_management(dataset_path, fields=field_name, index_name=field_name, unique="NON_UNIQUE", ascending="ASCENDING")
+        if debug: 
         addToolMessages()
     
     if field_value is not None:
         arcpy.CalculateField_management(in_table=dataset_path, field=field_name, expression=field_value, expression_type="PYTHON_9.3", code_block=code_block)
+        if debug: 
         addToolMessages()
 
 def addToolMessages():
@@ -474,7 +523,7 @@ def getDomainValueList(workspace, domainName):
     for domain in domains:
         if domain.name.upper() == domainName.upper():
             coded_values = domain.codedValues
-            for val, desc in coded_values.iteritems():
+            for val, desc in coded_values.iteritems():  # @UnusedVariable
                 values.append(val.strip().upper())
     
     return values
@@ -494,4 +543,79 @@ def AddValueToDomain(workspace, domain, code, description):
         arcpy.CreateDomain_management(in_workspace=workspace, domain_name=domain, domain_description=domain, field_type="TEXT", domain_type="CODED", split_policy="DEFAULT", merge_policy="DEFAULT")
     
     arcpy.AddCodedValueToDomain_management(workspace, domain, code, description)
+
+def doTime(a, msg):
+    b = datetime.datetime.now()
+    td = (b - a).total_seconds()
+    arcpy.AddMessage("{} in {}".format(msg, td))
+
+    return datetime.datetime.now()
+
+
+def deleteFileIfExists(f_path, useArcpy=False):
+    try:
+        if useArcpy:
+            if arcpy.Exists(f_path):
+                arcpy.Delete_management(f_path)
+        else:
+            if os.path.exists(f_path):
+                os.remove(f_path)
+    except:
+        pass
+    
+def grouper(iterable, n, fillvalue=None):
+    args = [iter(iterable)] * n
+    return izip_longest(*args, fillvalue=fillvalue)
+
+
+
+
+def isSrValueValid(sr_value):
+    result = True
+    if sr_value is None or sr_value == 'UNKNOWN' or sr_value.upper() == 'NONE' or sr_value == '0':
+        result = False
+    return result
+
+
+'''
+---------------------------------------------
+fix the field name
+---------------------------------------------
+'''
+def alterField(in_table, field, new_field_name, new_field_alias):
+    try:
+        arcpy.AlterField_management(in_table=in_table, field=field, new_field_name=new_field_name, new_field_alias=new_field_alias)
+    except:
+        pass
+
+'''
+---------------------------------------------
+field infos = [old_name, new_name, alias ]
+---------------------------------------------
+'''
+def alterFields(alter_field_infos, table):
+    a = datetime.datetime.now()
+    if alter_field_infos is not None:
+        for alter_field_info in alter_field_infos:
+            try:
+                alterField(table, alter_field_info[0], alter_field_info[1], alter_field_info[2])
+            except:
+                pass
+        
+    a = doTime(a, "\tAltered fields")
+    return a
+
+
+def isMatchingStringValue(val1, val2):
+    if val1 is not None:
+        val1 = str(val1).upper().strip()
+    if val2 is not None:
+        val2 = str(val2).upper().strip()
+    
+    return (val1 == val2 and val1 is not None)
+    
+    
+    
+
+
 

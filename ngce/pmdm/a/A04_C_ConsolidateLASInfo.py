@@ -33,18 +33,16 @@ import datetime
 import os
 
 from ngce import Utility
+from ngce.Utility import deleteFileIfExists, doTime
 from ngce.cmdr import CMDRConfig
-from ngce.pmdm.a.A05_B_RevalueRaster import  MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN, YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID, FIELD_INFO, \
-    AREA, IS_CLASSIFIED, RANGE, FIRST_RETURNS, SECOND_RETURNS, THIRD_RETURNS, \
-    FOURTH_RETURNS, SINGLE_RETURNS, FIRST_OF_MANY_RETURNS, LAST_OF_MANY_RETURNS, \
-    ALL_RETURNS, POINT_COUNT, POINT_SPACING, NAME
+from ngce.folders.FoldersConfig import STATS_METHODS, DATASET_NAMES
 from ngce.raster import RasterConfig, Raster
+from ngce.raster.RasterConfig import FIELD_INFO, NAME, IS_CLASSIFIED, V_NAME, \
+    V_UNIT, H_NAME, H_UNIT, H_WKID, AREA, MAX, MEAN, MIN, RANGE, STAND_DEV, XMIN, \
+    YMIN, XMAX, YMAX, FIRST_RETURNS, SECOND_RETURNS, THIRD_RETURNS, \
+    FOURTH_RETURNS, SINGLE_RETURNS, FIRST_OF_MANY_RETURNS, LAST_OF_MANY_RETURNS, \
+    ALL_RETURNS, POINT_COUNT, POINT_SPACING, STAT_RASTER_FOLDER, CANOPY_DENSITY
 
-
-STAT_FOLDER = os.path.join("STATS", "LAS")
-
-
-# @TODO: Calculate 'Version' 
 
 def getLasdBoundaryPath(fgdb_path):
     return os.path.join(fgdb_path, "BoundaryLASDataset")
@@ -52,24 +50,6 @@ def getLasdBoundaryPath(fgdb_path):
 def getLasFootprintPath(fgdb_path):
     return os.path.join(fgdb_path, "FootprintLASFile")
 
-def doTime(a, msg):
-    b = datetime.datetime.now()
-    td = (b - a).total_seconds()
-    arcpy.AddMessage("{} in {}".format(msg, td))
-
-    return datetime.datetime.now()
-
-
-def deleteFileIfExists(f_path, useArcpy=False):
-    try:
-        if useArcpy:
-            if arcpy.Exists(f_path):
-                arcpy.Delete_management(f_path)
-        else:
-            if os.path.exists(f_path):
-                os.remove(f_path)
-    except:
-        pass
     
     
 
@@ -426,7 +406,7 @@ along with this set of las files
 def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, project_path, project_UID):
     a = datetime.datetime.now()
     
-    stat_out_folder = os.path.join(target_path, STAT_FOLDER)
+    stat_out_folder = os.path.join(target_path, STAT_RASTER_FOLDER)
     
                     
     b_file_list = []
@@ -522,6 +502,9 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
     
     addProjectInfo(las_footprint, lasd_boundary, project_ID, project_path, project_UID)
     
+    arcpy.RepairGeometry_management(in_features=las_footprint, delete_null="KEEP_NULL")
+    arcpy.RepairGeometry_management(in_features=lasd_boundary, delete_null="KEEP_NULL")
+    
     return lasd_boundary, las_footprint
         
 def createReferenceddMosaicDataset(in_md_path, out_md_path, spatial_ref, raster_v_unit):
@@ -545,9 +528,9 @@ def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_fold
     simple_footprint_path = None
     simple_lasd_boundary_path = None
     
-    stats_methods = ["PULSE_COUNT", "POINT_COUNT", "PREDOMINANT_LAST_RETURN", "PREDOMINANT_CLASS", "INTENSITY_RANGE", "Z_RANGE"]
+    stats_methods = STATS_METHODS
     for method in stats_methods:
-        for dataset_name in ["LAST", 'ALL', "FIRST"]:
+        for dataset_name in DATASET_NAMES:
             name = dataset_name
                             
             if not isClassified:
@@ -557,7 +540,7 @@ def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_fold
             
             md_name = method
             if len(name) > 0:
-                md_name = "{}_{}".format(method, name)
+                md_name = "{}{}".format(method, name)
             
             input_folder = os.path.join(target_folder, method, name)
             
@@ -585,14 +568,14 @@ def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_fold
     
     
     
-    md_name = "CANOPY_DENSITY"
+    md_name = CANOPY_DENSITY
     dhm_md_path = os.path.join(gdb_path, md_name)
     
     if arcpy.Exists(dhm_md_path):
         arcpy.AddMessage("{} already exists.".format(md_name))
     else:
         pc_all_md_path = os.path.join(gdb_path, "POINT_COUNT_ALL")
-        vert_cs_name, vert_unit_name = Utility.getVertCSInfo(spatial_reference)
+        vert_cs_name, vert_unit_name = Utility.getVertCSInfo(spatial_reference)  # @UnusedVariable
         # No need to update boundary and footprints since it will inherit from the original
         createReferenceddMosaicDataset(pc_all_md_path, dhm_md_path, spatial_reference, vert_unit_name)
         mosaics.append(pc_all_md_path)

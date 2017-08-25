@@ -12,27 +12,29 @@ from shutil import copyfile
 import sys
 import time
 
-from ngce import Utility
-from ngce.pmdm.a import A05_B_RevalueRaster
-from ngce.pmdm.a.A05_B_RevalueRaster import MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN, YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID, FIELD_INFO, \
+from ngce.Utility import doTime, deleteFileIfExists, setArcpyEnv, getVertCSInfo
+from ngce.folders.FoldersConfig import ELEVATION, FIRST, LAST, lasClassified_dir, \
+    lasUnclassified_dir, lasd_dir, ALAST, INT, ALL, STATS_METHODS, DATASET_NAMES, \
+    pulse_count_dir, point_count_dir
+from ngce.raster import RasterConfig, Raster
+from ngce.raster.RasterConfig import MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN, \
+    YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID, FIELD_INFO, \
     AREA, NAME, PATH, IS_CLASSIFIED, POINT_COUNT, POINT_PERCENT, POINT_SPACING, \
     RANGE, FIRST_RETURNS, SECOND_RETURNS, THIRD_RETURNS, FOURTH_RETURNS, \
-    SINGLE_RETURNS, FIRST_OF_MANY_RETURNS, LAST_OF_MANY_RETURNS, ALL_RETURNS
-from ngce.raster import RasterConfig
+    SINGLE_RETURNS, FIRST_OF_MANY_RETURNS, LAST_OF_MANY_RETURNS, ALL_RETURNS, \
+    STAT_LAS_FOLDER, SAMPLE_TYPE
 
 
 RasterConfig.NODATA_DEFAULT
 
 arcpy.env.parallelProcessingFactor = "80%"
 
-Utility.setArcpyEnv(True)
+setArcpyEnv(True)
 
-SAMPLE_TYPE = "CELLSIZE"
 CELL_SIZE = 10  # Meters
 ELE_CELL_SIZE = 10  # Meters
 FOOTPRINT_BUFFER_DIST = 25  # Meters
 
-STAT_FOLDER = os.path.join("STATS", "LAS")
 
 KEY_LIST = [MAX, MEAN, MIN, RANGE, STAND_DEV, XMIN, YMIN, XMAX, YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID]
 
@@ -47,14 +49,14 @@ def isProcessFile(f_path, target_path, doRasters=True, isClassified=True, create
     if f_path is not None and os.path.exists(f_path) and os.path.exists(target_path):
         
         f_name = os.path.split(os.path.splitext(f_path)[0])[1]
-        stat_out_folder = os.path.join(target_path, STAT_FOLDER)
+        stat_out_folder = os.path.join(target_path, STAT_LAS_FOLDER)
         
-        las_type_folder = "LAS_CLASSIFIED"
+        las_type_folder = lasClassified_dir
         if not isClassified:
-            las_type_folder = "LAS_UNCLASSIFIED"
+            las_type_folder = lasUnclassified_dir
         
         target_las_path = os.path.join(target_path, las_type_folder)
-        target_lasd_path = os.path.join(target_las_path, "LASD")
+        target_lasd_path = os.path.join(target_las_path, lasd_dir)
         out_lasd_path = os.path.join(target_lasd_path, "{}.lasd".format(f_name))
         
         out_las_path = os.path.join(target_las_path, "{}.las".format(f_name))
@@ -93,8 +95,8 @@ def isProcessFile(f_path, target_path, doRasters=True, isClassified=True, create
             process_file = True
         
         
-        value_field = "ELEVATION"
-        for dataset_name in [ "_FIRST", "_LAST"]:
+        value_field = ELEVATION
+        for dataset_name in [ "_" + FIRST, "_" + LAST]:
             name = dataset_name
             
                             
@@ -116,8 +118,8 @@ def isProcessFile(f_path, target_path, doRasters=True, isClassified=True, create
                 process_file = True
         
         if createRasters:
-            value_field = "ELEVATION"
-            for dataset_name in ["_ALAST"]:
+            value_field = ELEVATION
+            for dataset_name in ["_" + ALAST]:
                 name = dataset_name
                                                 
                 if not isClassified:
@@ -137,8 +139,8 @@ def isProcessFile(f_path, target_path, doRasters=True, isClassified=True, create
                 if not os.path.exists(clip_raster_path) and not os.path.exists(out_raster_path):
                     process_file = True
             
-            value_field = "INTENSITY"
-            for dataset_name in ["_FIRST"]:
+            value_field = INT
+            for dataset_name in ["_" + FIRST]:
                 name = dataset_name
                                                 
                 if not isClassified:
@@ -161,8 +163,8 @@ def isProcessFile(f_path, target_path, doRasters=True, isClassified=True, create
         # Create the QA statistics files
         if doRasters:
             # Create the statistics rasters
-            stats_methods = ["PULSE_COUNT", "POINT_COUNT", "PREDOMINANT_LAST_RETURN", "PREDOMINANT_CLASS", "INTENSITY_RANGE", "Z_RANGE"]
-            for dataset_name in ['_ALL', "_FIRST", "_LAST"]:
+            stats_methods = STATS_METHODS
+            for dataset_name in DATASET_NAMES:
                 name = dataset_name
                                 
                 if not isClassified:
@@ -183,24 +185,9 @@ def isProcessFile(f_path, target_path, doRasters=True, isClassified=True, create
                         
     return process_file
 
-def doTime(a, msg):
-    b = datetime.now()
-    td = (b - a).total_seconds()
-    arcpy.AddMessage("{} in {}".format(msg, td))
-
-    return datetime.now()
 
 
-def deleteFileIfExists(f_path, useArcpy=False):
-    try:
-        if useArcpy:
-            if arcpy.Exists(f_path):
-                arcpy.Delete_management(f_path)
-        else:
-            if os.path.exists(f_path):
-                os.remove(f_path)
-    except:
-        pass
+
     
     
 # '''
@@ -230,11 +217,11 @@ def deleteFileIfExists(f_path, useArcpy=False):
 def createLasDataset(f_name, f_path, spatial_reference, target_path, isClassified):
     a = datetime.now()
     aa = a
-    las_type_folder = "LAS_CLASSIFIED"
+    las_type_folder = lasClassified_dir
     if not isClassified:
-        las_type_folder = "LAS_UNCLASSIFIED"
+        las_type_folder = lasUnclassified_dir
     target_las_path = os.path.join(target_path, las_type_folder)
-    target_lasd_path = os.path.join(target_las_path, "LASD")
+    target_lasd_path = os.path.join(target_las_path, lasd_dir)
     out_lasd_path = os.path.join(target_lasd_path, "{}.lasd".format(f_name))
     temp1_lasd_path = os.path.join(target_lasd_path, "temp1_{}.lasd".format(f_name))
     
@@ -937,15 +924,15 @@ def exportElevation(target_path, isClassified, f_name, lasd_path, createRasters=
             a = datetime.now()
             # do this here to avoid arcpy penalty if they all exist
             if isClassified:
-                if name == "_LAST":
+                if name == "_" + LAST:
                     if lasd_last is None:
                         lasd_last = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_last", class_code="0;2;8;9;10;11;12", return_values="'Last Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                     lasd = lasd_last
-                elif name == "_ALAST":
+                elif name == "_" + ALAST:
                     if lasd_alast is None:
                         lasd_alast = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_alast", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="'Last Return';'Last of Many';'Single Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                     lasd = lasd_alast
-                elif name == "_FIRST":
+                elif name == "_" + FIRST:
                     if lasd_first is None:
                         lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                     lasd = lasd_first
@@ -961,9 +948,9 @@ def exportElevation(target_path, isClassified, f_name, lasd_path, createRasters=
 
 def exportIntensity(target_path, isClassified, f_name, lasd_path, createRasters=False):
     lasd_first = None
-    value_field = "INTENSITY"
+    value_field = INT
     
-    for dataset_name in ["_FIRST"]:
+    for dataset_name in ["_" + FIRST]:
         name = dataset_name
         lasd = lasd_path
         if not isClassified:
@@ -994,7 +981,7 @@ def exportIntensity(target_path, isClassified, f_name, lasd_path, createRasters=
 #                     if lasd_alast is None:
 #                         lasd_alast = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_alast", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="'Last Return';'Last of Many';'Single Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
 #                     lasd = lasd_alast
-                if name == "_FIRST":
+                if name == "_" + FIRST:
                     if lasd_first is None:
                         lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                     lasd = lasd_first
@@ -1007,18 +994,21 @@ def exportIntensity(target_path, isClassified, f_name, lasd_path, createRasters=
     return lasd_first
 
 def getCellSize(spatial_reference, cell_size, createRasters=False):
+    result = cell_size
     if createRasters:
-        cell_size = 1
+        result = 1
     if spatial_reference is not None:
         try:
-            vert_cs_name, vert_unit_name = Utility.getVertCSInfo(spatial_reference)  # @UnusedVariable
+            vert_cs_name, vert_unit_name = getVertCSInfo(spatial_reference)  # @UnusedVariable
             if vert_unit_name is not None:
-                cell_size = CELL_SIZE / (1200 / 3937)
-                if vert_unit_name.upper() == "International Feet".upper():
-                    cell_size = CELL_SIZE / 0.3048
+                vert_unit_name = str(vert_unit_name).upper()
+                if vert_unit_name.find("FT") > 0 or vert_unit_name.find("FOOT") > 0 or vert_unit_name.find("FEET") > 0:
+                    result = cell_size / (1200 / 3937)
+                    if vert_unit_name.find("INT") > 0:
+                        result = cell_size / 0.3048
         except:
-            pass
-    return cell_size
+            result = cell_size
+    return result
 
 def processFile(f_path, target_path, spatial_reference, isClassified, doRasters, createRasters=False):
     
@@ -1028,12 +1018,12 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters,
     
     cell_size = getCellSize(spatial_reference, CELL_SIZE)
     
-    las_folder = "LAS_CLASSIFIED"
+    las_folder = lasClassified_dir
     if not isClassified:
-        las_folder = "LAS_UNCLASSIFIED"
+        las_folder = lasUnclassified_dir
         
-    out_lasd_path = os.path.join(target_path, las_folder, "LASD", "{}.lasd".format(f_name))
-    out_las_path = os.path.join(target_path, las_folder, "LAS", "{}.las".format(f_name))
+    out_lasd_path = os.path.join(target_path, las_folder, lasd_dir, "{}.lasd".format(f_name))
+    out_las_path = os.path.join(target_path, las_folder, "{}.las".format(f_name))
     out_lasx_path = "{}x".format(out_las_path)
         
     if os.path.exists(out_lasx_path) and os.path.exists(out_las_path) and os.path.exists(out_lasd_path):
@@ -1045,7 +1035,7 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters,
         createLasDataset(f_name, f_path, spatial_reference, target_path, isClassified)
     
     # Make the STAT folder if it doesn't already exist
-    stat_out_folder = os.path.join(target_path, STAT_FOLDER)
+    stat_out_folder = os.path.join(target_path, STAT_LAS_FOLDER)
     if not os.path.exists(stat_out_folder):
         os.makedirs(stat_out_folder)
 
@@ -1081,8 +1071,8 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters,
         arcpy.AddMessage("\tBound files exists: {}".format(vector_bound_path))
     else:
         
-        value_field = "ELEVATION"
-        name = "_FIRST"
+        value_field = ELEVATION
+        name = "_" + FIRST
         if not isClassified:
             # Using a generic name for non-classified data
             name = ""
@@ -1098,7 +1088,7 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters,
             out_raster_path = "{}.tif".format(out_raster)
         
         
-        stat_props = A05_B_RevalueRaster.createRasterDatasetStats(out_raster_path)
+        stat_props = Raster.createRasterDatasetStats(out_raster_path)
         
         
         minz = stat_props[MIN]
@@ -1106,8 +1096,8 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters,
         meanz = stat_props[MEAN]
         stdevz = stat_props[STAND_DEV]
         
-        value_field = "ELEVATION"
-        name = "_LAST"
+        value_field = ELEVATION
+        name = "_" + LAST
         if not isClassified:
             # Using a generic name for non-classified data
             name = ""
@@ -1122,7 +1112,7 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters,
             out_raster = os.path.join(out_folder, "C_{}{}".format(f_name, name))
             out_raster_path = "{}.tif".format(out_raster)
         
-        stat_props = A05_B_RevalueRaster.createRasterDatasetStats(out_raster_path)
+        stat_props = Raster.createRasterDatasetStats(out_raster_path)
         # first argument is the preferred value (from the 'all' data set)
         maxz = chooseZValue(maxz, stat_props[MAX])
         minz = chooseZValue(minz, stat_props[MIN])
@@ -1162,8 +1152,8 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters,
     # Create the QA statistics files
     if doRasters:
         # Create the statistics rasters
-        stats_methods = ["PULSE_COUNT", "POINT_COUNT", "PREDOMINANT_LAST_RETURN", "PREDOMINANT_CLASS", "INTENSITY_RANGE", "Z_RANGE"]
-        for dataset_name in ['_ALL', "_FIRST", "_LAST"]:
+        stats_methods = STATS_METHODS
+        for dataset_name in DATASET_NAMES:
             name = dataset_name
             lasd = out_lasd_path
                             
@@ -1194,22 +1184,22 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters,
                     
                     # do this here to avoid arcpy penalty if they all exist
                     if isClassified:
-                        if name == "_LAST":
+                        if name == "_" + LAST:
                             if lasd_last is None:
                                 lasd_last = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_last", class_code="0;2;8;9;10;11;12", return_values="'Last Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                             lasd = lasd_last
-                        elif name == "_FIRST":
+                        elif name == "_" + FIRST:
                             if lasd_first is None:
                                 lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                             lasd = lasd_first
-                        elif name == '_ALL':
+                        elif name == '_' + ALL:
                             if lasd_all is None:
                                 lasd_all = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_All", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="'Last Return';'First of Many';'Last of Many';'Single Return';1;2;3;4;5", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                             lasd = lasd_all
 
                     arcpy.LasPointStatsAsRaster_management(lasd, out_raster_path, method, SAMPLE_TYPE, cell_size)
                         
-                    if ((method is "PULSE_COUNT") or (method is "POINT_COUNT")):
+                    if ((method is pulse_count_dir) or (method is point_count_dir)):
                         # divide the cells by cell size squared, overwrite
                         
                         os.rename(out_raster_path, out_raster1_path)

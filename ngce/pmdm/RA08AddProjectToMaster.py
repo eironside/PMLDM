@@ -17,4 +17,4 @@ args = [jobID,MasterMDs_fgdb_path,MasterMDName]
 
 
 #A08AddProjectToMaster.AddProjectToMaster(jobID, MasterMDs_fgdb_path, MasterMDName)
-RunUtil.runTool(PATH, args)
+RunUtil.runTool(PATH, args, log_path=RunUtil.getLogFolderFromWMXJobID(jobID))

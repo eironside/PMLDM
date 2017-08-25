@@ -5,6 +5,7 @@ Created on Dec 21, 2015
 '''
 
 import arcpy
+from datetime import datetime
 import os
 
 from ngce import Utility
@@ -13,7 +14,7 @@ from ngce.cmdr.CMDRConfig import fields_Contract, uid_index_Contract, \
     fcName_Contract, field_Contract_ProjID, \
     field_Contract_SHAPE, field_Contract_UID, fcName_ProjectJob, \
      field_ProjectJob_WMXJobID, uid_index_ProjectJob, \
-    field_RasterFileStat_ProjID, fields_ProjectJob, uid_index_Deliver, fcName_QC, \
+     fields_ProjectJob, uid_index_Deliver, fcName_QC, \
     field_QC_ProjID, fields_QC, uid_index_QC, fcName_Publish, fields_Deliver, \
     field_ProjectJob_ArchDir, field_ProjectJob_ProjDir, field_ProjectJob_ProjID, \
     field_ProjectJob_Alias, field_ProjectJob_AliasClean, \
@@ -34,7 +35,7 @@ from ngce.cmdr.CMDRConfig import fields_Contract, uid_index_Contract, \
     field_Deliver_BoundXMax, uid_index_RasterFileStat, fields_RasterFileStat, \
     fcName_RasterFileStat, field_RasterFileStat_ProjID, \
     field_RasterFileStat_Name, field_RasterFileStat_ElevType, \
-    field_RasterFileStat_Group, field_RasterFileStat_UID, field_Deliver_UID, \
+    field_RasterFileStat_Group, field_RasterFileStat_UID, \
     field_RasterFileStat_Path, field_RasterFileStat_Format, \
     field_RasterFileStat_NoData, field_RasterFileStat_PixelType, \
     field_RasterFileStat_ValueType, field_RasterFileStat_Min, \
@@ -50,7 +51,7 @@ from ngce.cmdr.CMDRConfig import fields_Contract, uid_index_Contract, \
     field_Deliver_ProjID, field_Deliver_Date, field_Deliver_Date_CollectionBegin, \
     field_Deliver_Date_CollectionEnd, fcName_LASDStatInfo, \
     field_LASFileInfo_ProjID, field_LASFileInfo_File_Name, \
-    uid_index_LASDStatInfo, fields_LASDStatInfo, uid_index_LASFileInfo, \
+    uid_index_LASDStatInfo, fields_LASDStatInfo, \
     field_LASDStatInfo_Category, field_LASDStatInfo_Item, \
     field_LASFileInfo_File_LAS_Class, field_MDMaster_WMXJobID, \
     field_MDMaster_ParentPath, field_MDMaster_Path, field_MDMaster_Name, \
@@ -767,3 +768,5 @@ class MDMaster(object):
         local_fgdb_path = os.path.join(self.getMDPath(mdMaster_row), self.getMDfgdbName(mdMaster_row))
         arcpy.AddMessage("local_fgdb_path '{}'".format(local_fgdb_path))
     
+
+

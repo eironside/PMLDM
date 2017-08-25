@@ -68,17 +68,20 @@ import time
 import traceback
 
 from ngce import Utility
-from ngce.cmdr import CMDR
+from ngce.Utility import isSrValueValid, grouper, doTime
 from ngce.cmdr.CMDR import ProjectJob
+from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders
 from ngce.folders.FoldersConfig import DTM, DSM, DLM, INT
+from ngce.folders.ProjectFolders import createAnalysisFolders, \
+    createPublishFolders
 from ngce.las import LAS
 from ngce.pmdm import RunUtil
 from ngce.pmdm.a import A05_B_RevalueRaster, A04_A_GenerateQALasDataset, \
     A04_C_ConsolidateLASInfo, A05_C_ConsolidateRasterInfo
-from ngce.pmdm.a.A04_A_GenerateQALasDataset import grouper
-from ngce.pmdm.a.A05_B_RevalueRaster import FIELD_INFO, MIN, MAX, V_NAME, V_UNIT, \
-    H_NAME, H_UNIT, H_WKID, doTime, IS_CLASSIFIED, ELEV_TYPE
+from ngce.raster.Raster import createRasterDatasetStats
+from ngce.raster.RasterConfig import FIELD_INFO, MIN, MAX, V_NAME, V_UNIT, \
+    H_NAME, H_UNIT, H_WKID, ELEV_TYPE, IS_CLASSIFIED
 
 
 PROCESS_DELAY = 10
@@ -143,7 +146,7 @@ def checkSpatialOnRaster(start_dir, elev_type, target_path, v_name, v_unit, h_na
     if desc is not None:
         ras_spatial_ref = desc.SpatialReference
     
-    raster_props = A05_B_RevalueRaster.createRasterDatasetStats(f_path)
+    raster_props = createRasterDatasetStats(f_path)
     
     prj_Count, prj_File = Utility.fileCounter(start_dir, '.prj')
     if prj_Count > 0 and prj_File is not None and len(str(prj_File)) > 0:
@@ -164,19 +167,21 @@ def checkSpatialOnRaster(start_dir, elev_type, target_path, v_name, v_unit, h_na
     
     if prj_spatial_ref is not None:
         arcpy.AddMessage("PRJ File Spatial Reference:\n\tH_Name: '{}'\n\tH_Unit: '{}'\n\tH_WKID: '{}'\n\tV_Name: '{}'\n\tV_Unit: '{}'".format(prj_horz_cs_name, prj_horz_cs_unit_name, prj_horz_cs_factory_code, prj_vert_cs_name, prj_vert_cs_unit_name))
-        arcpy.AddMessage(getSRErrorMessage("\tPRJ File Spatial Reference:", prj_horz_cs_name, prj_horz_cs_unit_name, prj_vert_cs_name, prj_vert_cs_unit_name))
+        errorMsg = getSRErrorMessage("\tPRJ File Spatial Reference:", prj_horz_cs_name, prj_horz_cs_unit_name, prj_vert_cs_name, prj_vert_cs_unit_name)
+        if errorMsg is not None:
+            arcpy.AddMessage(errorMsg)
     else:
         arcpy.AddMessage("PRJ File Spatial Reference DOES NOT EXIST")
     
-    prj_horz_name_isValid = A04_A_GenerateQALasDataset.isSrValueValid(prj_horz_cs_name)
-    prj_vert_name_isValid = A04_A_GenerateQALasDataset.isSrValueValid(prj_vert_cs_name)
-    prj_horz_unit_isValid = A04_A_GenerateQALasDataset.isSrValueValid(prj_horz_cs_unit_name)
-    prj_vert_unit_isValid = A04_A_GenerateQALasDataset.isSrValueValid(prj_vert_cs_unit_name)
+    prj_horz_name_isValid = isSrValueValid(prj_horz_cs_name)
+    prj_vert_name_isValid = isSrValueValid(prj_vert_cs_name)
+    prj_horz_unit_isValid = isSrValueValid(prj_horz_cs_unit_name)
+    prj_vert_unit_isValid = isSrValueValid(prj_vert_cs_unit_name)
     
-    las_horz_name_isValid = A04_A_GenerateQALasDataset.isSrValueValid(ras_horz_cs_name)
-    las_vert_name_isValid = A04_A_GenerateQALasDataset.isSrValueValid(ras_vert_cs_name)
-    las_horz_unit_isValid = A04_A_GenerateQALasDataset.isSrValueValid(ras_horz_cs_unit_name)
-    las_vert_unit_isValid = A04_A_GenerateQALasDataset.isSrValueValid(ras_vert_cs_unit_name)
+    las_horz_name_isValid = isSrValueValid(ras_horz_cs_name)
+    las_vert_name_isValid = isSrValueValid(ras_vert_cs_name)
+    las_horz_unit_isValid = isSrValueValid(ras_horz_cs_unit_name)
+    las_vert_unit_isValid = isSrValueValid(ras_vert_cs_unit_name)
     
     prj_isValid = prj_horz_name_isValid and prj_vert_name_isValid and prj_horz_unit_isValid and prj_vert_unit_isValid
     
@@ -224,16 +229,21 @@ def checkSpatialOnRaster(start_dir, elev_type, target_path, v_name, v_unit, h_na
 
 def bufferZValues(z_min, z_max, add_buffer=True):
     if add_buffer:
-        arcpy.AddMessage("\tZ is between {} and {}, adding 10% buffer on each end...".format(z_min, z_max))
-        z_min = (z_min * 0.9 if z_min > 0 else z_min * 1.1)
-        z_max = (z_max * 1.2 if z_max > 0 else z_max * 0.8)
-    else:
+        arcpy.AddMessage("\tZ is between {} and {}, adding 20% buffer on each end...".format(z_min, z_max))
+        z_min = z_min - abs(z_min * 0.2)
+        z_max = z_max + abs(z_max * 0.2)
+    
         arcpy.AddMessage("\tZ is between {} and {}.".format(z_min, z_max))
         
     if z_min < 0 :
-        arcpy.AddMessage("WARNING: Z MIN is less than 0")
+        arcpy.AddWarning("WARNING: Z MIN is less than 0")
     if z_max < 0:
-        arcpy.AddMessage("WARNING: Z MAX is less than 0")
+        arcpy.AddWarning("WARNING: Z MAX is less than 0")
+        
+    if z_min > 9000 :
+        arcpy.AddWarning("WARNING: Z MIN is greater than 9000")
+    if z_max > 9000:
+        arcpy.AddWarning("WARNING: Z MAX is greater than 9000")
         
     return z_min, z_max
 
@@ -397,31 +407,11 @@ def processRastersInFolder(fileList, target_path, publish_path, elev_type, bound
     doTime(a, 'processRastersInFolder: All jobs completed.')
     
 
-'''
-------------------------------------------------------------
-Create a standard set of analysis folders before the threads start
-------------------------------------------------------------
-'''
-def createFolders(target_path):
-    value_field = ["ELEVATION"]
-    dataset_name = ["FIRST", "LAST", "ALAST"]
-    A04_A_GenerateQALasDataset.createFolder(target_path, value_field, dataset_name)
-    
-    value_field = ["INTENSITY"]
-    dataset_name = ["FIRST"]
-    A04_A_GenerateQALasDataset.createFolder(target_path, value_field, dataset_name)
-    
-    value_field = ["STATS"]
-    dataset_name = ['RASTER']
-    A04_A_GenerateQALasDataset.createFolder(target_path, value_field, dataset_name)
-    
-    value_field = [DTM, DSM, DLM, INT]
-    dataset_name = ['TEMP']
-    A04_A_GenerateQALasDataset.createFolder(target_path, value_field, dataset_name, True)
-
 
 def getFileProcessList(start_dir, elev_type, target_path, publish_path, return_first=False, check_sr=False):
-    createFolders(target_path)
+    createAnalysisFolders(target_path)
+    if publish_path is not None:
+        createPublishFolders(publish_path)
     
     workspace = arcpy.env.workspace  # @UndefinedVariable
     
@@ -463,6 +453,9 @@ def getFileProcessList(start_dir, elev_type, target_path, publish_path, return_f
         
     if check_sr:
         return fileList, SRMatchFlag
+    elif return_first:
+        # if we get to here, there are no rasters in this folder
+        return None
     else:
     return fileList
 
@@ -495,7 +488,7 @@ def validateRasterSpaitialRef(ProjectFolder, start_dir, elev_type, target_path, 
     return las_qainfo.lasd_spatial_ref
 
 
-def processProject(ProjectJob, project, ProjectUID):
+def processJob(ProjectJob, project, ProjectUID):
     
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
     ProjectID = ProjectJob.getProjectID(project)
@@ -518,7 +511,7 @@ def processProject(ProjectJob, project, ProjectUID):
         start_dir = os.path.join(ProjectFolder.delivered.path, elev_type)
         f_name = getFileProcessList(start_dir, elev_type, target_path, publish_path, return_first=True, check_sr=False)
         if f_name is None:
-            arcpy.AddMessage("Trying DERIVED source. No {} rasters found to re-svalue in {}.".format(elev_type, start_dir))
+            arcpy.AddMessage("Trying DERIVED source. No {} rasters found to re-value in {}.".format(elev_type, start_dir))
             if elev_type == DSM:
                 start_dir = os.path.join(ProjectFolder.derived.path, "ELEVATION", "LAST")
             elif elev_type == DLM:
@@ -539,8 +532,10 @@ def processProject(ProjectJob, project, ProjectUID):
         raster_footprint, raster_boundary = A05_C_ConsolidateRasterInfo.createRasterBoundaryAndFootprints(fgdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID, elev_type)
         if raster_footprint is not None:
             raster_footprints.append(raster_footprint)
+                    arcpy.RepairGeometry_management(in_features=raster_footprint, delete_null="KEEP_NULL")
         if raster_boundary is not None:
             raster_boundaries.append(raster_boundary)
+                    arcpy.RepairGeometry_management(in_features=raster_boundary, delete_null="KEEP_NULL")
     
     
     if arcpy.Exists(raster_footprint_main):
@@ -553,7 +548,7 @@ def processProject(ProjectJob, project, ProjectUID):
 #                 A05_C_ConsolidateRasterInfo.deleteFileIfExists(raster_footprint, True)
 #             except:
 #                 pass
-    
+    arcpy.RepairGeometry_management(in_features=raster_footprint_main, delete_null="KEEP_NULL")    
     
     
     if arcpy.Exists(raster_boundary_main):
@@ -566,6 +561,8 @@ def processProject(ProjectJob, project, ProjectUID):
 #                 A05_C_ConsolidateRasterInfo.deleteFileIfExists(raster_boundary, True)
 #             except:
 #                 pass
+    
+    arcpy.RepairGeometry_management(in_features=raster_boundary_main, delete_null="KEEP_NULL")
     
     try:
         out_map_file_path = os.path.join(target_path, "{}.mxd".format(ProjectID))
@@ -601,27 +598,24 @@ def processProject(ProjectJob, project, ProjectUID):
 # jobID = arcpy.GetParameterAsText(0)
 # jobID = 16402
 
-def RemoveDEMErrantValues(jobID):
-    Utility.printArguments(["WMX Job ID"], [jobID], "A05 RemoveDEMErrantValues")
+def RemoveDEMErrantValues(strJobId):
+    aa = datetime.now()
+    Utility.printArguments(["WMX Job ID"], [strJobId], "A05 RemoveDEMErrantValues")
     arcpy.CheckOutExtension("3D")
     arcpy.CheckOutExtension("Spatial")
     
-    Utility.setWMXJobDataAsEnvironmentWorkspace(jobID)
+    ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
     
-    ProjectJob = CMDR.ProjectJob()
-    project, ProjectUID = ProjectJob.getProject(jobID)
-    
-    if project is not None:
-        processProject(ProjectJob, project, ProjectUID)
+    processJob(ProjectJob, project, strUID)
         
     arcpy.CheckInExtension("3D")
     arcpy.CheckInExtension("Spatial")
-    arcpy.AddMessage("Operation complete")
+    doTime(aa, "Operation Complete: A05 Remove DEM Errant Values")
 
 
 if __name__ == '__main__':
     
-    a = datetime.now()
+    
     jobID = sys.argv[1]
     
     RemoveDEMErrantValues(jobID)
@@ -656,4 +650,5 @@ if __name__ == '__main__':
 #                project_AOI  # field_ProjectJob_SHAPE
 #                ]
      
+#    processJob(ProjectJob, project, UID)
     
