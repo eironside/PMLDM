@@ -43,7 +43,7 @@ KEY_LIST = [MAX, MEAN, MIN, RANGE, STAND_DEV, XMIN, YMIN, XMAX, YMAX, V_NAME, V_
 Determines if a file needs to be processed or not by looking at all the derivatives
 --------------------------------------------------------------------------------
 '''
-def isProcessFile(f_path, target_path, doRasters=True, isClassified=True, createRasters=False):
+def isProcessFile(f_path, target_path, createQARasters=True, isClassified=True, createMissingRasters=False):
     process_file = False
     
     if f_path is not None and os.path.exists(f_path) and os.path.exists(target_path):
@@ -117,7 +117,7 @@ def isProcessFile(f_path, target_path, doRasters=True, isClassified=True, create
             if not os.path.exists(clip_raster_path) and not os.path.exists(out_raster_path):
                 process_file = True
         
-        if createRasters:
+        if createMissingRasters:
             value_field = ELEVATION
             for dataset_name in ["_" + ALAST]:
                 name = dataset_name
@@ -161,7 +161,7 @@ def isProcessFile(f_path, target_path, doRasters=True, isClassified=True, create
                     process_file = True
         
         # Create the QA statistics files
-        if doRasters:
+        if createQARasters:
             # Create the statistics rasters
             stats_methods = STATS_METHODS
             for dataset_name in DATASET_NAMES:
@@ -891,13 +891,13 @@ def exportIntesity(target_path, isClassified, f_name, lasd_path):
     return lasd_first
 
 
-def exportElevation(target_path, isClassified, f_name, lasd_path, createRasters=False):
+def exportElevation(target_path, isClassified, f_name, lasd_path, createMissingRasters=False):
     lasd_last = None
     lasd_first = None
     lasd_alast = None
     value_field = "ELEVATION"
     dataset_names = ["_FIRST", "_LAST"]
-    if createRasters:
+    if createMissingRasters:
         dataset_names = ["_FIRST", "_LAST", "_ALAST"]
     
     
@@ -937,7 +937,7 @@ def exportElevation(target_path, isClassified, f_name, lasd_path, createRasters=
                         lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                     lasd = lasd_first
             
-            cell_size = getCellSize(spatial_reference, ELE_CELL_SIZE, createRasters)
+            cell_size = getCellSize(spatial_reference, ELE_CELL_SIZE, createMissingRasters)
             
             arcpy.LasDatasetToRaster_conversion(in_las_dataset=lasd, out_raster=out_raster_path, value_field=value_field, interpolation_type="BINNING AVERAGE LINEAR", data_type="FLOAT", sampling_type="CELLSIZE", sampling_value=cell_size, z_factor="1")
             arcpy.BuildPyramidsandStatistics_management(in_workspace=out_raster_path, build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="BUILD_ON_SOURCE", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="BILINEAR", compression_type="NONE", compression_quality="75", skip_existing="SKIP_EXISTING")
@@ -946,7 +946,7 @@ def exportElevation(target_path, isClassified, f_name, lasd_path, createRasters=
     return lasd_last, lasd_first
 
 
-def exportIntensity(target_path, isClassified, f_name, lasd_path, createRasters=False):
+def exportIntensity(target_path, isClassified, f_name, lasd_path, createMissingRasters=False):
     lasd_first = None
     value_field = INT
     
@@ -986,16 +986,16 @@ def exportIntensity(target_path, isClassified, f_name, lasd_path, createRasters=
                         lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
                     lasd = lasd_first
             
-            cell_size = getCellSize(spatial_reference, ELE_CELL_SIZE, createRasters)
+            cell_size = getCellSize(spatial_reference, ELE_CELL_SIZE, createMissingRasters)
             arcpy.LasDatasetToRaster_conversion(in_las_dataset=lasd, out_raster=out_raster_path, value_field=value_field, interpolation_type="BINNING AVERAGE LINEAR", data_type="FLOAT", sampling_type="CELLSIZE", sampling_value=cell_size, z_factor="1")
             arcpy.BuildPyramidsandStatistics_management(in_workspace=out_raster_path, build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="BUILD_ON_SOURCE", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="BILINEAR", compression_type="NONE", compression_quality="75", skip_existing="SKIP_EXISTING")
             doTime(a, "\tCreated ELE {}".format(out_raster))
     
     return lasd_first
 
-def getCellSize(spatial_reference, cell_size, createRasters=False):
+def getCellSize(spatial_reference, cell_size, createMissingRasters=False):
     result = cell_size
-    if createRasters:
+    if createMissingRasters:
         result = 1
     if spatial_reference is not None:
         try:
@@ -1010,7 +1010,7 @@ def getCellSize(spatial_reference, cell_size, createRasters=False):
             result = cell_size
     return result
 
-def processFile(f_path, target_path, spatial_reference, isClassified, doRasters, createRasters=False):
+def processFile(f_path, target_path, spatial_reference, isClassified, createQARasters=False, createMissingRasters=False, overrideBorderPath= None):
     
     aa = datetime.now()
 
@@ -1058,9 +1058,9 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters,
     
     lasd_all = None
     
-    lasd_last, lasd_first = exportElevation(target_path, isClassified, f_name, out_lasd_path, createRasters)
-    if createRasters:
-        lasd_first = exportIntensity(target_path, isClassified, f_name, out_lasd_path, createRasters)
+    lasd_last, lasd_first = exportElevation(target_path, isClassified, f_name, out_lasd_path, createMissingRasters)
+    if createMissingRasters:
+        lasd_first = exportIntensity(target_path, isClassified, f_name, out_lasd_path, createMissingRasters)
     
     # Export the boundary shape file
     vector_bound_path = os.path.join(stat_out_folder, "B_{}.shp".format(f_name))
@@ -1150,7 +1150,7 @@ def processFile(f_path, target_path, spatial_reference, isClassified, doRasters,
 #         deleteFileIfExists(vector_bound_B_path, True)
         
     # Create the QA statistics files
-    if doRasters:
+    if createQARasters:
         # Create the statistics rasters
         stats_methods = STATS_METHODS
         for dataset_name in DATASET_NAMES:
@@ -1259,7 +1259,7 @@ Inputs:
     target_path = the full path to the DERIVED folder for the project
     spatial_reference = The spatial reference or a full path to a .prj file
     isClassified = True or False. Default is True
-    doRasters = True or False: True creates the QA statistical rasters. Default is False
+    createQARasters = True or False: True creates the QA statistical rasters. Default is False
 
 Outputs:
     DERIVED/STATS/S_<f_name>.txt = The statistics text file for the .las file
@@ -1280,9 +1280,10 @@ if __name__ == '__main__':
     target_path = None
     spatial_reference = None
     isClassified = True
-    doRasters = True
-    createRasters = False
+    createQARasters = True
+    createMissingRasters = False
     checkedOut = False
+    overrideBorderPath = None
     
     if len(sys.argv) >= 2:
         f_paths = sys.argv[1]
@@ -1297,17 +1298,20 @@ if __name__ == '__main__':
         isClassified = sys.argv[4]
     
     if len(sys.argv) >= 6:
-        doRasters = sys.argv[5]
+        createQARasters = sys.argv[5]
     
     if len(sys.argv) >= 7:
-        createRasters = sys.argv[6]
+        createMissingRasters = sys.argv[6]
+
+    if len(sys.argv) >= 8:
+        overrideBorderPath = sys.argv[7]    
     
-    arcpy.AddMessage("  f_paths='{}',target_path='{}',spatial_reference='{}',isClassified='{}',doRasters='{}'".format(f_paths, target_path, spatial_reference, isClassified, doRasters))
+    arcpy.AddMessage("\n\tf_paths='{}',\n\ttarget_path='{}',\n\tspatial_reference='{}',\n\tisClassified='{}',\n\tcreateQARasters='{}',\n\toverrideBorderPath='{}'".format(f_paths, target_path, spatial_reference, isClassified, createQARasters,overrideBorderPath))
     
     f_paths = str(f_paths).split(",")
      
     for f_path in f_paths:    
-        if not isProcessFile(f_path, target_path, doRasters, isClassified, createRasters):
+        if not isProcessFile(f_path, target_path, createQARasters, isClassified, createMissingRasters):
             arcpy.AddMessage("\tAll las file artifacts exist. Ignoring: {}".format(f_path))
         else:
             if not checkedOut:
@@ -1316,7 +1320,7 @@ if __name__ == '__main__':
                 arcpy.CheckOutExtension("Spatial")
                 checkedOut = True
                 
-            processFile(f_path, target_path, spatial_reference, isClassified, doRasters, createRasters)
+            processFile(f_path, target_path, spatial_reference, isClassified, createQARasters, createMissingRasters, overrideBorderPath)
 
     if checkedOut:
         arcpy.CheckInExtension("3D")

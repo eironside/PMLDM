@@ -687,15 +687,15 @@ def CreateProjectMDs(strJobId, dateDeliver=None, dateStart=None, dateEnd=None):
 
 if __name__ == '__main__':
           
-     dateStart, dateEnd = None, None
-#     strJobId = sys.argv[1]
-#     dateDeliver= sys.argv[2]
-#
-#     if len(sys.argv)>=4:
-#         dateStart= sys.argv[3]
-#     if len(sys.argv)>=5:
-#         dateEnd = sys.argv[4]     
-#     CreateProjectMDs(strJobId, dateDeliver, dateStart, dateEnd)
+	dateStart, dateEnd = None, None
+	strJobId = sys.argv[1]
+	dateDeliver= sys.argv[2]
+
+	if len(sys.argv)>=4:
+		dateStart= sys.argv[3]
+	if len(sys.argv)>=5:
+		dateEnd = sys.argv[4]     
+	CreateProjectMDs(strJobId, dateDeliver, dateStart, dateEnd)
 
 
 

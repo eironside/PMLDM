@@ -616,13 +616,9 @@ def RemoveDEMErrantValues(strJobId):
 if __name__ == '__main__':
     
     
-    jobID = sys.argv[1]
-    
+	jobID = sys.argv[1]
     RemoveDEMErrantValues(jobID)
     
-#          
-    
-#     
 #     UID = None  # field_ProjectJob_UID
 #     wmx_job_id = 1
 #     project_Id = "OK_SugarCreek_2008"
@@ -649,6 +645,5 @@ if __name__ == '__main__':
 #                project_dir,  # field_ProjectJob_ProjDir
 #                project_AOI  # field_ProjectJob_SHAPE
 #                ]
-     
+#
 #    processJob(ProjectJob, project, UID)
-    

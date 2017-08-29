@@ -142,21 +142,21 @@ class Delivered(object):
         for i, item in enumerate(self.dirList):
             self.pathDict[item] = self.pathList[i]
         
-    def make(self, messages=[], errors=[]):
+    def make(self, messages=[], errors=[], warnings=[]):
         if not(os.path.exists(self.path)):
             os.mkdir(self.path)
             messages.append("Created project directory '{}".format(self.path))
         else:
-            errors.append("Directory already exists '{}'".format(self.path))
+            warnings.append("Directory already exists '{}'".format(self.path))
         
         for item in self.pathList:
             if not(os.path.exists(item)):
                 os.mkdir(item)
                 messages.append("Created project directory '{}".format(item))
             else:
-                errors.append("Directory already exists '{}'".format(item))
+                warnings.append("Directory already exists '{}'".format(item))
         
-        return messages, errors
+        return messages, errors, warnings
 
 
 
@@ -430,21 +430,21 @@ class Derived(object):
         
         
         
-    def make(self, messages=[], errors=[]):
+    def make(self, messages=[], errors=[], warnings=[]):
         if not(os.path.exists(self.path)):
             os.makedirs(self.path)
             messages.append("Created project directory '{}".format(self.path))
         else:
-            errors.append("Directory already exists '{}'".format(self.path))
+            warnings.append("Directory already exists '{}'".format(self.path))
         
         for item in self.pathList:
             if not(os.path.exists(item)):
                 os.makedirs(item)
                 messages.append("Created project directory '{}".format(item))
             else:
-                errors.append("Directory already exists '{}'".format(item))
+                warnings.append("Directory already exists '{}'".format(item))
         
-        return messages, errors
+        return messages, errors, warnings
 
 
 
@@ -535,21 +535,21 @@ class Published(object):
         
         
         
-    def make(self, messages=[], errors=[]):
+    def make(self, messages=[], errors=[], warnings=[]):
         if not(os.path.exists(self.path)):
             os.mkdir(self.path)
             messages.append("Created project directory '{}".format(self.path))
         else:
-            errors.append("Directory already exists '{}'".format(self.path))
+            warnings.append("Directory already exists '{}'".format(self.path))
         
         for item in self.pathList:
             if not(os.path.exists(item)):
                 os.mkdir(item)
                 messages.append("Created project directory '{}".format(item))
             else:
-                errors.append("Directory already exists '{}'".format(item))
+                warnings.append("Directory already exists '{}'".format(item))
         
-        return messages, errors
+        return messages, errors, warnings
     
 
 
@@ -581,21 +581,21 @@ class Metadata(object):
         
         self.path = os.path.join(self.parent_path, self.path)
         
-    def make(self, messages=[], errors=[]):
+    def make(self, messages=[], errors=[], warnings=[]):
         if not(os.path.exists(self.path)):
             os.mkdir(self.path)
             messages.append("Created project directory '{}".format(self.path))
         else:
-            errors.append("Directory already exists '{}'".format(self.path))
+            warnings.append("Directory already exists '{}'".format(self.path))
         
         for item in self.pathList:
             if not(os.path.exists(item)):
                 os.mkdir(item)
                 messages.append("Created project directory '{}".format(item))
             else:
-                errors.append("Directory already exists '{}'".format(item))
+                warnings.append("Directory already exists '{}'".format(item))
         
-        return messages, errors
+        return messages, errors, warnings
 
         
 
@@ -629,21 +629,21 @@ class Original(object):
         
         self.path = os.path.join(self.parent_path, self.path)
         
-    def make(self, messages=[], errors=[]):
+    def make(self, messages=[], errors=[], warnings=[]):
         if not(os.path.exists(self.path)):
             os.mkdir(self.path)
             messages.append("Created project directory '{}".format(self.path))
         else:
-            errors.append("Directory already exists '{}'".format(self.path))
+            warnings.append("Directory already exists '{}'".format(self.path))
         
         for item in self.pathList:
             if not(os.path.exists(item)):
                 os.mkdir(item)
                 messages.append("Created project directory '{}".format(item))
             else:
-                errors.append("Directory already exists '{}'".format(item))
+                warnings.append("Directory already exists '{}'".format(item))
         
-        return messages, errors
+        return messages, errors, warnings
 
 
 class QA(object):
@@ -674,21 +674,21 @@ class QA(object):
         
         self.path = os.path.join(self.parent_path, self.path)
         
-    def make(self, messages=[], errors=[]):
+    def make(self, messages=[], errors=[], warnings=[]):
         if not(os.path.exists(self.path)):
             os.mkdir(self.path)
             messages.append("Created project directory '{}".format(self.path))
         else:
-            errors.append("Directory already exists '{}'".format(self.path))
+            warnings.append("Directory already exists '{}'".format(self.path))
         
         for item in self.pathList:
             if not(os.path.exists(item)):
                 os.mkdir(item)
                 messages.append("Created project directory '{}".format(item))
             else:
-                errors.append("Directory already exists '{}'".format(item))
+                warnings.append("Directory already exists '{}'".format(item))
         
-        return messages, errors
+        return messages, errors, warnings
 
 class Project(object):
     '''
@@ -809,22 +809,23 @@ class Project(object):
     def make(self):
         messages = [];
         errors = [];
+        warnings = [];
         if os.path.exists(self.parent_path):
             
             if not(os.path.exists(self.path)):
                 os.mkdir(self.path)
                 messages.append("Created project directory '{}".format(self.path))
             else:
-                errors.append("Directory already exists '{}'".format(self.path))
+                warnings.append("Directory already exists '{}'".format(self.path))
             
             for item in self.pathList:
-                messages, errors = item.make(messages, errors)
+                messages, errors, warnings = item.make(messages, errors, warnings)
         else:
             errors.append("Parent directory does NOT exists '{}'".format(self.parent_path))
         
-        if len(errors) > 0:
-            raise Exception(errors)
-        return messages, errors
+#         if len(errors) > 0:
+#             raise Exception(errors)
+        return messages, errors, warnings
 
     def getUncRoot(self):
         parent_path = self.parent_path

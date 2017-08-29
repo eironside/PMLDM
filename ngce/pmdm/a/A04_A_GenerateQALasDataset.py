@@ -29,8 +29,8 @@ PROCESS_SPARES = 2  # processors to leave as spares
 arcpy.env.parallelProcessingFactor = "80%"
 
 arcpy.env.overwriteOutput = True
-# TOOLS_PATH = r"Q:\elevation\WorkflowManager\Tools\ngce\pmdm\a"
-TOOLS_PATH = r"C:\Users\eric5946\workspaceEE\NGCE_PMDM\src-ngce\ngce\pmdm\a"
+TOOLS_PATH = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools\ngce\pmdm\a"
+# TOOLS_PATH = r"C:\Users\eric5946\workspaceEE\NGCE_PMDM\src-ngce\ngce\pmdm\a"
 
 
 '''
@@ -39,11 +39,11 @@ iterate through the list of .las files and generate individual file
 statistics datasets for each
 ------------------------------------------------------------
 '''
-def createLasStatistics(fileList, target_path, spatial_reference=None, isClassified=True, doRasters=False, createRasters=False, runAgain=True):
+def createLasStatistics(fileList, target_path, spatial_reference=None, isClassified=True, createQARasters=False, createMissingRasters=False, overrideBorderPath=None, runAgain=True):
     a = datetime.now()
     path = os.path.join(TOOLS_PATH, "A04_B_CreateLASStats.py")
-    Utility.printArguments(["fileList", "target_path", "spatial_reference", "isClassified", "doRasters"],
-                           [fileList, target_path, spatial_reference, isClassified, doRasters], "createLasStatistics")
+    Utility.printArguments(["fileList", "target_path", "spatial_reference", "isClassified", "createQARasters", "createMissingRasters", "overrideBorderPath"],
+                           [fileList, target_path, spatial_reference, isClassified, createQARasters, createMissingRasters, overrideBorderPath], "createLasStatistics")
     
     grouping = PROCESS_CHUNKS
     if not runAgain:
@@ -59,7 +59,7 @@ def createLasStatistics(fileList, target_path, spatial_reference=None, isClassif
         procCount = int(os.environ['NUMBER_OF_PROCESSORS'])
         if procCount > 4:
             procCount = procCount - PROCESS_SPARES
-        arcpy.AddMessage("createLasStatistics: Using {}/{} Processors to process {} files in groups of {}".format(procCount, (procCount + PROCESS_SPARES), total, grouping))
+        arcpy.AddMessage("\tUsing {}/{} Processors to process {} files in groups of {}".format(procCount, (procCount + PROCESS_SPARES), total, grouping))
         processList = []
         
         indx = 0
@@ -68,8 +68,8 @@ def createLasStatistics(fileList, target_path, spatial_reference=None, isClassif
             f_path = ",".join(f_paths)
             indx = indx + len(f_paths)
             
-            arcpy.AddMessage('\tcreateLasStatistics: Working on {}/{}: {}'.format(indx, total, f_path))
-            args = [f_path, target_path, spatial_reference, "{}".format(isClassified), "{}".format(doRasters), "{}".format(createRasters)]
+            arcpy.AddMessage('\t Working on {}/{}: {}'.format(indx, total, f_path))
+            args = [f_path, target_path, spatial_reference, "{}".format(isClassified), "{}".format(createQARasters), "{}".format(createMissingRasters), overrideBorderPath]
             
             try:
                 processList.append(RunUtil.runToolx64_async(path, args, "A04_B", target_path))
@@ -78,10 +78,10 @@ def createLasStatistics(fileList, target_path, spatial_reference=None, isClassif
             except:
                 tb = sys.exc_info()[2]
                 tbinfo = traceback.format_tb(tb)[0]
-                pymsg = "createLasStatistics: PYTHON ERRORS:\nTraceback Info:\n" + tbinfo + "\nError Info:\n    " + \
+                pymsg = " PYTHON ERRORS:\nTraceback Info:\n" + tbinfo + "\nError Info:\n    " + \
                         str(sys.exc_type) + ": " + str(sys.exc_value) + "\n"
                 arcpy.AddWarning(pymsg)
-                msgs = "createLasStatistics: GP ERRORS:\n" + arcpy.GetMessages(2) + "\n"
+                msgs = "GP ERRORS:\n" + arcpy.GetMessages(2) + "\n"
                 arcpy.AddWarning(msgs)
                 sys.exit(1)
     
@@ -91,7 +91,7 @@ def createLasStatistics(fileList, target_path, spatial_reference=None, isClassif
                 if not first:
                     time.sleep(1)
                 first = False   
-                # arcpy.AddMessage('createLasStatistics: Looping LEN Process List = {} ProcCount = {} is greater = {}'.format(len(processList), procCount, (len(processList) >= procCount)))
+                # arcpy.AddMessage('Looping LEN Process List = {} ProcCount = {} is greater = {}'.format(len(processList), procCount, (len(processList) >= procCount)))
                 for i, [p, l] in enumerate(processList):
                     if p.poll() is not None:
                         # error log messages are handled in 
@@ -104,21 +104,21 @@ def createLasStatistics(fileList, target_path, spatial_reference=None, isClassif
                 waitForResults = (len(processList) >= int(procCount))
                         
         # Wait for last subprocesses to complete
-        arcpy.AddMessage("\tcreateLasStatistics: Waiting for process list to clear {} jobs".format(len(processList)))
+        arcpy.AddMessage("\tWaiting for process list to clear {} jobs".format(len(processList)))
         while len(processList) > 0:
             for  i, [p, l] in enumerate(processList):
                 if p.poll() is not None:
                     RunUtil.endRun_async(path, p, l)
                     del processList[i]
-                    arcpy.AddMessage("\tcreateLasStatistics: Waiting for process list to clear {} jobs".format(len(processList)))
+                    arcpy.AddMessage("\tWaiting for process list to clear {} jobs".format(len(processList)))
     
                 else:
-                    # arcpy.AddMessage("createLasStatistics: Waiting for process list to clear {} jobs".format(len(processList)))
+                    # arcpy.AddMessage("Waiting for process list to clear {} jobs".format(len(processList)))
                     time.sleep(PROCESS_DELAY)
         
         if runAgain and len(fileList_repeat) > 0:
             # try to clean up any errors along the way
-            createLasStatistics(fileList, target_path, spatial_reference, isClassified, doRasters, runAgain=False)
+            createLasStatistics(fileList, target_path, spatial_reference, isClassified, createQARasters, createMissingRasters, overrideBorderPath, runAgain=False)
             
         doTime(a, 'createLasStatistics: All jobs completed.')        
 
@@ -186,7 +186,7 @@ def getLasQAInfo(ProjectFolder):
 
 
 
-def getLasFileProcessList(start_dir, target_path, doRasters, isClassified, returnFirst=False):
+def getLasFileProcessList(start_dir, target_path, createQARasters, isClassified, returnFirst=False):
     ext = ".las"
     fileList = []
     arcpy.AddMessage("getLasFileProcessList: Starting in dir {}".format(start_dir))
@@ -199,7 +199,7 @@ def getLasFileProcessList(start_dir, target_path, doRasters, isClassified, retur
                 if returnFirst:
                     return f_path
                 
-                if A04_B_CreateLASStats.isProcessFile(f_path, target_path, doRasters, isClassified):
+                if A04_B_CreateLASStats.isProcessFile(f_path, target_path, createQARasters, isClassified):
                     fileList.append(f_path)
     
 #     theFile = os.path.join(target_path, "filelist.txt")
@@ -310,11 +310,11 @@ def updateCMDR(ProjectJob, project, las_qainfo, updatedBoundary):
 
 
  
-def checkSpatialOnLas(start_dir, target_path, doRasters, isClassified):
+def checkSpatialOnLas(start_dir, target_path, createQARasters, isClassified):
     las_spatial_ref = None
     prj_spatial_ref = None
     
-    las_f_path = getLasFileProcessList(start_dir, target_path, doRasters, isClassified, returnFirst=True)
+    las_f_path = getLasFileProcessList(start_dir, target_path, createQARasters, isClassified, returnFirst=True)
     lasd_f_path = "{}d".format(las_f_path)
     
     a = datetime.now()
@@ -450,7 +450,7 @@ def createMXD(las_qainfo, target_path, project_ID):
             
     return mxd
 
-def processJob(ProjectJob, project, doRasters=False, createRasters=False):
+def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=False, overrideBorderPath=None):
     aaa = datetime.now()
     lasd_boundary = None
     
@@ -485,7 +485,7 @@ def processJob(ProjectJob, project, doRasters=False, createRasters=False):
         else:
             arcpy.AddMessage("Derived fGDB sand box already exists. Using '{}'".format(las_qainfo.filegdb_path))
         
-        las_qainfo.lasd_spatial_ref = checkSpatialOnLas(las_qainfo.las_directory, target_path, doRasters, las_qainfo.isClassified)
+        las_qainfo.lasd_spatial_ref = checkSpatialOnLas(las_qainfo.las_directory, target_path, createQARasters, las_qainfo.isClassified)
         
         if las_qainfo.lasd_spatial_ref is None:
             arcpy.AddError("ERROR:   Neither spatial reference in PRJ or LAS files are valid CANNOT CONTINUE.")
@@ -516,8 +516,8 @@ def processJob(ProjectJob, project, doRasters=False, createRasters=False):
     #         else:
     #             arcpy.AddMessage("Using projection (coordinate system) from las files if available.")
         
-        fileList = getLasFileProcessList(las_qainfo.las_directory, target_path, doRasters, las_qainfo.isClassified)
-            createLasStatistics(fileList, target_path, las_qainfo.lasd_spatial_ref, las_qainfo.isClassified, doRasters, createRasters)
+            fileList = getLasFileProcessList(las_qainfo.las_directory, target_path, createQARasters, las_qainfo.isClassified)
+            createLasStatistics(fileList, target_path, las_qainfo.lasd_spatial_ref, las_qainfo.isClassified, createQARasters, createMissingRasters, overrideBorderPath)
         
         # Create the project's las dataset. Don't do this before you validated that each .las file has a .lasx
             if os.path.exists(las_qainfo.las_dataset_path):
@@ -568,7 +568,7 @@ def processJob(ProjectJob, project, doRasters=False, createRasters=False):
     
             mxd = createMXD(las_qainfo, target_path, ProjectID)
             
-            if doRasters:
+            if createQARasters:
                 mosaics = A04_C_ConsolidateLASInfo.createQARasterMosaics(las_qainfo.isClassified, las_qainfo.filegdb_path, las_qainfo.lasd_spatial_ref, target_path, mxd, las_footprint, lasd_boundary)
                 if mxd is not None:
                     a = datetime.now()
@@ -600,7 +600,7 @@ def processJob(ProjectJob, project, doRasters=False, createRasters=False):
 
 
 
-def GenerateQALasDataset(strJobId, doRasters):
+def GenerateQALasDataset(strJobId, createQARasters=False, createMissingRasters=False, overrideBorderPath=None):
     Utility.printArguments(["WMXJobID"],
                            [strJobId], "A04 GenerateQALasDataset")
     aa = datetime.now()
@@ -610,7 +610,7 @@ def GenerateQALasDataset(strJobId, doRasters):
     
     ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
         
-    processJob(ProjectJob, project, doRasters=False, createRasters=False)
+    processJob(ProjectJob, project, createQARasters, createMissingRasters, overrideBorderPath)
         
         # @TODO: Move this to another standalone script
         # updateCMDR(ProjectJob, project, las_qainfo, updatedBoundary)
@@ -625,16 +625,18 @@ def GenerateQALasDataset(strJobId, doRasters):
 if __name__ == '__main__':
     
     projId = sys.argv[1]
-  	doRasters = False
-	createRasters = False
+    createQARasters = False
+    createMissingRasters = False
+	overrideBorderPath = None
 
-    doRasters = False
     if len(sys.argv) > 2:
-        doRasters = sys.argv[2]
-    if len(sys.argv) > 2:
-        createRasters = sys.argv[2]
+        createQARasters = sys.argv[2]
+    if len(sys.argv) > 3:
+        createMissingRasters = sys.argv[3]
+    if len(sys.argv) > 4:
+        overrideBorderPath = sys.argv[4]
 
-    GenerateQALasDataset(projId, doRasters, createRasters)
+    GenerateQALasDataset(projId, createQARasters, createMissingRasters, overrideBorderPath)
     
 #     UID = None  # field_ProjectJob_UID
 #     wmx_job_id = 1
@@ -647,7 +649,6 @@ if __name__ == '__main__':
 #     archive_dir = r"E:\NGCE\RasterDatasets"
 #     project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
 #     project_AOI = None
-#      
 #     ProjectJob = ProjectJob()
 #     project = [
 #                UID,  # field_ProjectJob_UID

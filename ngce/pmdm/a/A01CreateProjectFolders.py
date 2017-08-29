@@ -32,7 +32,13 @@ def CreateProjectFolders(parent_path=None,
     
     arcpy.AddMessage("Working on project path {}".format(projectFolder.path))
     
-    projectFolder.make()
+    messages, errors, warnings = projectFolder.make()
+    for message in messages:
+        arcpy.AddMessage(message)
+    for warning in warnings:
+        arcpy.AddWarning(warning)
+    for error in errors:
+        arcpy.AddError(error)
     arcpy.AddMessage("Finished creating project '{}' directory structure".format(projectFolder.path))
 
     doTime(a, "Operation Complete: A01 Create Project Folders")
