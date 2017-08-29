@@ -114,9 +114,10 @@ def ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceNam
     arcpy.AddMessage("Operation complete")
 
 if __name__ == '__main__':
-    jobID = arcpy.GetParameterAsText(0)
-	serverConnectionFile = arcpy.GetParameterAsText(0)
- 	masterServiceName = arcpy.GetParameterAsText(0)
+	jobID = sys.argv[1]
+	serverConnectionFile = sys.argv[2]
+	masterServiceName = sys.argv[3]
+    
     # jobID = 4801
     #serverConnectionFile = "C:\\Users\\eric5946\\AppData\\Roaming\\ESRI\\Desktop10.3\\ArcCatalog\\arcgis on NGCEDEV_6080 (publisher).ags"
     #masterServiceName = "MASTER\ELEVATION_1M"   

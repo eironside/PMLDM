@@ -19,9 +19,16 @@ PATH_PYTHON27_32 = r"C:\Program Files (x86)\PYTHON27\ArcGIS10.5"
 
 PATH_PYTHON27_64 = r"C:\Program Files (x86)\PYTHON27\ArcGISx6410.5"
 #PATH_PYTHON27_64 = r"C:\Python27\ArcGISx6410.5"
+#PATH_PYTHON27_64= r'C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3'
 
 WMX_TOOLS = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools"
 #WMX_TOOLS = r"C:\Users\eric5946\workspaceEE\NGCE_PMDM\src-ngce"
+#WMX_TOOLS = r'C:\Temp'
+
+
+
+    
+
 
 def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
 

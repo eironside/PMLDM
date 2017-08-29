@@ -7,10 +7,10 @@ import zipfile
 
 from ngce import Utility
 from ngce.Utility import doTime
-from ngce.cmdr.CMDR import getProjectFromWMXJobID
+from ngce.cmdr.CMDR import ProjectJob
+from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 
 
-# from ngce.folders import FoldersConfig
 def processJob(ProjectJob, project, strUID):
     a = datetime.now()
     aa = a

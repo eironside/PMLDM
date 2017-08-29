@@ -213,40 +213,40 @@ def CreateContourCache(jobID, serverConnectionFile):
     arcpy.AddMessage("Operation complete")
 
 if __name__ == '__main__':
-    # jobID = arcpy.GetParameterAsText(0)
-#     serverConnectionFile = sys.argv[2]
-# 
-#     CreateContourCache(jobID, serverConnectionFile)
+    jobID = sys.argv[1]
+	serverConnectionFile = sys.argv[2]
+	
+	CreateContourCache(jobID, serverConnectionFile)
     
-    # 
-    jobID = 4801
-    serverConnectionFile = "C:\\Users\\eric5946\\AppData\\Roaming\\ESRI\\Desktop10.3\\ArcCatalog\\arcgis on NGCEDEV_6080 (publisher).ags"
-    UID = None  # field_ProjectJob_UID
-    wmx_job_id = 1
-    project_Id = "OK_SugarCreek_2008"
-    alias = "Sugar Creek"
-    alias_clean = "SugarCreek"
-    state = "OK"
-    year = 2008
-    parent_dir = r"E:\NGCE\RasterDatasets"
-    archive_dir = r"E:\NGCE\RasterDatasets"
-    project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
-    project_AOI = None
-                   
-    ProjectJob = ProjectJob()
-    project = [
-               UID,  # field_ProjectJob_UID
-               wmx_job_id,  # field_ProjectJob_WMXJobID,
-               project_Id,  # field_ProjectJob_ProjID,
-               alias,  # field_ProjectJob_Alias
-               alias_clean,  # field_ProjectJob_AliasClean
-               state ,  # field_ProjectJob_State
-               year ,  # field_ProjectJob_Year
-               parent_dir,  # field_ProjectJob_ParentDir
-               archive_dir,  # field_ProjectJob_ArchDir
-               project_dir,  # field_ProjectJob_ProjDir
-               project_AOI  # field_ProjectJob_SHAPE
-               ]
-        
-        
-    processJob(ProjectJob, project, UID, serverConnectionFile)
+  
+#    jobID = 4801
+#    serverConnectionFile = "C:\\Users\\eric5946\\AppData\\Roaming\\ESRI\\Desktop10.3\\ArcCatalog\\arcgis on NGCEDEV_6080 (publisher).ags"
+#    UID = None  # field_ProjectJob_UID
+#    wmx_job_id = 1
+#    project_Id = "OK_SugarCreek_2008"
+#    alias = "Sugar Creek"
+#    alias_clean = "SugarCreek"
+#    state = "OK"
+#    year = 2008
+#    parent_dir = r"E:\NGCE\RasterDatasets"
+#    archive_dir = r"E:\NGCE\RasterDatasets"
+#    project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
+#    project_AOI = None
+#                   
+#    ProjectJob = ProjectJob()
+#    project = [
+#               UID,  # field_ProjectJob_UID
+#               wmx_job_id,  # field_ProjectJob_WMXJobID,
+#               project_Id,  # field_ProjectJob_ProjID,
+#               alias,  # field_ProjectJob_Alias
+#               alias_clean,  # field_ProjectJob_AliasClean
+#               state ,  # field_ProjectJob_State
+#               year ,  # field_ProjectJob_Year
+#               parent_dir,  # field_ProjectJob_ParentDir
+#               archive_dir,  # field_ProjectJob_ArchDir
+#               project_dir,  # field_ProjectJob_ProjDir
+#               project_AOI  # field_ProjectJob_SHAPE
+#               ]
+#        
+#        
+#    processJob(ProjectJob, project, UID, serverConnectionFile)
