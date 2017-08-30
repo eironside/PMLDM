@@ -5,6 +5,7 @@ Created on Feb 12, 2016
 '''
 import arcpy
 
+from ngce.cmdr.JobUtil import getLogFolderFromWMXJobID
 from ngce.pmdm import RunUtil
 
 
@@ -16,4 +17,4 @@ args = [jobID]
 
 # A03ProjectZipArchive.ProjectZipArchive(jobID)
 
-RunUtil.runTool(PATH, args, log_path=RunUtil.getLogFolderFromWMXJobID(jobID))
+RunUtil.runTool(PATH, args, log_path=getLogFolderFromWMXJobID(jobID))

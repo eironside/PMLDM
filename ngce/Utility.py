@@ -15,14 +15,17 @@ import uuid
 
 from ngce.folders.FoldersConfig import chars, repls
 from ngce.raster import RasterConfig
-from pmdm import RunUtil
 
-arcpy.CheckOutExtension('JTX')
+
+arcpy.CheckOutExtension('JTX')  # Need this?
 JobDataWorkspace = {}
 shape = {}
 inMemory = "in_memory"
 
 JTC_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'WMXAdmin.jtc')
+SDE_WMX_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wmx.sde')
+SDE_CMDR_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cmdr.sde')
+WMX_AOI_FC = "NGCE_WMX.DBO.JTX_JOBS_AOI"
 
 def fileCounter(myPath, ext):
     fileCounter = 0
@@ -59,47 +62,17 @@ def printArguments(argNameList, argList, argSource=None):
 
     
 def getExistingRecord(in_table, field_names, uidIndex, where_clause=None):
-#     try:
-#         desc = arcpy.Describe(arcpy.env.workspace)#@UndefinedVariable
-#         cp = desc.connectionProperties
-        #arcpy.AddMessage('Environment workspace: workspaceType={}'.format(desc.workspaceType))
-        #arcpy.AddMessage('Environment workspace: instance={} database={} version={}'.format(cp.instance, cp.database , cp.version))
-#     except:
-#         pass
     arcpy.AddMessage("Searching for row from {} where {}".format(in_table, where_clause))
     strUID = None
     row = None
-##    try:
-#     fnindex = 0
-##    for fn in field_names:
-##        arcpy.AddMessage("Field {} = {} ".format(fnindex, fn))
-##        fnindex = fnindex + 1
     for r in arcpy.da.SearchCursor(in_table, field_names, where_clause=where_clause):  # @UndefinedVariable
-        #arcpy.AddMessage("1")
         if uidIndex >= 0:
-            #arcpy.AddMessage("2")
             if r[uidIndex] is not None and len(r[uidIndex]) > 0:
-                #arcpy.AddMessage("3")
                 row = r
                 strUID = r[uidIndex]
-            #arcpy.AddMessage("4")
             
         else:
-            #arcpy.AddMessage("5")
             row = r
-##    except:
-##        
-##        tb = sys.exc_info()[2]
-##        tbinfo = traceback.format_tb(tb)[0]
-##        arcpy.AddError(tbinfo)
-##        arcpy.AddError(str(sys.exc_info()[1]))
-##        for m in arcpy.GetMessages(2):
-##            arcpy.AddError(m)
-##        print tbinfo
-##        print str(sys.exc_info()[1])
-##        for m in arcpy.GetMessages(2):
-##            print m
-##        raise Exception("Failed")
     
     arcpy.AddMessage("Found row {} with UID {}".format(row, strUID))
     return row, strUID
@@ -146,29 +119,30 @@ def createUid(strUID):
         strUID = "{" + str(uuid.uuid4()) + "}"
     return strUID
 
-## 32BIT ONLY ##
+
 def setWMXJobDataAsEnvironmentWorkspace(jobId):
-    if jobId not in JobDataWorkspace.keys():
-        arch = platform.architecture()[0]
-        if arch == '64bit':
-            arcpy.AddMessage("_______32BIT_________")
-            JobDataWorkspace[jobId] = RunUtil.runTool(r'ngce\Utility32bit.py', ['setWMXJobDataAsEnvironmentWorkspace', '{}'.format(jobId)], True)
-            JobDataWorkspace[jobId] = str(JobDataWorkspace[jobId]).rstrip('\n').rstrip('\r').rstrip('\n')
-            arcpy.AddMessage("Workspace = '{}'".format(JobDataWorkspace[jobId]))
-            arcpy.AddMessage("_______32BIT_________")
-        else:
+#     if jobId not in JobDataWorkspace.keys():
+#         arch = platform.architecture()[0]
+#         if arch == '64bit':
+#             arcpy.AddMessage("_______32BIT_________")
+#             JobDataWorkspace[jobId] = RunUtil.runTool(r'ngce\Utility32bit.py', ['setWMXJobDataAsEnvironmentWorkspace', '{}'.format(jobId)], True)
+#             JobDataWorkspace[jobId] = str(JobDataWorkspace[jobId]).rstrip('\n').rstrip('\r').rstrip('\n')
+#             arcpy.AddMessage("Workspace = '{}'".format(JobDataWorkspace[jobId]))
+#             arcpy.AddMessage("_______32BIT_________")
+#         else:
+#             
+#             JobDataWorkspace[jobId] = str(arcpy.GetJobDataWorkspace_wmx(jobId, JTC_FILE_PATH))  # @UndefinedVariable
             
-            JobDataWorkspace[jobId] = str(arcpy.GetJobDataWorkspace_wmx(jobId, JTC_FILE_PATH))  # @UndefinedVariable
-    arcpy.env.workspace = JobDataWorkspace[jobId] 
-    arcpy.AddMessage("Environment workspace: '{}'".format(arcpy.env.workspace))  # @UndefinedVariable
-    try:
-        desc = arcpy.Describe(JobDataWorkspace[jobId])
-        cp = desc.connectionProperties
-        arcpy.AddMessage('Environment workspace: workspaceType={}'.format(desc.workspaceType))
-        arcpy.AddMessage('Environment workspace: instance={} database={} version={}'.format(cp.instance, cp.database , cp.version))
-    except:
-        pass
-## 32 BIT ONLY ##
+    arcpy.env.workspace = SDE_CMDR_FILE_PATH  # JobDataWorkspace[jobId] 
+    arcpy.AddMessage("Environment workspace: '{}'".format(SDE_CMDR_FILE_PATH))
+#     try:
+#         desc = arcpy.Describe(JobDataWorkspace[jobId])
+#         cp = desc.connectionProperties
+#         arcpy.AddMessage('Environment workspace: workspaceType={}'.format(desc.workspaceType))
+#         arcpy.AddMessage('Environment workspace: instance={} database={} version={}'.format(cp.instance, cp.database , cp.version))
+#     except:
+#         pass
+
     
 def startEditingSession():
     arcpy.AddMessage('Starting edit session...')
@@ -187,38 +161,21 @@ def stopEditingSession(edit):
         arcpy.AddMessage('Edit session stopped')
         del edit
 
-## 32 BIT ONLY ##
-def getJobAoi(jobId):
     
+def getJobAoi(jobId):
     if jobId not in shape.keys():
-        workspace = arcpy.env.workspace  # @UndefinedVariable
-        try:
-            arcpy.env.workspace = JTC_FILE_PATH
-            in_table = os.path.join(JTC_FILE_PATH, "NGCE_WMX.DBO.JTX_JOBS_AOI")
+        in_table = os.path.join(SDE_WMX_FILE_PATH, WMX_AOI_FC)
             field_names = ["SHAPE@"]
             uidIndex = None
-            where_clause = "{} = ".format(arcpy.AddFieldDelimiters(in_table, "JOB_ID"), jobId)
+        where_clause = "{} = {}".format(arcpy.AddFieldDelimiters(in_table, "JOB_ID"), jobId)
             arcpy.AddMessage(where_clause)
             aoi = getExistingRecord(in_table, field_names, uidIndex, where_clause)
             arcpy.AddMessage(aoi[0])
             shape[jobId] = aoi
         
-        finally:
-            arcpy.env.workspace = workspace
-        
-        arcpy.AddMessage("Job AOI: {}".format(shape[jobId]))
-        
-        
-#         arch = platform.architecture()[0]
-#         if arch == '64bit':
-#             arcpy.AddMessage("_______32BIT_________")
-#             shape[jobId] = RunUtil.runTool(r'\ngce\Utility32bit.py', ['getJobAoi', '{}'.format(jobId)], True)
-#             arcpy.AddMessage("_______32BIT_________")
-#         else:
-            shape[jobId] = arcpy.CopyFeatures_management(arcpy.GetJobAOI_wmx(jobId), arcpy.Geometry())[0]  # @UndefinedVariable
     arcpy.AddMessage("Job AOI: {}".format(shape[jobId]))
     return shape[jobId]
-## 32 BIT ONLY ##
+
 
 
 
