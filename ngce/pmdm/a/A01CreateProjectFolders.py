@@ -45,11 +45,19 @@ def CreateProjectFolders(parent_path=None,
 
 
 if __name__ == '__main__':
+<<<<<<< HEAD
 
      parent_path = sys.argv[1]
      project_id = sys.argv[2]
      project_path = sys.argv[3]
 
+=======
+
+    parent_path = sys.argv[1]
+    project_id = sys.argv[2]
+    project_path = sys.argv[3]
+
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
     
 #    parent_path = r"E:\NGCE\RasterDatasets"
 #    project_id = "OK_TEST_2008"

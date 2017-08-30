@@ -287,7 +287,11 @@ class Derived(object):
         self.point_count_last_path = os.path.join(self.path, point_count_dir, LAST)
         
         self.predominant_last_return_path = os.path.join(self.path, predominant_last_return_dir)
+<<<<<<< HEAD
         self.predominant_last_return_all_path = os.path.join(self.path, predominant_last_return_dir, LAST)
+=======
+        self.predominant_last_return_all_path = os.path.join(self.path, predominant_last_return_dir, ALL)
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
         self.predominant_last_return_first_path = os.path.join(self.path, predominant_last_return_dir, FIRST)
         self.predominant_last_return_last_path = os.path.join(self.path, predominant_last_return_dir, LAST)
         

@@ -26,12 +26,12 @@ def fileCounter(myPath, ext):
     fileCounter = 0
     firstFile = None
     for root, dirs, files in os.walk(myPath):  # @UnusedVariable
-        for f in files:    
+        for f in files:
             if f.upper().endswith(ext.upper()):
                 fileCounter += 1
                 if firstFile is None:
                     firstFile = f
-    
+
     return fileCounter, firstFile
 
 def cleanString(alias):
@@ -40,7 +40,7 @@ def cleanString(alias):
             alias = string.replace(str(alias), item, repls[i])
     else:
         alias = None
-    
+
     return alias
 
 def printArguments(argNameList, argList, argSource=None):
@@ -53,9 +53,9 @@ def printArguments(argNameList, argList, argSource=None):
             arcpy.AddMessage("{}. {} = '{}'".format(i, item, argList[i]))
     except:
         pass
-        
 
-    
+
+
 def getExistingRecord(in_table, field_names, uidIndex, where_clause=None):
 #     try:
 #         desc = arcpy.Describe(arcpy.env.workspace)#@UndefinedVariable
@@ -81,12 +81,12 @@ def getExistingRecord(in_table, field_names, uidIndex, where_clause=None):
                 row = r
                 strUID = r[uidIndex]
             #arcpy.AddMessage("4")
-            
+
         else:
             #arcpy.AddMessage("5")
             row = r
 ##    except:
-##        
+##
 ##        tb = sys.exc_info()[2]
 ##        tbinfo = traceback.format_tb(tb)[0]
 ##        arcpy.AddError(tbinfo)
@@ -98,7 +98,7 @@ def getExistingRecord(in_table, field_names, uidIndex, where_clause=None):
 ##        for m in arcpy.GetMessages(2):
 ##            print m
 ##        raise Exception("Failed")
-    
+
     arcpy.AddMessage("Found row {} with UID {}".format(row, strUID))
     return row, strUID
 
@@ -112,31 +112,31 @@ def updateRecord(in_table, field_names, rowValueList, where_clause=None, editSes
         arcpy.AddMessage('Updating record {}'.format(urow))
         # if more than one row, make them all the same
         cursor_u.updateRow(rowValueList)
-    
+
     stopEditingSession(edit)
     del cursor_u
     arcpy.AddMessage('Updated record {}'.format(rowValueList))
 
 def addOrUpdateRecord(in_table, field_names, uidIndex, rowValueList, where_clause=None, editSession=True):
-    row, strUid = getExistingRecord(in_table=in_table, field_names=field_names, uidIndex=uidIndex, where_clause=where_clause)    
-    
+    row, strUid = getExistingRecord(in_table=in_table, field_names=field_names, uidIndex=uidIndex, where_clause=where_clause)
+
     if row is None:
         edit = None
         if editSession:
             edit = startEditingSession()
         arcpy.AddMessage('Created record {}'.format(in_table))
         arcpy.AddMessage('Created record {}'.format(field_names))
-    
+
         cursor_i = arcpy.da.InsertCursor(in_table, field_names)  # @UndefinedVariable
         cursor_i.insertRow(rowValueList)
-        
+
         arcpy.AddMessage('Created record {}'.format(rowValueList))
         stopEditingSession(edit)
         del cursor_i
     else:
         updateRecord(in_table, field_names, rowValueList, where_clause)
-    
-    
+
+
     return strUid
 
 def createUid(strUID):
@@ -156,7 +156,11 @@ def setWMXJobDataAsEnvironmentWorkspace(jobId):
             arcpy.AddMessage("_______32BIT_________")
         else:
             JobDataWorkspace[jobId] = str(arcpy.GetJobDataWorkspace_wmx(jobId,os.path.join(os.path.dirname(os.path.abspath(__file__)),'WMXAdmin.jtc')))  # @UndefinedVariable
+<<<<<<< HEAD
     arcpy.env.workspace = JobDataWorkspace[jobId] 
+=======
+    arcpy.env.workspace = JobDataWorkspace[jobId]
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
     arcpy.AddMessage("Environment workspace: '{}'".format(arcpy.env.workspace))  # @UndefinedVariable
     try:
         desc = arcpy.Describe(JobDataWorkspace[jobId])
@@ -166,16 +170,16 @@ def setWMXJobDataAsEnvironmentWorkspace(jobId):
     except:
         pass
 ## 32 BIT ONLY ##
-    
+
 def startEditingSession():
     arcpy.AddMessage('Starting edit session...')
     edit = arcpy.da.Editor(arcpy.env.workspace)  # @UndefinedVariable
     edit.startEditing(True, True)
     edit.startOperation()
     arcpy.AddMessage('Edit session started')
-     
+
     return edit
-     
+
 def stopEditingSession(edit):
     if edit is not None:
         arcpy.AddMessage('Stopping edit session...')
@@ -266,7 +270,7 @@ def getSpatialReferenceInfo(sr):
     output.append(['spheroidName', sr.spheroidName])
 
     output = ["SPATIALREFERECE", output]
-    
+
     return output
 
 
@@ -286,7 +290,11 @@ def addAndCalcFieldGUID(dataset_path, field_name, field_value=None, field_alias=
                     field_value=field_value,
                     add_index=add_index,
                     debug=debug)
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
 def addAndCalcFieldText(dataset_path, field_name, field_length, field_value=None, field_alias="", code_block="", add_index=False, debug=False):
     addAndCalcField(dataset_path=dataset_path,
                     field_type=FieldType_TEXT,
@@ -298,7 +306,11 @@ def addAndCalcFieldText(dataset_path, field_name, field_length, field_value=None
                     code_block=code_block,
                     debug=debug
                     )
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
 def addAndCalcFieldLong(dataset_path, field_name, field_value=None, field_alias="", add_index=False, code_block="", debug=False):
     addAndCalcField(dataset_path=dataset_path,
                     field_type=FieldType_LONG,
@@ -314,7 +326,11 @@ def addAndCalcFieldDouble(dataset_path, field_name, field_value=None, field_alia
                     field_name=field_name,
                     field_alias=field_alias,
                     field_value=field_value,
+<<<<<<< HEAD
                     add_index=add_index)    
+=======
+                    add_index=add_index)
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
 
 def addAndCalcFieldFloat(dataset_path, field_name, field_value=None, field_alias="", add_index=False, code_block="", debug=False):
     addAndCalcField(dataset_path=dataset_path,
@@ -337,6 +353,7 @@ def addAndCalcFieldDate(dataset_path, field_name, field_value=None, field_alias=
                     code_block=code_block,
                     debug=debug
                     )
+<<<<<<< HEAD
     
 def addAndCalcField(dataset_path, field_type, field_name, field_alias="", field_length="", field_value=None, code_block="", add_index=False, debug=False):
     if debug: 
@@ -354,39 +371,58 @@ def addAndCalcField(dataset_path, field_type, field_name, field_alias="", field_
         arcpy.CalculateField_management(in_table=dataset_path, field=field_name, expression=field_value, expression_type="PYTHON_9.3", code_block=code_block)
         if debug: 
         addToolMessages()
+=======
+
+def addAndCalcField(dataset_path, field_type, field_name, field_alias="", field_length="", field_value=None, code_block="", add_index=False, debug=False):
+    if debug:
+        arcpy.AddMessage("Adding {} field '{}({})' and setting value to '{}'".format(field_type, field_name, field_length, field_value))
+    arcpy.AddField_management(dataset_path, field_name, field_type, field_precision="", field_scale="", field_length=field_length, field_alias=field_alias, field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
+    if debug:
+        addToolMessages()
+
+    if add_index:
+        arcpy.AddIndex_management(dataset_path, fields=field_name, index_name=field_name, unique="NON_UNIQUE", ascending="ASCENDING")
+        if debug:
+            addToolMessages()
+
+    if field_value is not None:
+        arcpy.CalculateField_management(in_table=dataset_path, field=field_name, expression=field_value, expression_type="PYTHON_9.3", code_block=code_block)
+        if debug:
+            addToolMessages()
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
 
 def addToolMessages():
     for message in arcpy.GetMessages(0).splitlines():
         arcpy.AddMessage(message)
-        
+
     for message in arcpy.GetMessages(1).splitlines():
         arcpy.AddWarning(message)
-        
+
     for message in arcpy.GetMessages(2).splitlines():
         arcpy.AddError(message)
-        
+
 def getFieldValues(in_table, field_name, where_clause=None, append_string=""):
     arcpy.AddMessage("Searching for field values from {} where {}".format(in_table, where_clause))
     values = []
-    
+
     for r in arcpy.da.SearchCursor(in_table, [field_name], where_clause=where_clause):  # @UndefinedVariable
         values.append(r[0])
-    
+
     arcpy.AddMessage("Found {} values in field {}".format(len(values), field_name))
     return values
 
 
-        
-# arcpy.env.overwriteOutput = True 
-# 
+
+# arcpy.env.overwriteOutput = True
+#
 # updateGeometries(r"C:\NRCS\Projects\DAS2\IN_AZTest11_2010\DERIVED\IN_AZTest11_2010.gdb\LAS_Boundary", r"C:\NRCS\Projects\DAS2\IN_AZTest11_2010\DERIVED\IN_AZTest11_2010.gdb\LAS_Footprints"
 #                  , r"C:\NRCS\Projects\DAS2\IN_AZTest11_2010\DERIVED\IN_AZTest11_2010.gdb\LASFileInfo",
 #                  r"C:\NRCS\Projects\DAS2\IN_AZTest11_2010\DERIVED\IN_AZTest11_2010.gdb\LASDStats",
 #                  r"C:\NRCS\Projects\DAS2\IN_AZTest11_2010\DERIVED\IN_AZTest11_2010.gdb",
 #                  r"\\erici2\C$\NRCS\Projects\DAS2\IN_AZTest11_2010\DELIVERED\LAS_CLASSIFIED\CR_NAD83UTM14N_NAVD88Meters.prj",
 #                  "IN_AZTest11_2010.lasd"
-#                  
-#                  
+#
+#
 #                  )
 
 
@@ -397,7 +433,11 @@ def getVertCSInfo(spatialReference):
     except:
         try:
             sr = arcpy.SpatialReference(spatialReference)
+<<<<<<< HEAD
     sr = spatialReference.exportToString()
+=======
+            sr = spatialReference.exportToString()
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
         except:
             try:
                 sr = arcpy.SpatialReference()
@@ -420,19 +460,19 @@ def getVertCSInfo(spatialReference):
                 pcomma.append(comma.pop())
             else:
                 pcomma.append(0)
-            
+
             count = count + 1
         elif char == ']':
             openBr.pop()
             groups.append([count, [pcomma.pop(), pos]])
             count = count - 1
         pos = pos + 1
-        
-            
+
+
     #print groups
     #print openBr
-    
-    
+
+
     levels = []
     master = []
     for level, [start, end] in groups:
@@ -442,43 +482,43 @@ def getVertCSInfo(spatialReference):
         splits = bracketInfo.split('[')
         if len(splits) == 2:
             name = splits[0]
-            value = splits[1].split(',')         
+            value = splits[1].split(',')
             master.append([name, value])
             levels.append(level)
         else:
             name = splits[0]
-            value = splits[1].split(",")[0] 
+            value = splits[1].split(",")[0]
             pvalues = []
             while len(levels) > 0 and levels[len(levels) - 1] > level:
                 levels.pop()
                 pvalues.append(master.pop())
-             
+
             newp = [name, [value, pvalues]]
-             
+
             master.append(newp)
             levels.append(level)
-              
-              
+
+
     #print master
-    
+
     vert_cs_name = None
     vert_unit_name = None
-    
+
     for cs in master:
         cstype = cs[0]
         if cstype.upper() == "VERTCS":
             vert_cs_name = cs[1][0]
             vert_unit_name = None
-           
+
             for parameter in cs[1][1]:
                 ptype = parameter[0]
                 if ptype.upper() == "UNIT":
                     vert_unit_name = parameter[1][0]
-    
+
     if vert_cs_name is not None:
-        vert_cs_name = str(vert_cs_name).strip().replace("'", "") 
+        vert_cs_name = str(vert_cs_name).strip().replace("'", "")
     if vert_unit_name is not None:
-        vert_unit_name = str(vert_unit_name).strip().replace("'", "")         
+        vert_unit_name = str(vert_unit_name).strip().replace("'", "")
     return vert_cs_name, vert_unit_name
 
 
@@ -488,20 +528,31 @@ def getString(str_value):
         result  = str(str_value).strip().upper()
         if len(result)<=0:
             result = None
+<<<<<<< HEAD
     
     return result
     
+=======
+
+    return result
+
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
 def getSRValues(spatial_ref):
     horz_cs_name = None
     horz_cs_unit_name = None
     horz_cs_factory_code = None
     vert_cs_name, vert_unit_name = None, None
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
     if spatial_ref is not None:
         horz_cs_name = getString(spatial_ref.name)
         horz_cs_unit_name = getString(spatial_ref.linearUnitName)
         horz_cs_factory_code = getString(spatial_ref.factoryCode)
         vert_cs_name, vert_unit_name = getVertCSInfo(spatial_ref)
+<<<<<<< HEAD
         
         vert_cs_name = getString(vert_cs_name)
         vert_unit_name = getString(vert_unit_name)
@@ -509,6 +560,15 @@ def getSRValues(spatial_ref):
     return horz_cs_name, horz_cs_unit_name, horz_cs_factory_code, vert_cs_name, vert_unit_name
 
     
+=======
+
+        vert_cs_name = getString(vert_cs_name)
+        vert_unit_name = getString(vert_unit_name)
+
+    return horz_cs_name, horz_cs_unit_name, horz_cs_factory_code, vert_cs_name, vert_unit_name
+
+
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
 def clearFolder(folder):
     if os.path.exists(folder):
         arcpy.AddMessage("Deleting existing output destination {}".format(folder))
@@ -516,7 +576,7 @@ def clearFolder(folder):
     if not os.path.exists(folder):
         arcpy.AddMessage("Creating output destination {}".format(folder))
         os.mkdir(folder)
-        
+
 def getDomainValueList(workspace, domainName):
     domains = arcpy.da.ListDomains(workspace)  # @UndefinedVariable
     values = []
@@ -525,7 +585,7 @@ def getDomainValueList(workspace, domainName):
             coded_values = domain.codedValues
             for val, desc in coded_values.iteritems():  # @UnusedVariable
                 values.append(val.strip().upper())
-    
+
     return values
 
 def setArcpyEnv(is_overwrite_output):
@@ -541,7 +601,7 @@ def AddValueToDomain(workspace, domain, code, description):
     arcpy.env.workspace = workspace
     if not arcpy.Exists(domain):
         arcpy.CreateDomain_management(in_workspace=workspace, domain_name=domain, domain_description=domain, field_type="TEXT", domain_type="CODED", split_policy="DEFAULT", merge_policy="DEFAULT")
-    
+
     arcpy.AddCodedValueToDomain_management(workspace, domain, code, description)
 
 def doTime(a, msg):
@@ -562,7 +622,11 @@ def deleteFileIfExists(f_path, useArcpy=False):
                 os.remove(f_path)
     except:
         pass
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
 def grouper(iterable, n, fillvalue=None):
     args = [iter(iterable)] * n
     return izip_longest(*args, fillvalue=fillvalue)
@@ -601,7 +665,11 @@ def alterFields(alter_field_infos, table):
                 alterField(table, alter_field_info[0], alter_field_info[1], alter_field_info[2])
             except:
                 pass
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
     a = doTime(a, "\tAltered fields")
     return a
 
@@ -611,11 +679,19 @@ def isMatchingStringValue(val1, val2):
         val1 = str(val1).upper().strip()
     if val2 is not None:
         val2 = str(val2).upper().strip()
+<<<<<<< HEAD
     
     return (val1 == val2 and val1 is not None)
     
     
     
+=======
+
+    return (val1 == val2 and val1 is not None)
+
+
+
+>>>>>>> ebc27ffa3fb85b65747f195b7d2d84fdf5c9d66e
 
 
 
