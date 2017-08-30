@@ -13,8 +13,8 @@ from ngce.cmdr import CMDRConfig
 from ngce.cmdr.CMDRConfig import fields_Contract, uid_index_Contract, \
     fcName_Contract, field_Contract_ProjID, \
     field_Contract_SHAPE, field_Contract_UID, fcName_ProjectJob, \
-     field_ProjectJob_WMXJobID, uid_index_ProjectJob, \
-     fields_ProjectJob, uid_index_Deliver, fcName_QC, \
+    field_ProjectJob_WMXJobID, uid_index_ProjectJob, \
+    fields_ProjectJob, uid_index_Deliver, fcName_QC, \
     field_QC_ProjID, fields_QC, uid_index_QC, fcName_Publish, fields_Deliver, \
     field_ProjectJob_ArchDir, field_ProjectJob_ProjDir, field_ProjectJob_ProjID, \
     field_ProjectJob_Alias, field_ProjectJob_AliasClean, \
