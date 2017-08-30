@@ -25,18 +25,16 @@
 # *
 #-------------------------------------------------------------------------------
 import arcpy
-import arcpyproduction
 import os
 import shutil
 
+import arcpyproduction
 from ngce import Utility
 from ngce.cmdr import CMDR
 from ngce.contour import ContourConfig
 from ngce.folders import ProjectFolders
 
 
-# import arcpyproduction
-# from arcpy.sa import *
 def PrepareContoursForPublishing(jobID):
     mxdTemplate = ContourConfig.MXD_TEMPLATE
     Utility.printArguments(["WMX Job ID", "ContourMXDTemplate"],

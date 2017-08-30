@@ -71,6 +71,8 @@ VERT_WKID = 'VertWKID'
 DTM = "DTM"
 DSM = "DSM"
 DHM = "DHM"
+DLM = "DLM"
+INT = "INTENSITY"
 DATE = "Date"
 
 EXISTS = 'Exists'

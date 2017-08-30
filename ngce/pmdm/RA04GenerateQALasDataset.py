@@ -14,4 +14,4 @@ args = [jobID]
 
 #A04GenerateQALasDataset.GenerateQALasDataset(jobID)
 
-RunUtil.runTool(PATH, args)
+RunUtil.runTool(PATH, args, log_path=RunUtil.getLogFolderFromWMXJobID(jobID))

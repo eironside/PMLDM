@@ -18,4 +18,4 @@ args = [jobID, serverConnectionFile, serverFunctionPath]
 
 #A07PublishProjectMosaicDataset.PublishMosaicDataset(jobID, serverConnectionFile, serverFunctionPath)
 
-RunUtil.runTool(PATH, args)
+RunUtil.runTool(PATH, args, log_path=RunUtil.getLogFolderFromWMXJobID(jobID))

@@ -15,5 +15,5 @@ project_path = arcpy.GetParameterAsText(2)
 
 args = [parent_path, project_id, project_path]
 
-RunUtil.runTool(PATH, args)
+RunUtil.runTool(PATH, args, log_path=project_path)
 

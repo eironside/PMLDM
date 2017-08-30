@@ -13,4 +13,4 @@ jobID = arcpy.GetParameterAsText(0)
 args = [jobID]
 
 #C02PrepareContoursForPublishing.PrepareContoursForPublishing(jobID)
-RunUtil.runTool(PATH, args)
+RunUtil.runTool(PATH, args, log_path=RunUtil.getLogFolderFromWMXJobID(jobID))
