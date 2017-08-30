@@ -187,13 +187,13 @@ def stopEditingSession(edit):
 ## 32 BIT ONLY ##
 def getJobAoi(jobId):
     if jobId not in shape.keys():
-        arch = platform.architecture()[0]
-        if arch == '64bit':
-            arcpy.AddMessage("_______32BIT_________")
-            shape[jobId] = RunUtil.runTool(r'"Q:\elevation\WorkflowManager\Tools\ngce\Utility32bit.py"', ['"getJobAoi"', '"{}"'.format(jobId)], True)
-            arcpy.AddMessage("_______32BIT_________")
-        else:
-            shape[jobId] = arcpy.CopyFeatures_management(arcpy.GetJobAOI_wmx(jobId), arcpy.Geometry())[0]  # @UndefinedVariable
+#        arch = platform.architecture()[0]
+#        if arch == '64bit':
+#            arcpy.AddMessage("_______32BIT_________")
+#            shape[jobId] = RunUtil.runTool(r'\ngce\Utility32bit.py', ['getJobAoi', '{}'.format(jobId)], True)
+#            arcpy.AddMessage("_______32BIT_________")
+#        else:
+        shape[jobId] = arcpy.CopyFeatures_management(arcpy.GetJobAOI_wmx(jobId), arcpy.Geometry())[0]  # @UndefinedVariable
     arcpy.AddMessage("Job AOI: {}".format(shape[jobId]))
     return shape[jobId]
 ## 32 BIT ONLY ##
