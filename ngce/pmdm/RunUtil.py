@@ -52,12 +52,18 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
     env['PATH']= path_python27
     exe = r'"{}\pythonw.exe"'.format(path_python27)
 
+    log_path = os.path.join(log_path, "Logs")
+    arcpy.AddMessage("Logs are written to: {}"+str(log_path))
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
+
     logfile = tempfile.NamedTemporaryFile(
-        prefix = script_name[:-3] + '__',
+        prefix=script_name[:-3] + '_',
         suffix = ".log",
-        dir=os.path.join(log_path, "Logs"),
+        dir=log_path,
         delete = False
     )
+    
     args = [exe,path]
     for arg in toolArgs:
         args.append(arg)

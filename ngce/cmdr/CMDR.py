@@ -5,7 +5,6 @@ Created on Dec 21, 2015
 '''
 
 import arcpy
-from datetime import datetime
 import os
 
 from ngce import Utility
