@@ -2,8 +2,11 @@ import arcpy
 import os
 import sys
 
+
+JTC_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'WMXAdmin.jtc')
+
 def setWMXJobDataAsEnvironmentWorkspace(jobId):
-    arcpy.AddMessage(str(arcpy.GetJobDataWorkspace_wmx(jobId,os.path.join(os.path.dirname(os.path.abspath(__file__)),'WMXAdmin.jtc'))))  # @UndefinedVariable
+    arcpy.AddMessage(str(arcpy.GetJobDataWorkspace_wmx(jobId, JTC_FILE_PATH)))  # @UndefinedVariable
 
 ## Doesn't work, need to export to WKT format
 ##def getJobAoi(project_jobId):

@@ -68,7 +68,36 @@ def ProjectZipArchive(strJobId):
 if __name__ == '__main__':
     
     strJobId = sys.argv[1]
-    ### Debug setting
-#     strJobId = '1642'
-
     ProjectZipArchive(strJobId)
+    
+#     ### Debug settings
+#     UID = None  # field_ProjectJob_UID
+#     wmx_job_id = 1
+#     project_Id = "OK_SugarCreek_2008"
+#     alias = "Sugar Creek"
+#     alias_clean = "SugarCreek"
+#     state = "OK"
+#     year = 2008
+#     parent_dir = r"E:\NGCE\RasterDatasets"
+#     archive_dir = r"E:\NGCE\RasterDatasets"
+#     project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
+#     project_AOI = None
+#                    
+#     ProjectJob = ProjectJob()
+#     project = [
+#                UID,  # field_ProjectJob_UID
+#                wmx_job_id,  # field_ProjectJob_WMXJobID,
+#                project_Id,  # field_ProjectJob_ProjID,
+#                alias,  # field_ProjectJob_Alias
+#                alias_clean,  # field_ProjectJob_AliasClean
+#                state ,  # field_ProjectJob_State
+#                year ,  # field_ProjectJob_Year
+#                parent_dir,  # field_ProjectJob_ParentDir
+#                archive_dir,  # field_ProjectJob_ArchDir
+#                project_dir,  # field_ProjectJob_ProjDir
+#                project_AOI  # field_ProjectJob_SHAPE
+#                ]
+#     
+#     processJob(ProjectJob, project, UID)
+    
+    
