@@ -22,6 +22,8 @@ JobDataWorkspace = {}
 shape = {}
 inMemory = "in_memory"
 
+JTC_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'WMXAdmin.jtc')
+
 def fileCounter(myPath, ext):
     fileCounter = 0
     firstFile = None
@@ -155,7 +157,8 @@ def setWMXJobDataAsEnvironmentWorkspace(jobId):
             arcpy.AddMessage("Workspace = '{}'".format(JobDataWorkspace[jobId]))
             arcpy.AddMessage("_______32BIT_________")
         else:
-            JobDataWorkspace[jobId] = str(arcpy.GetJobDataWorkspace_wmx(jobId,os.path.join(os.path.dirname(os.path.abspath(__file__)),'WMXAdmin.jtc')))  # @UndefinedVariable
+            
+            JobDataWorkspace[jobId] = str(arcpy.GetJobDataWorkspace_wmx(jobId, JTC_FILE_PATH))  # @UndefinedVariable
     arcpy.env.workspace = JobDataWorkspace[jobId]
     arcpy.AddMessage("Environment workspace: '{}'".format(arcpy.env.workspace))  # @UndefinedVariable
     try:
@@ -186,13 +189,32 @@ def stopEditingSession(edit):
 
 ## 32 BIT ONLY ##
 def getJobAoi(jobId):
+    
     if jobId not in shape.keys():
-#        arch = platform.architecture()[0]
-#        if arch == '64bit':
-#            arcpy.AddMessage("_______32BIT_________")
-#            shape[jobId] = RunUtil.runTool(r'\ngce\Utility32bit.py', ['getJobAoi', '{}'.format(jobId)], True)
-#            arcpy.AddMessage("_______32BIT_________")
-#        else:
+        workspace = arcpy.env.workspace #@UndefinedVariable
+        try:
+            arcpy.env.workspace = JTC_FILE_PATH
+            in_table = os.path.join(JTC_FILE_PATH, "NGCE_WMX.DBO.JTX_JOBS_AOI")
+            field_names = ["SHAPE@"]
+            uidIndex = None
+            where_clause = "{} = ".format(arcpy.AddFieldDelimiters(in_table, "JOB_ID"), jobId)
+            arcpy.AddMessage(where_clause)
+            aoi = getExistingRecord(in_table, field_names, uidIndex, where_clause)
+            arcpy.AddMessage(aoi[0])
+            shape[jobId] = aoi
+        
+        finally:
+            arcpy.env.workspace = workspace
+        
+        arcpy.AddMessage("Job AOI: {}".format(shape[jobId]))
+        
+        
+#         arch = platform.architecture()[0]
+#         if arch == '64bit':
+#             arcpy.AddMessage("_______32BIT_________")
+#             shape[jobId] = RunUtil.runTool(r'\ngce\Utility32bit.py', ['getJobAoi', '{}'.format(jobId)], True)
+#             arcpy.AddMessage("_______32BIT_________")
+#         else:
         shape[jobId] = arcpy.CopyFeatures_management(arcpy.GetJobAOI_wmx(jobId), arcpy.Geometry())[0]  # @UndefinedVariable
     arcpy.AddMessage("Job AOI: {}".format(shape[jobId]))
     return shape[jobId]
@@ -286,7 +308,7 @@ def addAndCalcFieldGUID(dataset_path, field_name, field_value=None, field_alias=
                     field_value=field_value,
                     add_index=add_index,
                     debug=debug)
-
+    
 def addAndCalcFieldText(dataset_path, field_name, field_length, field_value=None, field_alias="", code_block="", add_index=False, debug=False):
     addAndCalcField(dataset_path=dataset_path,
                     field_type=FieldType_TEXT,
@@ -298,7 +320,7 @@ def addAndCalcFieldText(dataset_path, field_name, field_length, field_value=None
                     code_block=code_block,
                     debug=debug
                     )
-
+    
 def addAndCalcFieldLong(dataset_path, field_name, field_value=None, field_alias="", add_index=False, code_block="", debug=False):
     addAndCalcField(dataset_path=dataset_path,
                     field_type=FieldType_LONG,
@@ -314,7 +336,7 @@ def addAndCalcFieldDouble(dataset_path, field_name, field_value=None, field_alia
                     field_name=field_name,
                     field_alias=field_alias,
                     field_value=field_value,
-                    add_index=add_index)
+                    add_index=add_index)    
 
 def addAndCalcFieldFloat(dataset_path, field_name, field_value=None, field_alias="", add_index=False, code_block="", debug=False):
     addAndCalcField(dataset_path=dataset_path,
@@ -337,10 +359,11 @@ def addAndCalcFieldDate(dataset_path, field_name, field_value=None, field_alias=
                     code_block=code_block,
                     debug=debug
                     )
-
+    
 def addAndCalcField(dataset_path, field_type, field_name, field_alias="", field_length="", field_value=None, code_block="", add_index=False, debug=False):
-    if debug:
+    if debug: 
         arcpy.AddMessage("Adding {} field '{}({})' and setting value to '{}'".format(field_type, field_name, field_length, field_value))
+
     arcpy.AddField_management(dataset_path, field_name, field_type, field_precision="", field_scale="", field_length=field_length, field_alias=field_alias, field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
     if debug:
         addToolMessages()
@@ -488,27 +511,27 @@ def getString(str_value):
         result  = str(str_value).strip().upper()
         if len(result)<=0:
             result = None
-
+    
     return result
-
+    
 def getSRValues(spatial_ref):
     horz_cs_name = None
     horz_cs_unit_name = None
     horz_cs_factory_code = None
     vert_cs_name, vert_unit_name = None, None
-
+    
     if spatial_ref is not None:
         horz_cs_name = getString(spatial_ref.name)
         horz_cs_unit_name = getString(spatial_ref.linearUnitName)
         horz_cs_factory_code = getString(spatial_ref.factoryCode)
         vert_cs_name, vert_unit_name = getVertCSInfo(spatial_ref)
-
+        
         vert_cs_name = getString(vert_cs_name)
         vert_unit_name = getString(vert_unit_name)
-
+    
     return horz_cs_name, horz_cs_unit_name, horz_cs_factory_code, vert_cs_name, vert_unit_name
 
-
+    
 def clearFolder(folder):
     if os.path.exists(folder):
         arcpy.AddMessage("Deleting existing output destination {}".format(folder))
@@ -562,7 +585,7 @@ def deleteFileIfExists(f_path, useArcpy=False):
                 os.remove(f_path)
     except:
         pass
-
+    
 def grouper(iterable, n, fillvalue=None):
     args = [iter(iterable)] * n
     return izip_longest(*args, fillvalue=fillvalue)
@@ -601,7 +624,7 @@ def alterFields(alter_field_infos, table):
                 alterField(table, alter_field_info[0], alter_field_info[1], alter_field_info[2])
             except:
                 pass
-
+        
     a = doTime(a, "\tAltered fields")
     return a
 
@@ -611,11 +634,11 @@ def isMatchingStringValue(val1, val2):
         val1 = str(val1).upper().strip()
     if val2 is not None:
         val2 = str(val2).upper().strip()
-
+    
     return (val1 == val2 and val1 is not None)
-
-
-
+    
+    
+    
 
 
 

@@ -13,6 +13,8 @@ import tempfile
 import time
 
 
+# PATH_PYTHON27_32 = r"C:\Program Files (x86)\PYTHON27\ArcGIS10.5"
+PATH_PYTHON27_32 = r"C:\Python27\ArcGIS10.5"
 
 PATH_PYTHON27_32 = r"C:\Program Files (x86)\PYTHON27\ArcGIS10.5"
 #PATH_PYTHON27_32= r"C:\Python27\ArcGIS10.5"
@@ -53,7 +55,7 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
     exe = r'"{}\pythonw.exe"'.format(path_python27)
 
     log_path = os.path.join(log_path, "Logs")
-    arcpy.AddMessage(log_path)
+    arcpy.AddMessage("Logs are written to: {}"+str(log_path))
     if not os.path.exists(log_path):
         os.makedirs(log_path)
 
@@ -63,6 +65,7 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
         dir=log_path,
         delete = False
     )
+    
     args = [exe,path]
     for arg in toolArgs:
         args.append(arg)

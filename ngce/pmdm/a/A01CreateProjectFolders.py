@@ -50,8 +50,8 @@ if __name__ == '__main__':
     project_id = sys.argv[2]
     project_path = sys.argv[3]
 
-    
-#    parent_path = r"E:\NGCE\RasterDatasets"
-#    project_id = "OK_TEST_2008"
-#    project_path = None
+
+#     parent_path = r"E:\NGCE\RasterDatasets"
+#     project_id = "OK_TEST_2008"
+#     project_path = None
     CreateProjectFolders(parent_path, project_id, project_path)

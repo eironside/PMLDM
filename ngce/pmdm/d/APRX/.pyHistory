@@ -1,0 +1,33 @@
+﻿a = "fishnet"
+desc = arcpy.Describe(a)
+desc.extent
+aprx = arcpy.mp.ArcGISProject("CURRENT")
+aprx
+m = aprx.listMaps("*")[0]
+m
+m.listLayers()
+m.panToExtent (desc.extent)
+aprx.listLayouts()
+aprx
+clear
+aprx = arcpy.mp.ArcGISProject('CURRENt')
+aprx
+lyt = aprx.listLayouts()[0]
+lyt
+aprx = arcpy.mp.ArcGISProject("CURRENT")
+aprx
+lyt = aprx.listLayouts()[0]
+lyt
+lyt.listElements()
+mf = lyt.listElements()[0]
+mf
+mf.panToExtent(arcpy.Describe('fishnet').extent)
+desc = arcpy.Describe('fishnet')
+desc.extent
+mf.panToExtent(desc.extent)
+mf.getLayerExtent(fishnet)
+mf.getLayerExtent('fishnet')
+mf.camera.setExtent(desc.extent)
+with arcpy.da.SearchCursor('fishnet', ['FID', 'SHAPE@']) as cursor:     for row in cursor:         ext = row[1].extent         box = [ext.XMin, ext.YMin, ext.XMax, ext.YMax]
+with arcpy.da.SearchCursor('fishnet', ['FID', 'SHAPE@']) as cursor:     for row in cursor:         ext = row[1].extent         box = [ext.XMin, ext.YMin, ext.XMax, ext.YMax]         mf.camera.setExtent(box)
+with arcpy.da.SearchCursor('fishnet', ['FID', 'SHAPE@']) as cursor:     for row in cursor:         ext = row[1].extent         mf.camera.setExtent(ext)

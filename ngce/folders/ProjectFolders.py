@@ -3,7 +3,6 @@ Created on Dec 21, 2015
 
 @author: eric5946
 '''
-import arcpy
 import os
 import shutil
 
@@ -445,21 +444,6 @@ class Derived(object):
                 warnings.append("Directory already exists '{}'".format(item))
         
         return messages, errors, warnings
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 class Published(object):
     '''
