@@ -1,5 +1,6 @@
 import arcpy
 
+from ngce.cmdr.JobUtil import getLogFolderFromWMXJobID
 from ngce.pmdm import RunUtil
 
 
@@ -9,4 +10,4 @@ PATH = r'ngce\pmdm\d\D04.py'
 jobID = arcpy.GetParameterAsText(0)
 # jobID = '808'
 
-RunUtil.runTool(PATH, [jobID], log_path=RunUtil.getLogFolderFromWMXJobID(jobID))
+RunUtil.runTool(PATH, [jobID], log_path=getLogFolderFromWMXJobID(jobID))

@@ -4,15 +4,18 @@ Created on Feb 12, 2016
 @author: eric5946
 '''
 import arcpy
+
+from ngce.cmdr.JobUtil import getLogFolderFromWMXJobID
 from ngce.pmdm import RunUtil
 
-#from ngce.pmdm.c import C03CreateContourCache
+
+# from ngce.pmdm.c import C03CreateContourCache
 PATH = r'ngce\pmdm\c\C03CreateContourCache.py'
 
 
 jobID = arcpy.GetParameterAsText(0)
 serverConnectionFile = arcpy.GetParameterAsText(1)
-args = [jobID,serverConnectionFile]
+args = [jobID, serverConnectionFile]
 
-#C03CreateContourCache.CreateContourCache(jobID, serverConnectionFile)
-RunUtil.runTool(PATH, args, log_path=RunUtil.getLogFolderFromWMXJobID(jobID))
+# C03CreateContourCache.CreateContourCache(jobID, serverConnectionFile)
+RunUtil.runTool(PATH, args, log_path=getLogFolderFromWMXJobID(jobID))

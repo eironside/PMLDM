@@ -60,7 +60,7 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
         os.makedirs(log_path)
 
     logfile = tempfile.NamedTemporaryFile(
-        prefix = script_name[:-3] + '_',
+        prefix=script_name[:-3] + '_',
         suffix = ".log",
         dir=log_path,
         delete = False
