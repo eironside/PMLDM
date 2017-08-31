@@ -121,28 +121,9 @@ def createUid(strUID):
 
 
 def setWMXJobDataAsEnvironmentWorkspace(jobId):
-#     if jobId not in JobDataWorkspace.keys():
-#         arch = platform.architecture()[0]
-#         if arch == '64bit':
-#             arcpy.AddMessage("_______32BIT_________")
-#             JobDataWorkspace[jobId] = RunUtil.runTool(r'ngce\Utility32bit.py', ['setWMXJobDataAsEnvironmentWorkspace', '{}'.format(jobId)], True)
-#             JobDataWorkspace[jobId] = str(JobDataWorkspace[jobId]).rstrip('\n').rstrip('\r').rstrip('\n')
-#             arcpy.AddMessage("Workspace = '{}'".format(JobDataWorkspace[jobId]))
-#             arcpy.AddMessage("_______32BIT_________")
-#         else:
-#             
-#             JobDataWorkspace[jobId] = str(arcpy.GetJobDataWorkspace_wmx(jobId, JTC_FILE_PATH))  # @UndefinedVariable
-            
+    ### Swapped out WMX request for direct .sde file connection
     arcpy.env.workspace = SDE_CMDR_FILE_PATH  # JobDataWorkspace[jobId] 
     arcpy.AddMessage("Environment workspace: '{}'".format(SDE_CMDR_FILE_PATH))
-#     try:
-#         desc = arcpy.Describe(JobDataWorkspace[jobId])
-#         cp = desc.connectionProperties
-#         arcpy.AddMessage('Environment workspace: workspaceType={}'.format(desc.workspaceType))
-#         arcpy.AddMessage('Environment workspace: instance={} database={} version={}'.format(cp.instance, cp.database , cp.version))
-#     except:
-#         pass
-
     
 def startEditingSession():
     arcpy.AddMessage('Starting edit session...')
@@ -168,12 +149,12 @@ def getJobAoi(jobId):
         field_names = ["SHAPE@"]
         uidIndex = None
         where_clause = "{} = {}".format(arcpy.AddFieldDelimiters(in_table, "JOB_ID"), jobId)
-        arcpy.AddMessage(where_clause)
-        aoi = getExistingRecord(in_table, field_names, uidIndex, where_clause)
-        arcpy.AddMessage(aoi[0])
-        shape[jobId] = aoi[0]
+        #arcpy.AddMessage(where_clause)
+        aoi = getExistingRecord(in_table, field_names, uidIndex, where_clause)[0]
+        #arcpy.AddMessage(aoi[0])
+        shape[jobId] = arcpy.Geometry(aoi[0])
         
-    arcpy.AddMessage("Job AOI: {}".format(shape[jobId]))
+    arcpy.AddMessage("Job {} AOI: {}".format(jobId, shape[jobId]))
     return shape[jobId]
 
 
