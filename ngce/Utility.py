@@ -165,13 +165,13 @@ def stopEditingSession(edit):
 def getJobAoi(jobId):
     if jobId not in shape.keys():
         in_table = os.path.join(SDE_WMX_FILE_PATH, WMX_AOI_FC)
-            field_names = ["SHAPE@"]
-            uidIndex = None
+        field_names = ["SHAPE@"]
+        uidIndex = None
         where_clause = "{} = {}".format(arcpy.AddFieldDelimiters(in_table, "JOB_ID"), jobId)
-            arcpy.AddMessage(where_clause)
-            aoi = getExistingRecord(in_table, field_names, uidIndex, where_clause)
-            arcpy.AddMessage(aoi[0])
-            shape[jobId] = aoi
+        arcpy.AddMessage(where_clause)
+        aoi = getExistingRecord(in_table, field_names, uidIndex, where_clause)
+        arcpy.AddMessage(aoi[0])
+        shape[jobId] = aoi[0]
         
     arcpy.AddMessage("Job AOI: {}".format(shape[jobId]))
     return shape[jobId]
