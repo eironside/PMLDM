@@ -109,20 +109,14 @@ def clipRastersToBoundary(start_dir, boundary_path):
 
 
 def createQARasterMosaicDataset(md_name, gdb_path, spatial_reference, input_folder, mxd, footprint_path=None, lasd_boundary_path=None):
+    Utility.printArguments(["md_name", "gdb_path", "spatial_reference", "input_folder", "mxd", "footprint_path", "lasd_boundary_path"],
+                           [md_name, gdb_path, spatial_reference, input_folder, mxd, footprint_path, lasd_boundary_path], "A04_C CreateQARasterMosaicDatasets")
+    
     md_path = os.path.join(gdb_path, md_name)
     try:
         a = datetime.datetime.now()
         
         if arcpy.Exists(md_path):
-#             arcpy.RemoveRastersFromMosaicDataset_management(in_mosaic_dataset=md_path,
-#                                                             where_clause="",
-#                                                             update_boundary="NO_BOUNDARY",
-#                                                             mark_overviews_items="NO_MARK_OVERVIEW_ITEMS",
-#                                                             delete_overview_images="DELETE_OVERVIEW_IMAGES",
-#                                                             delete_item_cache="DELETE_ITEM_CACHE",
-#                                                             remove_items="REMOVE_MOSAICDATASET_ITEMS",
-#                                                             update_cellsize_ranges="NO_CELL_SIZES")
-#             a = doTime(a, "\tRemoved rasters from existing MD {}".format(md_name))
             arcpy.AddMessage("\tMD Exists: {}".format(md_path))
         else:
             # Create a MD in same SR as LAS Dataset
@@ -557,6 +551,7 @@ def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_fold
     
     stats_methods = STATS_METHODS
     for method in stats_methods:
+        arcpy.AddMessage("Creating {} MDS".format(method))
         for dataset_name in DATASET_NAMES:
             name = dataset_name
                             
@@ -571,6 +566,7 @@ def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_fold
             
             input_folder = os.path.join(target_folder, method, name)
             
+            arcpy.AddMessage("Creating {} MD from {}".format(md_name, input_folder))
             try:
                 if simple_footprint_path is None:
                     simple_footprint_path = "{}_Simple".format(footprint_path)

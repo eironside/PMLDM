@@ -554,7 +554,9 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
     
             mxd = createMXD(las_qainfo, target_path, ProjectID)
             
+            
             if createQARasters:
+                arcpy.AddMessage("Creating QA raster mosaics")
                 mosaics = A04_C_ConsolidateLASInfo.createQARasterMosaics(las_qainfo.isClassified, las_qainfo.filegdb_path, las_qainfo.lasd_spatial_ref, target_path, mxd, las_footprint, lasd_boundary)
                 if mxd is not None:
                     a = datetime.now()
@@ -587,8 +589,8 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
 
 
 def GenerateQALasDataset(strJobId, createQARasters=False, createMissingRasters=False, overrideBorderPath=None):
-    Utility.printArguments(["WMXJobID"],
-                           [strJobId], "A04 GenerateQALasDataset")
+    Utility.printArguments(["WMXJobID", "createQARasters", "createMissingRasters", "overrideBorderPath"],
+                           [strJobId, createQARasters, createMissingRasters, overrideBorderPath], "A04 GenerateQALasDataset")
     aa = datetime.now()
     arcpy.AddMessage("Checking out licenses")
     arcpy.CheckOutExtension("3D")
@@ -616,11 +618,11 @@ if __name__ == '__main__':
     overrideBorderPath = None
 
     if len(sys.argv) > 2:
-        createQARasters = sys.argv[2]
+        createQARasters = (str(sys.argv[2]) == 'True')
     if len(sys.argv) > 3:
-        createMissingRasters = sys.argv[3]
+        createMissingRasters = (str(sys.argv[3]) == 'True')
     if len(sys.argv) > 4:
-        overrideBorderPath = sys.argv[4]
+        overrideBorderPath = str(sys.argv[4])
 
     GenerateQALasDataset(projId, createQARasters, createMissingRasters, overrideBorderPath)
     
