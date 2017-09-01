@@ -3,6 +3,7 @@
 import arcpy
 import datetime
 import os
+import sys
 import time
 
 from ngce import Utility
@@ -32,19 +33,19 @@ def ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceNam
     Utility.setWMXJobDataAsEnvironmentWorkspace(jobID)
     
     ProjectJob = CMDR.ProjectJob()
-    project, ProjectUID = ProjectJob.getProject(jobID)
+    project, ProjectUID = ProjectJob.getProject(jobID)  # @UnusedVariable
     
     if project is not None:
         projectID = ProjectJob.getProjectID(project)
         
         ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
-        ContourFolder = ProjectFolder.derived.contour_path
+#         ContourFolder = ProjectFolder.derived.contour_path
         PublishFolder = ProjectFolder.published.path
         contourMerged_Name = (ContourConfig.MERGED_FGDB_NAME).format(projectID)
         contourMerged_file_gdb_path = os.path.join(PublishFolder, contourMerged_Name)
-        contourMxd_Name = ContourConfig.CONTOUR_MXD_NAME 
-        contourMxd_path = os.path.join(PublishFolder, contourMxd_Name)
-        ContourFC = os.path.join(contourMerged_file_gdb_path, ContourConfig.CONTOUR_FC_WEBMERC)
+#         contourMxd_Name = ContourConfig.CONTOUR_MXD_NAME 
+#         contourMxd_path = os.path.join(PublishFolder, contourMxd_Name)
+#         ContourFC = os.path.join(contourMerged_file_gdb_path, ContourConfig.CONTOUR_FC_WEBMERC)
         ContourBoundFC = os.path.join(contourMerged_file_gdb_path, ContourConfig.CONTOUR_BOUND_FC_WEBMERC)
         projectServiceName = "{}_{}".format(projectID, ContourConfig.CONTOUR_2FT_SERVICE_NAME)  # arcpy.GetParameterAsText(3)
         projectFolder = ProjectJob.getState(project)  # arcpy.GetParameterAsText(4)
@@ -56,7 +57,7 @@ def ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceNam
         areaOfInterest = ContourBoundFC  # arcpy.GetParameterAsText(1)
         serverConnectionFilePath = serverConnectionFilePath  # arcpy.GetParameterAsText(2)
         
-        masterService = os.path.join(serverConnectionFilePath,   "{}_{}.MapServer".format(masterServiceName, ContourConfig.CONTOUR_2FT_SERVICE_NAME))
+        masterService = os.path.join(serverConnectionFilePath, "{}_{}.MapServer".format(masterServiceName, ContourConfig.CONTOUR_2FT_SERVICE_NAME))
         if serverConnectionFilePath.endswith(".ags"):
             masterService = os.path.join(serverConnectionFilePath[:-4], "{}_{}.MapServer".format(masterServiceName, ContourConfig.CONTOUR_2FT_SERVICE_NAME))
         arcpy.AddMessage("Location of master service is: {0}".format(masterService))
@@ -119,7 +120,7 @@ if __name__ == '__main__':
     masterServiceName = sys.argv[3]
     
     # jobID = 4801
-    #serverConnectionFile = "C:\\Users\\eric5946\\AppData\\Roaming\\ESRI\\Desktop10.3\\ArcCatalog\\arcgis on NGCEDEV_6080 (publisher).ags"
-    #masterServiceName = "MASTER\ELEVATION_1M"   
+    # serverConnectionFile = "C:\\Users\\eric5946\\AppData\\Roaming\\ESRI\\Desktop10.3\\ArcCatalog\\arcgis on NGCEDEV_6080 (publisher).ags"
+    # masterServiceName = "MASTER\ELEVATION_1M"   
 
     ImportContourCacheToMaster(jobID, serverConnectionFile, masterServiceName)

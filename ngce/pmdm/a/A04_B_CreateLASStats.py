@@ -16,6 +16,7 @@ from ngce.Utility import doTime, deleteFileIfExists, setArcpyEnv, getVertCSInfo
 from ngce.folders.FoldersConfig import ELEVATION, FIRST, LAST, lasClassified_dir, \
     lasUnclassified_dir, lasd_dir, ALAST, INT, ALL, STATS_METHODS, DATASET_NAMES, \
     pulse_count_dir, point_count_dir
+from ngce.las import LAS
 from ngce.raster import RasterConfig, Raster
 from ngce.raster.RasterConfig import MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN, \
     YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID, FIELD_INFO, \
@@ -23,7 +24,7 @@ from ngce.raster.RasterConfig import MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN
     RANGE, FIRST_RETURNS, SECOND_RETURNS, THIRD_RETURNS, FOURTH_RETURNS, \
     SINGLE_RETURNS, FIRST_OF_MANY_RETURNS, LAST_OF_MANY_RETURNS, ALL_RETURNS, \
     STAT_LAS_FOLDER, SAMPLE_TYPE
-from ngce.las import LAS
+
 
 RasterConfig.NODATA_DEFAULT
 
@@ -548,7 +549,7 @@ def addInfoFileFieldsToBound(vector_bound_path, info_file_path):
                     field_type = field_post[2]
                     field_length = field_post[3]
                     field_value = pt_spc
-                #arcpy.AddMessage("\t\tAdding field: name'{}' alias'{}' type'{}' len'{}' value'{}'".format(field_shpname, field_alias, field_type, field_length, field_value))
+                # arcpy.AddMessage("\t\tAdding field: name'{}' alias'{}' type'{}' len'{}' value'{}'".format(field_shpname, field_alias, field_type, field_length, field_value))
                 arcpy.AddField_management(in_table=vector_bound_path, field_name=field_shpname, field_alias=field_alias, field_type=field_type, field_length=field_length, field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
                 if field_value is not None:
                     arcpy.CalculateField_management(in_table=vector_bound_path, field=field_shpname, expression=field_value, expression_type="PYTHON_9.3")
@@ -639,7 +640,7 @@ def addStatFileFieldsToBound(vector_bound_path, stat_file_path):
                             field_length = field_post[3]
                             field_value = field_props[field_post[0]] 
                         
-                            #arcpy.AddMessage("\t\tAdding field: name'{}' alias'{}' type'{}' len'{}' value'{}'".format(field_shpname, field_alias, field_type, field_length, field_value))
+                            # arcpy.AddMessage("\t\tAdding field: name'{}' alias'{}' type'{}' len'{}' value'{}'".format(field_shpname, field_alias, field_type, field_length, field_value))
                             arcpy.AddField_management(in_table=vector_bound_path, field_name=field_shpname, field_alias=field_alias, field_type=field_type, field_length=field_length, field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
                             if field_value is not None:
                                 arcpy.CalculateField_management(in_table=vector_bound_path, field=field_shpname, expression=field_value, expression_type="PYTHON_9.3")
@@ -659,7 +660,7 @@ def addStatFileFieldsToBound(vector_bound_path, stat_file_path):
                 field_length = field_post[3]
                 field_value = field_props[field_post[0]]
                 
-                #arcpy.AddMessage("\t\tAdding field: name'{}' alias'{}' type'{}' len'{}' value'{}'".format(field_shpname, field_alias, field_type, field_length, field_value))
+                # arcpy.AddMessage("\t\tAdding field: name'{}' alias'{}' type'{}' len'{}' value'{}'".format(field_shpname, field_alias, field_type, field_length, field_value))
                 arcpy.AddField_management(in_table=vector_bound_path, field_name=field_shpname, field_alias=field_alias, field_type=field_type, field_length=field_length, field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
                 if field_value is not None:
                     arcpy.CalculateField_management(in_table=vector_bound_path, field=field_shpname, expression=field_value, expression_type="PYTHON_9.3")
@@ -684,7 +685,7 @@ def addKeyFieldValues(vector_bound_path, stat_props):
                 if str(field_value).endswith('\\'):
                     field_value = str(field_value)[0:-1]
                 field_value = r'"{}"'.format(field_value)
-            #arcpy.AddMessage("\t\tAdding field: name'{}' alias'{}' type'{}' len'{}' value'{}'".format(field_shpname, field_alias, field_type, field_length, field_value))
+            # arcpy.AddMessage("\t\tAdding field: name'{}' alias'{}' type'{}' len'{}' value'{}'".format(field_shpname, field_alias, field_type, field_length, field_value))
             arcpy.AddField_management(in_table=vector_bound_path, field_name=field_shpname, field_alias=field_alias, field_type=field_type, field_length=field_length, field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
             if field_value is not None:
                 arcpy.CalculateField_management(in_table=vector_bound_path, field=field_shpname, expression=field_value, expression_type="PYTHON_9.3")
@@ -1011,7 +1012,7 @@ def getCellSize(spatial_reference, cell_size, createMissingRasters=False):
             result = cell_size
     return result
 
-def processFile(f_path, target_path, spatial_reference, isClassified, createQARasters=False, createMissingRasters=False, overrideBorderPath= None):
+def processFile(f_path, target_path, spatial_reference, isClassified, createQARasters=False, createMissingRasters=False, overrideBorderPath=None):
     
     aa = datetime.now()
 
@@ -1307,7 +1308,7 @@ if __name__ == '__main__':
     if len(sys.argv) >= 8:
         overrideBorderPath = sys.argv[7]    
     
-    arcpy.AddMessage("\n\tf_paths='{}',\n\ttarget_path='{}',\n\tspatial_reference='{}',\n\tisClassified='{}',\n\tcreateQARasters='{}',\n\toverrideBorderPath='{}'".format(f_paths, target_path, spatial_reference, isClassified, createQARasters,overrideBorderPath))
+    arcpy.AddMessage("\n\tf_paths='{}',\n\ttarget_path='{}',\n\tspatial_reference='{}',\n\tisClassified='{}',\n\tcreateQARasters='{}',\n\toverrideBorderPath='{}'".format(f_paths, target_path, spatial_reference, isClassified, createQARasters, overrideBorderPath))
     
     f_paths = str(f_paths).split(",")
      

@@ -43,9 +43,10 @@ Created on Dec 11, 2015
 import arcpy
 from datetime import datetime
 import os
+import sys
 
 from ngce import Utility
-from ngce.cmdr import CMDR, CMDRConfig
+from ngce.cmdr import CMDRConfig
 from ngce.cmdr.CMDRConfig import DSM, DTM, DHM, INT
 from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders
@@ -332,9 +333,9 @@ def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, 
     # If the file gdb doesn't exist, then create it
     if os.path.exists(filegdb_path):
         A05_C_ConsolidateRasterInfo.deleteFileIfExists(filegdb_path, True)
-        arcpy.CreateFileGDB_management(publish_path, filegdb_name)
-        Utility.addToolMessages()
-            
+    arcpy.CreateFileGDB_management(publish_path, filegdb_name)
+    Utility.addToolMessages()
+    
     # Create the Mosaic Dataset
     arcpy.CreateMosaicDataset_management(filegdb_path, md_name, coordinate_system=SpatRefMD, num_bands="1", pixel_type="32_BIT_FLOAT", product_definition="NONE", product_band_definitions="#")
     Utility.addToolMessages()
@@ -426,10 +427,10 @@ def updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, md_spatial_r
             rows.updateRow(row)
             
     
-            del row
-            del rows
-                                
-        
+    del row
+    del rows
+
+
 def importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path):
     if footprint_path is not None:
         arcpy.ImportMosaicDatasetGeometry_management(md_path, target_featureclass_type="FOOTPRINT", target_join_field="Name", input_featureclass=footprint_path, input_join_field="name")
@@ -437,8 +438,8 @@ def importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path):
     if lasd_boundary_path is not None:
         arcpy.ImportMosaicDatasetGeometry_management(md_path, target_featureclass_type="BOUNDARY", target_join_field="OBJECTID", input_featureclass=lasd_boundary_path, input_join_field="OBJECTID")
         Utility.addToolMessages()
-            
-                                    
+
+
 def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path):
     full_calc = False
     minResult = arcpy.GetRasterProperties_management(md_path, property_type="MINIMUM", band_index="Band_1")
@@ -599,21 +600,21 @@ def processJob(ProjectJob, project, ProjectUID, dateDeliver, dateStart, dateEnd)
                 
                 count_overviews, count_total = generateOverviews(target_path, md_name, md_path, count_rasters, SpatRefMD, md_cellsize)
                                 
-                count_las=0
+                count_las = 0
                 if imageDir == DTM:
                     count_las, count_total = addLasFilesToMosaicDataset(lasd_path, las_qainfo.las_directory, las_v_name, las_v_unit, isClassified, md_path, count_total)
-                    
-                    importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path)
-                    
-                    updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, SpatRefMD)
-                                        
-                    calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path)
-            
+                
+                importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path)
+                
+                updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, SpatRefMD)
+                                    
+                calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path)
+                
                 # Analyze the Mosaic Dataset in preparation for publishing it
                 arcpy.AnalyzeMosaicDataset_management(md_path, where_clause="#", checker_keywords="FOOTPRINT;FUNCTION;RASTER;PATHS;SOURCE_VALIDITY;STALE;PYRAMIDS;STATISTICS;PERFORMANCE;INFORMATION")    
                 Utility.addToolMessages()
                 arcpy.AddMessage("To view detailed results, Add the MD to the map, rt-click --> Data --> View Analysis Results")
-            
+                
                 
                 arcpy.AddMessage("Mosaic dataset has {} rasters {} overviews and {} las files.".format(count_rasters, count_overviews, count_las))
                 doTime(a, "completed building mosaic dataset {}".format(md_path))
@@ -677,7 +678,7 @@ def CreateProjectMDs(strJobId, dateDeliver=None, dateStart=None, dateEnd=None):
     arcpy.CheckOutExtension("Spatial")
      
     ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
-	
+        
     processJob(ProjectJob, project, strUID, dateDeliver, dateStart, dateEnd)
     
     arcpy.CheckInExtension("3D")
@@ -687,19 +688,19 @@ def CreateProjectMDs(strJobId, dateDeliver=None, dateStart=None, dateEnd=None):
 
 if __name__ == '__main__':
           
-	dateStart, dateEnd = None, None
-	strJobId = sys.argv[1]
-	dateDeliver= sys.argv[2]
+    dateStart, dateEnd = None, None
+    strJobId = sys.argv[1]
+    dateDeliver = sys.argv[2]
 
-	if len(sys.argv)>=4:
-		dateStart= sys.argv[3]
-	if len(sys.argv)>=5:
-		dateEnd = sys.argv[4]     
-	CreateProjectMDs(strJobId, dateDeliver, dateStart, dateEnd)
+    if len(sys.argv) >= 4:
+        dateStart = sys.argv[3]
+    if len(sys.argv) >= 5:
+        dateEnd = sys.argv[4]     
+    CreateProjectMDs(strJobId, dateDeliver, dateStart, dateEnd)
 
 
 
-#	dateDeliver = "04/09/1971"
+# 	dateDeliver = "04/09/1971"
 #    UID = None  # field_ProjectJob_UID
 #         wmx_job_id = 1
 #         project_Id = "OK_SugarCreek_2008"
@@ -713,18 +714,18 @@ if __name__ == '__main__':
 #         project_AOI = None
 #         ProjectJob = CMDR.ProjectJob()
 #         project = [
-               #     UID,  # field_ProjectJob_UID
-               #     wmx_job_id,  # field_ProjectJob_WMXJobID,
-               #     project_Id,  # field_ProjectJob_ProjID,
-               #     alias,  # field_ProjectJob_Alias
-               #     alias_clean,  # field_ProjectJob_AliasClean
-               #     state ,  # field_ProjectJob_State
-               #     year ,  # field_ProjectJob_Year
-               #     parent_dir,  # field_ProjectJob_ParentDir
-               #     archive_dir,  # field_ProjectJob_ArchDir
-               #     project_dir,  # field_ProjectJob_ProjDir
-               #     project_AOI  # field_ProjectJob_SHAPE
-               #     ]
+#     UID,  # field_ProjectJob_UID
+#     wmx_job_id,  # field_ProjectJob_WMXJobID,
+#     project_Id,  # field_ProjectJob_ProjID,
+#     alias,  # field_ProjectJob_Alias
+#     alias_clean,  # field_ProjectJob_AliasClean
+#     state ,  # field_ProjectJob_State
+#     year ,  # field_ProjectJob_Year
+#     parent_dir,  # field_ProjectJob_ParentDir
+#     archive_dir,  # field_ProjectJob_ArchDir
+#     project_dir,  # field_ProjectJob_ProjDir
+#     project_AOI  # field_ProjectJob_SHAPE
+#     ]
 #         
     #     processProject(ProjectJob, project, UID, dateDeliver, dateStart, dateEnd)
 #     

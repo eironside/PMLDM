@@ -28,7 +28,7 @@ import arcpy
 import os
 import shutil
 
-import arcpyproduction
+import arcpyproduction  # @UnresolvedImport
 from ngce import Utility
 from ngce.cmdr import CMDR
 from ngce.contour import ContourConfig
@@ -43,14 +43,14 @@ def PrepareContoursForPublishing(jobID):
     Utility.setWMXJobDataAsEnvironmentWorkspace(jobID)
     
     ProjectJob = CMDR.ProjectJob()
-    project, ProjectUID = ProjectJob.getProject(jobID)
+    project, ProjectUID = ProjectJob.getProject(jobID)  # @UnusedVariable
     
     
     if project is not None:
         ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
         projectID = ProjectJob.getProjectID(project)
         
-        ContourFolder = ProjectFolder.derived.contour_path
+#         ContourFolder = ProjectFolder.derived.contour_path
         PublishFolder = ProjectFolder.published.path
         contourMerged_Name = (ContourConfig.MERGED_FGDB_NAME).format(projectID)
         contourMerged_file_gdb_path = os.path.join(PublishFolder, contourMerged_Name)
@@ -108,7 +108,7 @@ def PrepareContoursForPublishing(jobID):
             targetMxd = arcpy.CreateUniqueName(newMxdName, ContourFGDBPath)
             arcpy.AddMessage("Renaming existing contour map document {} to {}".format(newMxd, targetMxd))
             os.rename(newMxd, targetMxd)
-        #else:
+        # else:
         targetMxd = newMxd
 
         # Create a copy of the input mxd template to avoid writing to the template
@@ -369,8 +369,8 @@ def PrepareContoursForPublishing(jobID):
     arcpy.AddMessage("Operation complete")
 
 if __name__ == '__main__':
-    # jobID = arcpy.GetParameterAsText(0)
-    jobID = 4801
+    jobID = arcpy.GetParameterAsText(0)
+    # jobID = 4801
 
     PrepareContoursForPublishing(jobID)
 

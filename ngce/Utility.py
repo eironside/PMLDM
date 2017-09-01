@@ -17,7 +17,7 @@ from ngce.folders.FoldersConfig import chars, repls
 from ngce.raster import RasterConfig
 
 
-arcpy.CheckOutExtension('JTX')  # Need this?
+# arcpy.CheckOutExtension('JTX')  # Need this?
 JobDataWorkspace = {}
 shape = {}
 inMemory = "in_memory"
@@ -50,7 +50,7 @@ def cleanString(alias):
 
 def printArguments(argNameList, argList, argSource=None):
     try:
-        arcpy.AddMessage("Architecture='{} {}' Python='{}'".format(arcpy.GetInstallInfo()['ProductName'],platform.architecture()[0],sys.executable))
+        arcpy.AddMessage("Architecture='{} {}' Python='{}'".format(arcpy.GetInstallInfo()['ProductName'], platform.architecture()[0], sys.executable))
 
         if argSource is not None:
             arcpy.AddMessage("{}".format(argSource))
@@ -121,7 +121,7 @@ def createUid(strUID):
 
 
 def setWMXJobDataAsEnvironmentWorkspace(jobId):
-    ### Swapped out WMX request for direct .sde file connection
+    # ## Swapped out WMX request for direct .sde file connection
     arcpy.env.workspace = SDE_CMDR_FILE_PATH  # JobDataWorkspace[jobId] 
     arcpy.AddMessage("Environment workspace: '{}'".format(SDE_CMDR_FILE_PATH))
     
@@ -149,9 +149,9 @@ def getJobAoi(jobId):
         field_names = ["SHAPE@"]
         uidIndex = None
         where_clause = "{} = {}".format(arcpy.AddFieldDelimiters(in_table, "JOB_ID"), jobId)
-        #arcpy.AddMessage(where_clause)
+        # arcpy.AddMessage(where_clause)
         aoi = getExistingRecord(in_table, field_names, uidIndex, where_clause)[0]
-        #arcpy.AddMessage(aoi[0])
+        # arcpy.AddMessage(aoi[0])
         shape[jobId] = aoi[0]
         
     arcpy.AddMessage("Job {} AOI: {}".format(jobId, shape[jobId]))
@@ -337,20 +337,6 @@ def getFieldValues(in_table, field_name, where_clause=None, append_string=""):
     return values
 
 
-
-# arcpy.env.overwriteOutput = True
-#
-# updateGeometries(r"C:\NRCS\Projects\DAS2\IN_AZTest11_2010\DERIVED\IN_AZTest11_2010.gdb\LAS_Boundary", r"C:\NRCS\Projects\DAS2\IN_AZTest11_2010\DERIVED\IN_AZTest11_2010.gdb\LAS_Footprints"
-#                  , r"C:\NRCS\Projects\DAS2\IN_AZTest11_2010\DERIVED\IN_AZTest11_2010.gdb\LASFileInfo",
-#                  r"C:\NRCS\Projects\DAS2\IN_AZTest11_2010\DERIVED\IN_AZTest11_2010.gdb\LASDStats",
-#                  r"C:\NRCS\Projects\DAS2\IN_AZTest11_2010\DERIVED\IN_AZTest11_2010.gdb",
-#                  r"\\erici2\C$\NRCS\Projects\DAS2\IN_AZTest11_2010\DELIVERED\LAS_CLASSIFIED\CR_NAD83UTM14N_NAVD88Meters.prj",
-#                  "IN_AZTest11_2010.lasd"
-#
-#
-#                  )
-
-
 def getVertCSInfo(spatialReference):
     sr = spatialReference
     try:
@@ -390,9 +376,6 @@ def getVertCSInfo(spatialReference):
         pos = pos + 1
 
 
-    #print groups
-    #print openBr
-
 
     levels = []
     master = []
@@ -420,7 +403,7 @@ def getVertCSInfo(spatialReference):
             levels.append(level)
 
 
-    #print master
+    # print master
 
     vert_cs_name = None
     vert_unit_name = None
@@ -446,8 +429,8 @@ def getVertCSInfo(spatialReference):
 def getString(str_value):
     result = None
     if str_value is not None:
-        result  = str(str_value).strip().upper()
-        if len(result)<=0:
+        result = str(str_value).strip().upper()
+        if len(result) <= 0:
             result = None
     
     return result

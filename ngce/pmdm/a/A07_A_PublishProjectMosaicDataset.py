@@ -37,7 +37,6 @@ import sys  # @UnusedImport
 
 from ngce import Utility
 from ngce.Utility import doTime
-from ngce.cmdr import CMDR
 from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders, FoldersConfig
 from ngce.raster import Raster
@@ -106,7 +105,7 @@ def updateSDServerSideFunctions(ssFunctionsLst, ssFunctionsList, sddraftPath, up
     xml_filew.close()
 
 
-def processJob(ProjectJob, project, ProjectUID,serverConnectionFile, serverFunctionPath, update=False, runCount=0):
+def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunctionPath, update=False, runCount=0):
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
     ProjectID = ProjectJob.getProjectID(project)
     ProjectState = ProjectJob.getState(project)
@@ -188,7 +187,7 @@ def processJob(ProjectJob, project, ProjectUID,serverConnectionFile, serverFunct
                     
                             # if Hillshade is found then re-order the list
                             # Don't apply hillshade to intensity
-                            if foundHillshade and md_name<> FoldersConfig.INT:
+                            if foundHillshade and md_name <> FoldersConfig.INT:
                                 ssFunctionsLst.insert(0, ssFunctionsLst.pop(i))
                                 arcpy.AddMessage("Re-ordered SS Functions so Hillshade is default")
                                 
@@ -244,7 +243,7 @@ def processJob(ProjectJob, project, ProjectUID,serverConnectionFile, serverFunct
                         except Exception as e: 
                             if runCount < 1:
 #                                 PublishMosaicDataset(jobID, serverConnectionFile, True, 1)
-                                processJob(ProjectJob, project, ProjectUID,serverConnectionFile, serverFunctionPath, update=True, runCount=1)
+                                processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunctionPath, update=True, runCount=1)
                                 break
                             else:
                                 raise e
@@ -269,18 +268,17 @@ def PublishMosaicDataset(strJobId, serverConnectionFile, serverFunctionPath, upd
     
     ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
     
-    processJob(ProjectJob, project, ProjectUID)
+    processJob(ProjectJob, project, strUID)
             
     doTime(aa, "Operation Complete: A06 Publish Mosaic Dataset")
 
   
 if __name__ == '__main__':
+    jobID = sys.argv[1]
+    serverConnectionFile = sys.argv[2]
+    serverFunctionPath = sys.argv[3] 
 
-     jobID = sys.argv[1]
-     serverConnectionFile = sys.argv[2]
-     serverFunctionPath = sys.argv[3] 
-
-     PublishMosaicDataset(jobID, serverConnectionFile, serverFunctionPath)  
+    PublishMosaicDataset(jobID, serverConnectionFile, serverFunctionPath)  
 
 #    serverConnectionFile = r"C:\Users\eric5946\AppData\Roaming\ESRI\Desktop10.5\ArcCatalog\arcgis on localhost_6080 (admin).ags"
 #    serverFunctionPath = r"C:\inetpub\wwwroot\ngce\raster\ServerSide_Functions"

@@ -4,17 +4,17 @@ from datetime import datetime
 from functools import partial
 from multiprocessing import Pool, cpu_count
 import os
+import sys
 import time
 
 import arcpy.cartography as ca
 from ngce import Utility
-from ngce.cmdr.CMDR import ProjectJob
 from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, WEB_AUX_SPHERE, \
     CONTOUR_INTERVAL, CONTOUR_UNIT, CONTOUR_SMOOTH_UNIT, \
     DISTANCE_TO_CLIP_MOSAIC_DATASET, DISTANCE_TO_CLIP_CONTOURS, SKIP_FACTOR
 from ngce.folders import ProjectFolders
-from ngce.folders.FoldersConfig import DTM, contour_dir
+from ngce.folders.FoldersConfig import DTM
 from ngce.pmdm.a import A05_C_ConsolidateRasterInfo
 from ngce.pmdm.a.A04_B_CreateLASStats import doTime, deleteFileIfExists
 from ngce.pmdm.a.A05_B_RevalueRaster import FIELD_INFO, V_UNIT
@@ -34,8 +34,8 @@ def generateHighLow(workspace, name, clip_contours, ref_md):
             if boundaries > parts:
                 select_set.append(row[0])
     
-    cont_poly3= 'O13_poly_' + name + '_layer'
-    arcpy.MakeFeatureLayer_management(in_features=cont_poly2, out_layer=cont_poly3, where_clause='"FID" IN('+','.join(select_set)+')', workspace="", field_info="")
+    cont_poly3 = 'O13_poly_' + name + '_layer'
+    arcpy.MakeFeatureLayer_management(in_features=cont_poly2, out_layer=cont_poly3, where_clause='"FID" IN(' + ','.join(select_set) + ')', workspace="", field_info="")
     arcpy.DeleteFeatures_management(cont_poly3)
     arcpy.AddSurfaceInformation_3d(in_feature_class=cont_poly2, in_surface=ref_md, out_property="Z_MEAN", method="BILINEAR")
 
@@ -44,7 +44,7 @@ def generate_con_workspace(con_folder):
     # Create File GDB for Contours
     if not os.path.exists(con_folder):
         os.makedirs(con_folder)
-        
+
     contour_file_gdb_path = os.path.join(con_folder, CONTOUR_GDB_NAME)
     if not os.path.exists(contour_file_gdb_path):
         arcpy.AddMessage("\nCreating Contour GDB:   {0}".format(contour_file_gdb_path))
@@ -68,25 +68,25 @@ def createRefDTMMosaic(in_md_path, out_md_path, v_unit):
         arcpy.AddMessage("Referenced mosaic dataset exists " + out_md_path)
     else:
         arcpy.CreateReferencedMosaicDataset_management(in_dataset=in_md_path, out_mosaic_dataset=out_md_path, where_clause="TypeID = 1")
-
+        
         raster_function_path = Raster.Contour_Meters_function_chain_path
         v_unit = str(v_unit).upper()
         if v_unit.find("FEET") >= 0:
             if v_unit.find("INTL") >= 0 or v_unit.find("INTERNATIONAL") >= 0 or v_unit.find("STANDARD") >= 0:
                 raster_function_path = Raster.Contour_IntlFeet_function_chain_path
-        else:
+            else:
                 raster_function_path = Raster.Contour_Feet_function_chain_path
         
         arcpy.EditRasterFunction_management(in_mosaic_dataset=out_md_path, edit_mosaic_dataset_item="EDIT_MOSAIC_DATASET", edit_options="REPLACE", function_chain_definition=raster_function_path, location_function_name="")
         Utility.addToolMessages()
         
         arcpy.CalculateStatistics_management(in_raster_dataset=out_md_path, x_skip_factor=SKIP_FACTOR, y_skip_factor=SKIP_FACTOR, ignore_values="", skip_existing="OVERWRITE", area_of_interest="Feature Set")
-        
+    
         doTime(a, "Created referenced mosaic dataset " + out_md_path)
+    
 
 
-
-        
+    
 
 def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_clip_contours):
     a = datetime.now()
@@ -102,10 +102,10 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
             tmp_buff_name,
             "{} METERS".format(distance_to_clip_md)
         )
-
-
+    
+    
     with arcpy.da.SearchCursor(tmp_buff_name, ["Name", "SHAPE@"]) as cursor:  # @UndefinedVariable
-        
+
         for row in cursor:
 
             row_info = []
@@ -115,10 +115,10 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
             geom = row[1]
             if isProcessFile(rowname, scratch_folder):
                 box = geom.extent.polygon
-
+    
                 row_info.append(box)
                 ext_dict[rowname] = row_info
-
+        
     tmp_buff_name2 = os.path.join(scratch_folder, "footprints_clip_cont.shp")
     if not os.path.exists(tmp_buff_name2):
         arcpy.Buffer_analysis(
@@ -126,11 +126,11 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
             tmp_buff_name2,
             "{} METERS".format(distance_to_clip_contours)
         )
-
+    
     with arcpy.da.SearchCursor(tmp_buff_name, ["Name", "SHAPE@"]) as cursor:  # @UndefinedVariable
 
         for row in cursor:
-            
+
             # Get Values
             rowname = row[0]
             geom = row[1]
@@ -138,12 +138,12 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
                 row_info = ext_dict[rowname]
                 row_info.append(geom)
                 ext_dict[rowname] = row_info
-
+    
     for index, item in enumerate(ext_dict.items()):
         row = item[1]
         row.append(index)
-
-
+        
+    
     arcpy.AddMessage('Multiprocessing Tasks: ' + str(len(ext_dict)))
     a = doTime(a, "Created Runnable Dictionary")
     return ext_dict
@@ -152,10 +152,10 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
 
 
 def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_path, proc_dict):
-
+    
     name = proc_dict[0]
     index = str(proc_dict[1][2])
-        
+    
     try:
         
         a = datetime.now()
@@ -204,7 +204,7 @@ def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_pat
                     arcpy.AddMessage("\nuserUnits: {}, vertUnits: {}".format(userUnits, vertUnits))
                     arcpy.AddError('\nUnable to create contours.')
                     raise Exception("Units not valid")
-
+                
                 outDivide1.save(divide1_path)
                 del outDivide1
                 a = doTime(a, '\t' + name + ' ' + index + ': Converted units ' + divide1_path)
@@ -217,7 +217,7 @@ def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_pat
                 outFS.save(focal1_path)
                 del outFS
                 a = doTime(a, '\t' + name + ' ' + index + ': Focal statistics on ' + focal1_path)
-        
+            
             times1_name = 'O03_Times_' + name + '.tif'
             times1_path = os.path.join(workspace, times1_name)
             if not os.path.exists(times1_path):
@@ -226,7 +226,7 @@ def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_pat
                 outTimes.save(times1_path)
                 del outTimes
                 a = doTime(a, '\t' + name + ' ' + index + ': Times 100 on ' + times1_path)
-
+            
             plus1_name = 'O04_Plus_' + name + '.tif'
             plus1_path = os.path.join(workspace, plus1_name)
             if not os.path.exists(plus1_path):
@@ -235,7 +235,7 @@ def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_pat
                 outPlus.save(plus1_path)
                 del outPlus
                 a = doTime(a, '\t' + name + ' ' + index + ': Plus 0.5 ' + plus1_path)
-
+            
             round1_name = 'O05_Round_' + name + '.tif'
             round1_path = os.path.join(workspace, round1_name)
             if not os.path.exists(round1_path):
@@ -244,7 +244,7 @@ def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_pat
                 outRoundDown.save(round1_path)
                 del outRoundDown
                 a = doTime(a, '\t' + name + ' ' + index + ': Round Down ' + round1_path)
-
+            
             divide2_name = 'O06_Divide2_' + name + '.tif'
             divide2_path = os.path.join(workspace, divide2_name)
             if not os.path.exists(divide2_path):
@@ -253,7 +253,7 @@ def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_pat
                 outDivide2.save(divide2_path)
                 del outDivide2
                 a = doTime(a, '\t' + name + ' ' + index + ': Divide 100 ' + divide2_path)
-
+                
             focal2_name = 'O07_Focal2_' + name + '.tif'
             focal2_path = os.path.join(workspace, focal2_name)
             if not os.path.exists(focal2_path):
@@ -262,10 +262,10 @@ def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_pat
                 outFS2.save(focal2_path)
                 del outFS2
                 a = doTime(a, '\t' + name + ' ' + index + ': Focal Statistics #2 ' + focal2_path)
-
+                    
     #         a = doTime(a, '\t{}: Calculating statistics {}'.format(raster_name, contour_ready_path))
     #         arcpy.CalculateStatistics_management(in_raster_dataset=contour_ready_path, x_skip_factor="1", y_skip_factor="1", ignore_values="", skip_existing="OVERWRITE", area_of_interest="Feature Set")
-
+            
         base_name = 'O08_BaseCont_' + name + '.shp'
         base_contours = os.path.join(workspace, base_name)
         if not os.path.exists(base_contours):
@@ -348,19 +348,19 @@ def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_pat
                                     field_value='"' + name + '"',
                                     add_index=False)
         a = doTime(a, '\t' + name + ' ' + index + ': Added fields to ' + clip_contours)
-
+            
         try:
             arcpy.DeleteField_management(in_table=clip_contours, drop_field="ID;InLine_FID;SimLnFlag;MaxSimpTol;MinSimpTol")
             a = doTime(a, '\t' + name + ' ' + index + ': Deleted fields from ' + clip_contours)
         except:
             pass
-
+        
         doTime(aa, 'FINISHED ' + name + ' ' + index)
 
     except Exception as e:
         arcpy.AddMessage('Process Dropped: ' + name)
         arcpy.AddMessage('Exception: ' + str(e))
-    
+
 
 def handle_results(scratch_dir, contour_dir):
 
@@ -372,7 +372,7 @@ def handle_results(scratch_dir, contour_dir):
         cont = os.path.join(scratch_dir, 'O11_ClipCont_' + folder + '.shp')
         if arcpy.Exists(cont):
             merge_list.append(cont)
-        
+
     a = datetime.now()
     merge_name = os.path.join(contour_dir, 'Contours_OCS')
     project_name = os.path.join(contour_dir, 'Contours_WM')
@@ -387,8 +387,8 @@ def handle_results(scratch_dir, contour_dir):
         except:
             pass
         doTime(a, 'Merged ' + str(len(merge_list)) + ' Multiprocessing Results into ' + merge_name)
-
-
+    
+    
     if arcpy.Exists(project_name):
         arcpy.AddMessage("Projected Contours exist: " + project_name)
     else:
@@ -402,7 +402,7 @@ def handle_results(scratch_dir, contour_dir):
         except:
             pass
         doTime(a, 'Projected Multiprocessing Results to ' + project_name)
-    
+
 def isProcessFile(f_name, scratch_dir):
     process_file = False
     if f_name is not None:
@@ -428,11 +428,11 @@ def processJob(ProjectJob, project, ProjectUID):
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
     contour_folder = ProjectFolder.derived.contour_path
 #     raster_folder = ProjectFolder.published.demLastTiff_path
-
-        
+    
+    
     filegdb_name, filegdb_ext = os.path.splitext(ProjectFolder.published.fgdb_name)  # @UnusedVariable    
     publish_filegdb_name = "{}_{}.gdb".format(filegdb_name, DTM)
-        
+    
 #     published_path = os.path.join(published_folder, DTM) 
     published_filegdb_path = os.path.join(published_folder, publish_filegdb_name)
     md = os.path.join(published_filegdb_path, DTM)
@@ -458,7 +458,7 @@ def processJob(ProjectJob, project, ProjectUID):
         raster_vertical_unit = row[0]
         break
     del row
-
+    
 #     PYTHON_EXE = os.path.join(r'C:\Python27\ArcGISx6410.5', 'pythonw.exe')
 # 
 #     jobId = '1'
@@ -481,6 +481,7 @@ def processJob(ProjectJob, project, ProjectUID):
         arcpy.AddWarning('Exception Raised During Script Initialization')
         arcpy.AddWarning('Exception: ' + str(e))
 
+    
     try:
         # Map Generate Contour Function to Footprints
         pool = Pool(processes=cpu_count() - 1)
@@ -514,11 +515,11 @@ def CreateContoursFromMD(strJobId):
     Utility.printArguments(["WMXJobID"],
                            [strJobId], "C01 CreateContoursFromMD")
     aa = datetime.now()
-
+    
     ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
-
+    
     processJob(ProjectJob, project, strUID)
-        
+    
     doTime(aa, "Operation Complete: C01 Create Contours From MD")
 
 if __name__ == '__main__':
@@ -526,9 +527,6 @@ if __name__ == '__main__':
     projId = sys.argv[1]
     CreateContoursFromMD(projId)
 
-
-        
-    
 
 #    UID = None  # field_ProjectJob_UID
 #    wmx_job_id = 1

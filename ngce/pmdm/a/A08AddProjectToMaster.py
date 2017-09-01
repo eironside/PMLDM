@@ -27,11 +27,12 @@ ProjectMDs = Project Mosaic Dataset(s)
 import arcpy
 from datetime import datetime
 import os
+import sys
 
 from ngce import Utility
 from ngce.Utility import doTime
-from ngce.cmdr import CMDR, CMDRConfig
-from ngce.cmdr.CMDR import getProjectFromWMXJobID
+from ngce.cmdr import CMDRConfig
+from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders, FoldersConfig
 
 
@@ -102,7 +103,7 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
     # Ensure the master_md_path exists
     for md_name in md_list:
             
-        projectMD_path = os.path.join("{}_{}.gdb".format(ProjectMDs_fgdb_path[:-4], md_name),md_name)
+        projectMD_path = os.path.join("{}_{}.gdb".format(ProjectMDs_fgdb_path[:-4], md_name), md_name)
         arcpy.AddMessage("Project {} Mosaic Dataset Path: {}".format(md_name, projectMD_path))
         
         if arcpy.Exists(projectMD_path):
@@ -111,36 +112,36 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
             if arcpy.Exists(master_md_path):
 #                     project_md_path = os.path.join(ProjectMDs_fgdb_path, md_name)
 #                     if arcpy.Exists(project_md_path):
-                
-                    # Get a record count from the Master MD 
+            
+                # Get a record count from the Master MD 
                 result = arcpy.GetCount_management(master_md_path)
                 countMasterRasters = int(result.getOutput(0))
                 arcpy.AddMessage("Before ingest Master Mosaic Dataset: {0} has {1} row(s)".format(master_md_path, countMasterRasters))
+                
+                # #      # Get the maximum value of ItemTS From the Master Mosaic Dataset
+                # #      #  The value of ItemTS is based on the last time the row was modified. Knowing
+                # #      #  the current maximum value of ItemTS in the Master will help us determine which rows were
+                # #      #  added as a result of the subsequent call to "Add Raster"
+                # #      if countMasterRasters > 0:
+                # #          fc = r"in_memory/MaxItemTS"
+                # #          arcpy.Statistics_analysis(master_md_path,fc,statistics_fields="ItemTS MAX",case_field="#")
+                # #
+                # #          fields = ['MAX_ITEMTS']
+                # #          with arcpy.da.SearchCursor(fc, fields) as cursor:
+                # #              for row in cursor:
+                # #                  MaxItemTSValue = float(row[0])
+                # #      else:
+                # #          MaxItemTSValue = 0.0
+                # #
+                # #      arcpy.AddMessage("Maximum value for ItemTS before adding Project MD rows to Master:       {0}".format(MaxItemTSValue))
                     
-                    # #      # Get the maximum value of ItemTS From the Master Mosaic Dataset
-                    # #      #  The value of ItemTS is based on the last time the row was modified. Knowing
-                    # #      #  the current maximum value of ItemTS in the Master will help us determine which rows were
-                    # #      #  added as a result of the subsequent call to "Add Raster"
-                    # #      if countMasterRasters > 0:
-                    # #          fc = r"in_memory/MaxItemTS"
-                    # #          arcpy.Statistics_analysis(master_md_path,fc,statistics_fields="ItemTS MAX",case_field="#")
-                    # #
-                    # #          fields = ['MAX_ITEMTS']
-                    # #          with arcpy.da.SearchCursor(fc, fields) as cursor:
-                    # #              for row in cursor:
-                    # #                  MaxItemTSValue = float(row[0])
-                    # #      else:
-                    # #          MaxItemTSValue = 0.0
-                    # #
-                    # #      arcpy.AddMessage("Maximum value for ItemTS before adding Project MD rows to Master:       {0}".format(MaxItemTSValue))
-                        
 #                         project_md_path = project_md_path.strip("'")
 #                         # Ensure the project_md_path exists
 #                         if not arcpy.Exists(project_md_path):
 #                             arcpy.AddError("\nExiting: Project Mosaic Dataset doesn't exist: {0}".format(project_md_path))
 #                             continue
-                
-                    # Get a record count from the Project MD just to be sure we have data to ingest
+            
+                # Get a record count from the Project MD just to be sure we have data to ingest
                 result = arcpy.GetCount_management(projectMD_path)
                 countProjRasters = int(result.getOutput(0))
             
@@ -182,12 +183,12 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
                             Utility.addToolMessages()
 #                                 messages = arcpy.GetMessages()
 #                                 arcpy.AddMessage("\nResults output from AddRastersToMosaicDataset are: \n{0}\n".format(messages))
-                        
-                                # Get another record count from the Master MD 
+                    
+                            # Get another record count from the Master MD 
                             result = arcpy.GetCount_management(master_md_path)
                             countMasterRasters = int(result.getOutput(0))
                             arcpy.AddMessage("After ingest Master Mosaic Dataset: {0} has {1} row(s)".format(master_md_path, countMasterRasters))
-                        
+                    
                             # NOTE: The following section is commented, as setting Category to 2 for overviews created on the project_md_path doesn't work well
                             # #      # Reset Category to 2 for all overview records ingested from the Project MD (for some reason
                             # #      #   the table raster type sets all rows to Category of 1).
@@ -265,7 +266,7 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
                 arcpy.AddError("Master Mosaic Dataset path is not found '{}'. Please create it before proceeding.".format(master_md_path))
         else:
             arcpy.AddWarning("Project Mosaic Dataset path is not found '{}'. Please create it before proceeding.".format(projectMD_path))
-        # For loop
+    # For loop
     
     
 
@@ -277,17 +278,17 @@ def AddProjectToMaster(strJobId, masterParentDir, masterService):
     
     ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
     
-    processJob(ProjectJob, project, ProjectUID)
+    processJob(ProjectJob, project, strUID)
     
     doTime(aa, "Operation Complete: A06 Publish Mosaic Dataset")
 
 
 if __name__ == '__main__':
-     jobID = sys.argv[1]
-     MasterMDs_parent_path = sys.argv[2]
-     master_md_name = sys.argv[3] 
+    jobID = sys.argv[1]
+    MasterMDs_parent_path = sys.argv[2]
+    master_md_name = sys.argv[3] 
  
-     AddProjectToMaster(jobID, MasterMDs_parent_path, master_md_name)
+    AddProjectToMaster(jobID, MasterMDs_parent_path, master_md_name)
 
 #    MasterMDs_parent_path = "\\\\ngcedev\DAS1\RasterData\Elevation\LiDar"
 #    master_md_name = "MASTER\ELEVATION_1M"

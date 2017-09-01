@@ -2,8 +2,6 @@
 Created on Aug 1, 2017
 
 @author: eric5946
-'''
-'''
 ---------------------------------------------
 B_ shapes are external boundary files
 C_ shapes are footprint files
@@ -20,13 +18,7 @@ Clips all of the derived ELE & INT images for each las file
 migrates all the fields on the footprints and summarizes them in the boundary 
 ---------------------------------------------
 '''
-'''
----------------------------------------------
-calculates the time difference between a and now and prints msg
 
-returns the current time
----------------------------------------------
-'''
 
 import arcpy
 import datetime

@@ -14,7 +14,6 @@ import A04_B_CreateLASStats
 from ngce import Utility
 from ngce.Utility import doTime, deleteFileIfExists, isSrValueValid
 from ngce.cmdr import CMDR
-from ngce.cmdr.CMDR import ProjectJob
 from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders
 from ngce.las import LAS

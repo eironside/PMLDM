@@ -1,10 +1,10 @@
-from multiprocessing import Pool, cpu_count
-from functools import partial
-import arcpyproduction
 import arcpy
-import time
-import shutil
+from functools import partial
+from multiprocessing import Pool, cpu_count
 import os
+import shutil
+
+import arcpyproduction  # @UnresolvedImport
 from ngce.contour import ContourConfig
 
 
@@ -53,7 +53,7 @@ def contour_prep(in_fc, scheme_poly, scratch, name):
 
     try:
         # Copy Template MXD
-        base_mxd         = arcpy.mapping.MapDocument(ContourConfig.MXD_TEMPLATE)
+        base_mxd = arcpy.mapping.MapDocument(ContourConfig.MXD_TEMPLATE)
         section_mxd_name = os.path.join(scratch, name, name + '.mxd')
         base_mxd.saveACopy(section_mxd_name)
 
@@ -114,7 +114,7 @@ def contour_prep(in_fc, scheme_poly, scratch, name):
         anno9028 = os.path.join(scratch_db, r"Contours_9028Anno9027")
 
         # Delete Existing Annotation FCs to Avoid Confusion with TiledLabelsToAnnotation Output
-        for a in [anno1128,anno2257,anno4514,anno9028]:
+        for a in [anno1128, anno2257, anno4514, anno9028]:
             arcpy.Delete_management(in_data=a, data_type='FeatureClass')
 
         # Create Annotation with Filtered FC Extent
@@ -194,8 +194,8 @@ def db_list_gen(scratch, dirs, names):
         []
     ]
 
-    for dir in dirs:
-        db = os.path.join(scratch, dir, dir + '.gdb')
+    for dir_name in dirs:
+        db = os.path.join(scratch, dir_name, dir_name + '.gdb')
         e_names = enumerate(names)
         for index, name in e_names:
             target = os.path.join(db, name)
@@ -218,7 +218,7 @@ def handle_merge(scratch):
 
     print 'Merging Multiprocessing Results'
 
-    arcpy.env.overwriteOutput =  True
+    arcpy.env.overwriteOutput = True
 
     # Create FGDB For Annotation/Mask Storage
     results = os.path.join(scratch, 'RESULTS.gdb')
@@ -367,15 +367,15 @@ if __name__ == '__main__':
 
     jobID = 4801
 
-    in_cont_fc       = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Contours.gdb\Contours_ABC'
-    scratch_path     = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Scratch'
+    in_cont_fc = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Contours.gdb\Contours_ABC'
+    scratch_path = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Scratch'
 
     try:
         # Create Base Tiling Scheme for Individual Raster Selection
         base_scheme_poly = gen_base_tiling_scheme(in_cont_fc, scratch_path)
 
         # Collect Unique Names from Input Feature Class
-        name_list = list(set([row[0] for row in arcpy.da.SearchCursor(in_cont_fc, ['name'])]))
+        name_list = list(set([row[0] for row in arcpy.da.SearchCursor(in_cont_fc, ['name'])]))  # @UndefinedVariable
 
         # Run Contour Preparation for Each Unique Name Found within  Input FC
         pool = Pool(processes=cpu_count() - 2)

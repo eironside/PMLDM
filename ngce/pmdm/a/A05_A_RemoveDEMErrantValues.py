@@ -26,33 +26,7 @@ Created on Dec 9, 2015
 #
 # *
 #-------------------------------------------------------------------------------
-# def processRastersInFolder(minZ, maxZ, InputFolder, OutputFolder, elevation_type, rows, ProjectID, ProjectUID):
-#     count = 0
-#     cellSize = 0
-#     if os.path.exists(InputFolder):
-#         SRFactoryCodeFlag = 1
-#         arcpy.env.workspace = InputFolder
-#         current_raster_list = arcpy.ListRasters("*", "ALL")
-#         if current_raster_list is not None and len(current_raster_list) > 0:
-#             Utility.clearFolder(OutputFolder);
-#             
-#             for curr_raster in current_raster_list:
-#                 SRFactoryCode, cellSize = RevalueRaster(OutputFolder, curr_raster, minZ, maxZ, elevation_type, rows, ProjectID, ProjectUID)
-#                 count = count + 1
-#                 if SRFactoryCode <= 0:
-#                     SRFactoryCodeFlag = 0
-#                 del curr_raster
-#             
-#             arcpy.AddMessage("\nOperation Complete, output Rasters can be found in: {}".format(OutputFolder))
-#         else:
-#             arcpy.AddMessage("No rasters found at '{}'".format(InputFolder))
-#         if SRFactoryCodeFlag == 0:
-#             # TODO set an error in the DB ?
-#             arcpy.AddWarning("WARNING: One or more rasters didn't have a SR set".format(InputFolder)) 
-#     else:
-#         arcpy.AddMessage("Input path does not exist '{}'".format(InputFolder))
-# 
-#     return count, cellSize
+
 '''
 ------------------------------------------------------------
 iterate through the list of raster files revalue and convert to .tif
@@ -69,7 +43,6 @@ import traceback
 
 from ngce import Utility
 from ngce.Utility import isSrValueValid, grouper, doTime
-from ngce.cmdr.CMDR import ProjectJob
 from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders
 from ngce.folders.FoldersConfig import DTM, DSM, DLM, INT
@@ -236,7 +209,7 @@ def bufferZValues(z_min, z_max, add_buffer=True):
         z_min = z_min - abs(z_min * 0.2)
         z_max = z_max + abs(z_max * 0.2)
     
-        arcpy.AddMessage("\tZ is between {} and {}.".format(z_min, z_max))
+    arcpy.AddMessage("\tZ is between {} and {}.".format(z_min, z_max))
         
     if z_min < 0 :
         arcpy.AddWarning("WARNING: Z MIN is less than 0")
@@ -328,8 +301,8 @@ def processRastersInFolder(fileList, target_path, publish_path, elev_type, bound
     
     grouping = PROCESS_CHUNKS
     if not runAgain:
-        grouping = int(PROCESS_CHUNKS/2)
-    if grouping <=1:
+        grouping = int(PROCESS_CHUNKS / 2)
+    if grouping <= 1:
         grouping = 2
     total = len(fileList)
     if total > 0:
@@ -339,7 +312,7 @@ def processRastersInFolder(fileList, target_path, publish_path, elev_type, bound
         procCount = int(os.environ['NUMBER_OF_PROCESSORS'])
         if procCount > 4:
             procCount = procCount - PROCESS_SPARES
-        if procCount <=0:
+        if procCount <= 0:
             procCount = 1
         arcpy.AddMessage("processRastersInFolder: Using {}/{} Processors to process {} files in groups of {}".format(procCount, (procCount + PROCESS_SPARES), total, grouping))
         processList = []
@@ -527,19 +500,18 @@ def processJob(ProjectJob, project, ProjectUID):
             arcpy.AddWarning("No {} rasters found to re-value in {}".format(elev_type, start_dir))
         else:
             spatial_ref = validateRasterSpaitialRef(ProjectFolder, start_dir, elev_type, target_path, v_name, v_unit, h_name, h_unit, h_wkid)
-        
-        if spatial_ref is not None:
-            fileList = getFileProcessList(start_dir, elev_type, target_path, publish_path)     
-            processRastersInFolder(fileList, target_path, publish_path, elev_type, lasd_boundary, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref)
-            raster_footprint, raster_boundary = A05_C_ConsolidateRasterInfo.createRasterBoundaryAndFootprints(fgdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID, elev_type)
-        if raster_footprint is not None:
-            arcpy.RepairGeometry_management(in_features=raster_footprint, delete_null="KEEP_NULL")
-            raster_footprints.append(raster_footprint)
             
-        if raster_boundary is not None:
-            arcpy.RepairGeometry_management(in_features=raster_boundary, delete_null="KEEP_NULL")
-            raster_boundaries.append(raster_boundary)
-                    
+            if spatial_ref is not None:
+                
+                fileList = getFileProcessList(start_dir, elev_type, target_path, publish_path)     
+                processRastersInFolder(fileList, target_path, publish_path, elev_type, lasd_boundary, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref)
+                raster_footprint, raster_boundary = A05_C_ConsolidateRasterInfo.createRasterBoundaryAndFootprints(fgdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID, elev_type)
+                if raster_footprint is not None:
+                    raster_footprints.append(raster_footprint)
+                    arcpy.RepairGeometry_management(in_features=raster_footprint, delete_null="KEEP_NULL")
+                if raster_boundary is not None:
+                    raster_boundaries.append(raster_boundary)
+                    arcpy.RepairGeometry_management(in_features=raster_boundary, delete_null="KEEP_NULL")
     
     
     if arcpy.Exists(raster_footprint_main):

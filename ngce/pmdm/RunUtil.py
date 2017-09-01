@@ -13,9 +13,6 @@ import tempfile
 import time
 
 
-# PATH_PYTHON27_32 = r"C:\Program Files (x86)\PYTHON27\ArcGIS10.5"
-PATH_PYTHON27_32 = r"C:\Python27\ArcGIS10.5"
-
 PATH_PYTHON27_32 = r"C:\Program Files (x86)\PYTHON27\ArcGIS10.5"
 #PATH_PYTHON27_32= r"C:\Python27\ArcGIS10.5"
 
@@ -37,48 +34,48 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
     script_name = os.path.split(path)[1]
     path = r'"{}"'.format(os.path.join(WMX_TOOLS, path))
 
-    for index in range(0,len(toolArgs)):
+    for index in range(0, len(toolArgs)):
         if toolArgs[index].endswith('\\'):
             toolArgs[index] = toolArgs[index][0:-1]
         toolArgs[index] = r'"{}"'.format(toolArgs[index])
-
+    
     if not bit32:
-        arcpy.AddMessage("Architecture='{} {}' Python='{}'".format(arcpy.GetInstallInfo()['ProductName'],platform.architecture()[0],sys.executable))
+        arcpy.AddMessage("Architecture='{} {}' Python='{}'".format(arcpy.GetInstallInfo()['ProductName'], platform.architecture()[0], sys.executable))
 
     path_python27 = PATH_PYTHON27_64
     if bit32:
         path_python27 = PATH_PYTHON27_32
 
     env = os.environ.copy()
-    env['PYTHONPATH']= r'{}\Lib\site-packages;{}'.format(path_python27, WMX_TOOLS)
-    env['PATH']= path_python27
+    env['PYTHONPATH'] = r'{}\Lib\site-packages;{}'.format(path_python27, WMX_TOOLS)
+    env['PATH'] = path_python27
     exe = r'"{}\pythonw.exe"'.format(path_python27)
 
     log_path = os.path.join(log_path, "Logs")
-    arcpy.AddMessage("Logs are written to: {}"+str(log_path))
+    arcpy.AddMessage("Logs are written to: {}" + str(log_path))
     if not os.path.exists(log_path):
         os.makedirs(log_path)
 
     logfile = tempfile.NamedTemporaryFile(
         prefix=script_name[:-3] + '_',
-        suffix = ".log",
+        suffix=".log",
         dir=log_path,
-        delete = False
+        delete=False
     )
     
-    args = [exe,path]
+    args = [exe, path]
     for arg in toolArgs:
         args.append(arg)
     args = " ".join(args)
     if not bit32:
         arcpy.AddMessage(args)
     # Error writing data to STDOUT, Switched to file logging
-    #proc= subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, shell=False)
-    proc = subprocess.Popen(args, env=env, shell=False, stdout=logfile, stderr=logfile )
+    # proc= subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, shell=False)
+    proc = subprocess.Popen(args, env=env, shell=False, stdout=logfile, stderr=logfile)
     while proc.poll() is None:
         time.sleep(1)
 
-    out,err = proc.communicate(None)
+    out, err = proc.communicate(None)
     retCode = proc.returncode
 
     
@@ -99,7 +96,7 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
         arcpy.AddMessage("{} Succeeded! Details in log file {}".format(path, logfilepath))
 
     ret = ''
-    with open(logfilepath,'r') as lf:
+    with open(logfilepath, 'r') as lf:
         for line in lf:
             if len(str(line)) > 2:
                 arcpy.AddMessage("{}".format(str(line).rstrip('\n').rstrip('\r').rstrip('\n')))
