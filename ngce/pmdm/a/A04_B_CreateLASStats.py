@@ -23,7 +23,7 @@ from ngce.raster.RasterConfig import MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN
     RANGE, FIRST_RETURNS, SECOND_RETURNS, THIRD_RETURNS, FOURTH_RETURNS, \
     SINGLE_RETURNS, FIRST_OF_MANY_RETURNS, LAST_OF_MANY_RETURNS, ALL_RETURNS, \
     STAT_LAS_FOLDER, SAMPLE_TYPE
-
+from ngce.las import LAS
 
 RasterConfig.NODATA_DEFAULT
 
@@ -411,8 +411,9 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
      
     doTime(a, "\tCreated MD {}".format(md_name))
     a = datetime.now()
-     
-    raster_type = ".\LAS_1_ALL_Binning_Mean_IDW.art.xml"
+    
+    raster_type = LAS.LAS_raster_type_1_all_bin_mean_idw
+    arcpy.AddMessage(raster_type)
     # Add the LAS files to the Mosaic Dataset and don't update the boundary yet.
     # The cell size of the Mosaic Dataset is determined by the art.xml file chosen by the user.
      

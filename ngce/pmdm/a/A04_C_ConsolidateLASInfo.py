@@ -41,7 +41,7 @@ from ngce.raster.RasterConfig import FIELD_INFO, NAME, IS_CLASSIFIED, V_NAME, \
     V_UNIT, H_NAME, H_UNIT, H_WKID, AREA, MAX, MEAN, MIN, RANGE, STAND_DEV, XMIN, \
     YMIN, XMAX, YMAX, FIRST_RETURNS, SECOND_RETURNS, THIRD_RETURNS, \
     FOURTH_RETURNS, SINGLE_RETURNS, FIRST_OF_MANY_RETURNS, LAST_OF_MANY_RETURNS, \
-    ALL_RETURNS, POINT_COUNT, POINT_SPACING, STAT_RASTER_FOLDER, CANOPY_DENSITY
+    ALL_RETURNS, POINT_COUNT, POINT_SPACING, STAT_LAS_FOLDER, CANOPY_DENSITY
 
 
 def getLasdBoundaryPath(fgdb_path):
@@ -406,15 +406,16 @@ along with this set of las files
 def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, project_path, project_UID):
     a = datetime.datetime.now()
     
-    stat_out_folder = os.path.join(target_path, STAT_RASTER_FOLDER)
-    
+    stat_out_folder = os.path.join(target_path, STAT_LAS_FOLDER)
+    arcpy.AddMessage(stat_out_folder)
                     
     b_file_list = []
     c_file_list = []
+    
     for f_name in [f for f in os.listdir(stat_out_folder) if (f.startswith('B_') and f.endswith('.shp'))]:
         b_path = os.path.join(stat_out_folder, f_name)
         c_path = os.path.join(stat_out_folder, "C{}".format(f_name[1:]))
-            
+        arcpy.AddMessage(b_path)    
         try:
             if not os.path.exists(b_path):
                 arcpy.AddWarning("Failed to find B boundary file {}".format(b_path))
@@ -430,7 +431,7 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
         except:
             pass
     
-    a = doTime(a, "Found boundaries {}".format(len(b_file_list)))
+    a = doTime(a, "Found {} boundaries".format(len(b_file_list)))
     
     
     las_footprint = getLasFootprintPath(fgdb_path)

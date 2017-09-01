@@ -452,6 +452,7 @@ def createMXD(las_qainfo, target_path, project_ID):
 
 def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=False, overrideBorderPath=None):
     aaa = datetime.now()
+    a = aaa
     lasd_boundary = None
     
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
@@ -502,8 +503,9 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
             arcpy.AddError("ERROR: Please provide a projection file (.prj) that provides a valid transformation in the LAS directory.")
             arcpy.AddError("ERROR:   Please create a projection file (.prj) in the LAS folder using the '3D Analyst Tools/Conversion/From File/Point File Information' tool.")
             
-        
-        if las_qainfo.lasd_spatial_ref is not None:
+        if las_qainfo.lasd_spatial_ref is None:
+            raise Exception("Error: Spatial Reference is invalid, unknown, or not specified.")
+        else:
     #         prj_Count, prj_File = Utility.fileCounter(las_qainfo.las_directory, '.prj')
     #         if prj_Count > 0 and prj_File is not None and len(str(prj_File)) > 0:
     #             prj_spatial_ref = os.path.join(las_qainfo.las_directory, prj_File)
@@ -526,19 +528,19 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
                 # arcpy.Delete_management(las_qainfo.las_dataset_path)
             else:
                 a = datetime.now()
-            # note: don't use method in A04_B because we don't want to compute statistics this time
-            arcpy.CreateLasDataset_management(input=las_qainfo.las_directory,
-                                          out_las_dataset=las_qainfo.las_dataset_path,
-                                          folder_recursion="RECURSION",
-                                          in_surface_constraints="",
-                                              spatial_reference=las_qainfo.lasd_spatial_ref,
-                                          compute_stats="NO_COMPUTE_STATS",
-                                          relative_paths="RELATIVE_PATHS",
-                                          create_las_prj="FILES_MISSING_PROJECTION")
-            Utility.addToolMessages()
-            a = doTime(a, "Created LAS Dataset '{}'".format(las_qainfo.las_dataset_path))
+                # note: don't use method in A04_B because we don't want to compute statistics this time
+                arcpy.CreateLasDataset_management(input=las_qainfo.las_directory,
+                                              out_las_dataset=las_qainfo.las_dataset_path,
+                                              folder_recursion="RECURSION",
+                                              in_surface_constraints="",
+                                                  spatial_reference=las_qainfo.lasd_spatial_ref,
+                                              compute_stats="NO_COMPUTE_STATS",
+                                              relative_paths="RELATIVE_PATHS",
+                                              create_las_prj="FILES_MISSING_PROJECTION")
+                Utility.addToolMessages()
+                a = doTime(a, "Created LAS Dataset '{}'".format(las_qainfo.las_dataset_path))
+                             
                          
-                     
             desc = arcpy.Describe(las_qainfo.las_dataset_path)
         
             # las_qainfo.lasd_spatial_ref = desc.SpatialReference
@@ -588,9 +590,9 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
                             a = doTime(a, "\tfailed to add MD to MXD {}. Is it open?".format(mxd_path))
                         except:
                             pass
-            
-            
-              
+                
+                
+                  
     
     bbb = datetime.now()
     td = (bbb - aaa).total_seconds()
