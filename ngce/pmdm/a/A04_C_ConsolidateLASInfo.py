@@ -69,12 +69,12 @@ Used to clip convex hull to concave boundaries
 ---------------------------------------------
 '''
 def clipDerivedRaster(out_raster_path, vector_bound_path):
-    #a = datetime.datetime.now()
+    # a = datetime.datetime.now()
     raster_name = os.path.split(out_raster_path)[1]
     if os.path.exists(out_raster_path) and not str(raster_name).startswith("C_"):
         raster_path, raster_name = os.path.split(out_raster_path) 
         clip_raster_path = os.path.join(raster_path, "C_{}".format(raster_name))
-        #arcpy.AddMessage("Clipping raster {} to {}".format(out_raster_path, clip_raster_path))
+        # arcpy.AddMessage("Clipping raster {} to {}".format(out_raster_path, clip_raster_path))
         if os.path.exists(clip_raster_path):
             deleteFileIfExists(clip_raster_path, True)
         arcpy.Rename_management(out_raster_path, clip_raster_path)
@@ -89,7 +89,7 @@ def clipDerivedRaster(out_raster_path, vector_bound_path):
                 pass
         deleteFileIfExists(out_raster_path, True)
     
-        #doTime(a, "\tClip raster {}".format(clip_raster_path)) 
+        # doTime(a, "\tClip raster {}".format(clip_raster_path)) 
         return clip_raster_path
 
 '''
@@ -244,10 +244,10 @@ def addFieldsIfMissing(feature_class, field_list=None):
     return fieldnames
 
 def addFieldIfMissing(feature_class, fieldnames, field_info):
-      field_name = field_info[0]
-      if (False if field_name in fieldnames else True):
-          arcpy.AddField_management(in_table=feature_class, field_name=field_info[0], field_alias=field_info[1], field_type=field_info[2], field_length=field_info[3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-          #arcpy.CalculateField_management(in_table=feature_class, field=field_info[0], expression=0, expression_type="PYTHON_9.3")
+    field_name = field_info[0]
+    if (False if field_name in fieldnames else True):
+        arcpy.AddField_management(in_table=feature_class, field_name=field_info[0], field_alias=field_info[1], field_type=field_info[2], field_length=field_info[3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+        # arcpy.CalculateField_management(in_table=feature_class, field=field_info[0], expression=0, expression_type="PYTHON_9.3")
 
       
 
@@ -257,7 +257,7 @@ creates a list of all of the standard statistics fields we are interested in
 and the summary info we want to get from them
 ---------------------------------------------
 '''
-def getStatsFields(feature_class = None):
+def getStatsFields(feature_class=None):
     a = datetime.datetime.now()
     base_fields = [
                    [FIELD_INFO[NAME], "COUNT"],
@@ -328,7 +328,7 @@ def getStatsFields(feature_class = None):
         field_alter.append(new_field)
         # arcpy.AddMessage("Alter Field Name: '{}'".format(new_field))
 
-    existing_fieldnames=None
+    existing_fieldnames = None
     if feature_class is not None:
         existing_fieldnames = [field.name for field in arcpy.ListFields(feature_class)]
   
@@ -428,7 +428,6 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
     a = datetime.datetime.now()
     
     stat_out_folder = os.path.join(target_path, STAT_LAS_FOLDER)
-    arcpy.AddMessage(stat_out_folder)
                     
     b_file_list = []
     c_file_list = []
@@ -436,7 +435,7 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
     for f_name in [f for f in os.listdir(stat_out_folder) if (f.startswith('B_') and f.endswith('.shp'))]:
         b_path = os.path.join(stat_out_folder, f_name)
         c_path = os.path.join(stat_out_folder, "C{}".format(f_name[1:]))
-        arcpy.AddMessage(b_path)    
+        
         try:
             if not os.path.exists(b_path):
                 arcpy.AddWarning("Failed to find B boundary file {}".format(b_path))
@@ -457,7 +456,9 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
     
     las_footprint = getLasFootprintPath(fgdb_path)
     lasd_boundary = getLasdBoundaryPath(fgdb_path)
-    if not arcpy.Exists(las_footprint):
+    if arcpy.Exists(las_footprint):
+        arcpy.AddMessage("Footprints exist: {}".format(las_footprint))
+    else:
         # Delete the boundary if the footprints don't exist (have to recreate anyway)
         deleteFileIfExists(lasd_boundary, True)
         lasd_boundary_B = "{}B".format(lasd_boundary)
@@ -515,8 +516,9 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
         deleteFileIfExists(lasd_boundary, True)
         a = doTime(a, "Clipped las footprints to dataset boundary {} ".format(las_footprint))
     
-    if not arcpy.Exists(lasd_boundary):
-        
+    if arcpy.Exists(lasd_boundary):
+        arcpy.AddMessage("Boundary exists: {}".format(lasd_boundary))
+    else:
         deleteFileIfExists(lasd_boundary, True)
         
         summary_string, field_alter = getStatsFields(las_footprint)
@@ -524,8 +526,11 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
     
         addProjectInfo(las_footprint, lasd_boundary, project_ID, project_path, project_UID)
     
-    arcpy.RepairGeometry_management(in_features=las_footprint, delete_null="KEEP_NULL")
-    arcpy.RepairGeometry_management(in_features=lasd_boundary, delete_null="KEEP_NULL")
+    try:
+        arcpy.RepairGeometry_management(in_features=las_footprint, delete_null="KEEP_NULL")
+        arcpy.RepairGeometry_management(in_features=lasd_boundary, delete_null="KEEP_NULL")
+    except:
+        pass
     
     return lasd_boundary, las_footprint
         

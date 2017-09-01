@@ -413,9 +413,12 @@ def createMXD(las_qainfo, target_path, project_ID):
         lasd_path = las_qainfo.las_dataset_path
         out_map_file_path = os.path.join(target_path, "{}.mxd".format(project_ID))
         
-        if not os.path.exists(out_map_file_path):
-            mxd = arcpy.mapping.MapDocument(r"./blank.mxd")
+        if os.path.exists(out_map_file_path):
+            arcpy.AddMessage("MXD exists: {}".format(out_map_file_path))
+        else:
+            mxd = arcpy.mapping.MapDocument(os.path.join(os.path.dirname(os.path.realpath(__file__)), "blank.mxd"))
             mxd.saveACopy(out_map_file_path)
+            arcpy.AddMessage("Created MXD {}".format(out_map_file_path))
             
         mxd = arcpy.mapping.MapDocument(out_map_file_path)
         mxd.relativePaths = True
@@ -445,7 +448,7 @@ def createMXD(las_qainfo, target_path, project_ID):
         
         mxd.save()      
     except:
-        pass      
+        arcpy.AddWarning("Failed to set up project MXD")
             
     return mxd
 
@@ -545,26 +548,8 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
             # las_qainfo.lasd_spatial_ref = desc.SpatialReference
             las_qainfo.LASDatasetPointCount = desc.pointCount
             las_qainfo.LASDatasetFileCount = desc.fileCount
-        
-#             if spatial_ref is None:
-#                 las_spatial_ref = las_qainfo.lasd_spatial_ref
-#                 try:
-#                     arcpy.AddMessage("    Using coordinate system found in las files: {}".format(Utility.getSpatialReferenceInfo(las_spatial_ref)))
-#                     if not las_qainfo.isValidSpatialReference():
-#                         arcpy.AddWarning("Spatial Reference for the las files is not standard. It may not add to the Master correctly.")
-#                 except:
-#                     pass
-        
-        
             arcpy.AddMessage("LASDatasetPointCount {} and LASDatasetFileCount {}".format(desc.pointCount, desc.fileCount))
-        
-#             las_qainfo.isValidSpatialReference()
-#             if las_qainfo.isUnknownSpatialReference():
-#                 arcpy.AddMessage("Spatial Reference for the las files is 'Unknown'. If missing in the .las file, please provide a .prj file in your LAS folder containing the desired horizontal/vertical coordinate systems.")
-#                 arcpy.AddError("Missing spatial reference, CANNOT CONTINUE.")
-#                 sys.exit(1)
-#             else:
-            
+                    
             lasd_boundary, las_footprint = A04_C_ConsolidateLASInfo.createRasterBoundaryAndFootprints(las_qainfo.filegdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID)
     
             mxd = createMXD(las_qainfo, target_path, ProjectID)
