@@ -10,7 +10,7 @@ from ngce.pmdm import RunUtil
 
 
 # from ngce.pmdm.a import A07PublishProjectMosaicDataset
-PATH = r'ngce\pmdm\a\A07PublishProjectMosaicDataset.py'
+PATH = r'ngce\pmdm\a\A07_A_PublishProjectMosaicDataset.py'
 
 jobID = arcpy.GetParameterAsText(0)
 serverConnectionFile = arcpy.GetParameterAsText(1)

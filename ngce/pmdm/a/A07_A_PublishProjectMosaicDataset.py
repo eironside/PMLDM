@@ -269,7 +269,7 @@ def PublishMosaicDataset(strJobId, serverConnectionFile, serverFunctionPath, upd
     
     ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
     
-        processJob(ProjectJob, project, ProjectUID)
+    processJob(ProjectJob, project, ProjectUID)
             
     doTime(aa, "Operation Complete: A06 Publish Mosaic Dataset")
 

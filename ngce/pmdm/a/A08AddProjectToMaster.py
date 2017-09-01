@@ -90,32 +90,32 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
                            [masterServiceFolder, masterName, master_md_name], "A08 AddPrjectToMaster")
     
     
-        ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
+    ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
 #         projectID = ProjectJob.getProjectID(project)
         
         
-        ProjectMDs_fgdb_path = ProjectFolder.published.fgdb_path
-        arcpy.AddMessage("Project file GDB Path: {}".format(ProjectMDs_fgdb_path))
+    ProjectMDs_fgdb_path = ProjectFolder.published.fgdb_path
+    arcpy.AddMessage("Project file GDB Path: {}".format(ProjectMDs_fgdb_path))
         
     md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.INT]
           
-        # Ensure the master_md_path exists
-        for md_name in md_list:
+    # Ensure the master_md_path exists
+    for md_name in md_list:
             
-            projectMD_path = os.path.join("{}_{}.gdb".format(ProjectMDs_fgdb_path[:-4], md_name),md_name)
-            arcpy.AddMessage("Project {} Mosaic Dataset Path: {}".format(md_name, projectMD_path))
-            
-            if arcpy.Exists(projectMD_path):
-                master_md_path = os.path.join(masterParentDir, masterService, "{}_{}.gdb".format(masterName, md_name), md_name)
-                arcpy.AddMessage("Master {} MD Path: {}".format(md_name, master_md_path))
-                if arcpy.Exists(master_md_path):
+        projectMD_path = os.path.join("{}_{}.gdb".format(ProjectMDs_fgdb_path[:-4], md_name),md_name)
+        arcpy.AddMessage("Project {} Mosaic Dataset Path: {}".format(md_name, projectMD_path))
+        
+        if arcpy.Exists(projectMD_path):
+            master_md_path = os.path.join(masterParentDir, masterService, "{}_{}.gdb".format(masterName, md_name), md_name)
+            arcpy.AddMessage("Master {} MD Path: {}".format(md_name, master_md_path))
+            if arcpy.Exists(master_md_path):
 #                     project_md_path = os.path.join(ProjectMDs_fgdb_path, md_name)
 #                     if arcpy.Exists(project_md_path):
                 
                     # Get a record count from the Master MD 
-                    result = arcpy.GetCount_management(master_md_path)
-                    countMasterRasters = int(result.getOutput(0))
-                    arcpy.AddMessage("Before ingest Master Mosaic Dataset: {0} has {1} row(s)".format(master_md_path, countMasterRasters))
+                result = arcpy.GetCount_management(master_md_path)
+                countMasterRasters = int(result.getOutput(0))
+                arcpy.AddMessage("Before ingest Master Mosaic Dataset: {0} has {1} row(s)".format(master_md_path, countMasterRasters))
                     
                     # #      # Get the maximum value of ItemTS From the Master Mosaic Dataset
                     # #      #  The value of ItemTS is based on the last time the row was modified. Knowing
@@ -141,83 +141,83 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
 #                             continue
                 
                     # Get a record count from the Project MD just to be sure we have data to ingest
-                    result = arcpy.GetCount_management(projectMD_path)
-                    countProjRasters = int(result.getOutput(0))
+                result = arcpy.GetCount_management(projectMD_path)
+                countProjRasters = int(result.getOutput(0))
             
-                    if countProjRasters > 0:
-                        arcpy.AddMessage("{0} has {1} raster product(s).".format(projectMD_path, countProjRasters))
+                if countProjRasters > 0:
+                    arcpy.AddMessage("{0} has {1} raster product(s).".format(projectMD_path, countProjRasters))
+        
+                    # Gather project_md_path metadata such as spatial reference and cell size
+                    descProjectMD = arcpy.Describe(projectMD_path)
+                    descProjectMDSR = descProjectMD.SpatialReference
+                    ProjectMDSpatialRef = descProjectMD.SpatialReference.exportToString()
+                    arcpy.AddMessage("Ingesting: {0}".format(projectMD_path))
+                    # arcpy.AddMessage("Spatial reference of the Project MD is: \n\n{0}\n".format(ProjectMDSpatialRef))
+                    # arcpy.AddMessage("Length of SR string is {0}:".format(len(ProjectMDSpatialRef)))
             
-                        # Gather project_md_path metadata such as spatial reference and cell size
-                        descProjectMD = arcpy.Describe(projectMD_path)
-                        descProjectMDSR = descProjectMD.SpatialReference
-                        ProjectMDSpatialRef = descProjectMD.SpatialReference.exportToString()
-                        arcpy.AddMessage("Ingesting: {0}".format(projectMD_path))
-                        # arcpy.AddMessage("Spatial reference of the Project MD is: \n\n{0}\n".format(ProjectMDSpatialRef))
-                        # arcpy.AddMessage("Length of SR string is {0}:".format(len(ProjectMDSpatialRef)))
-                
-                        # Ensure the project_md_path is 1-band 32-bit floating point (i.e. is an elevation raster)
-                        bandCountresult = arcpy.GetRasterProperties_management(projectMD_path, property_type="BANDCOUNT", band_index="")
-                        bandCount = int(bandCountresult.getOutput(0))
-                        if bandCount == 1:
-                
-                            bitDepthresult = arcpy.GetRasterProperties_management(projectMD_path, property_type="VALUETYPE", band_index="")
-                            bitDepth = int(bitDepthresult.getOutput(0))
-                            if bitDepth == 9:
-                                
-                                # Determine the cell size of the Project Mosaic Dataset 
-                                cellsizeResult = arcpy.GetRasterProperties_management(projectMD_path, property_type="CELLSIZEX", band_index="")
-                                cellsize = float(cellsizeResult.getOutput(0))
-                                arcpy.AddMessage("Cell size of Project MD:  {0} {1}".format(cellsize, descProjectMDSR.linearUnitName))
-                                
-                                # Add the rows from the Project MD to the Master MD using the
-                                # Table raster type, and don't update the cell size ranges or the boundary
-                                raster_type = "Table"          
-                                arcpy.AddRastersToMosaicDataset_management(master_md_path, raster_type, projectMD_path, update_cellsize_ranges="NO_CELL_SIZES",
-                                                                           update_boundary="NO_BOUNDARY", update_overviews="NO_OVERVIEWS",
-                                                                           maximum_pyramid_levels="#", maximum_cell_size="0", minimum_dimension="1500",
-                                                                           spatial_reference=ProjectMDSpatialRef, filter="#", sub_folder="NO_SUBFOLDERS",
-                                                                           duplicate_items_action="ALLOW_DUPLICATES", build_pyramids="NO_PYRAMIDS",
-                                                                           calculate_statistics="NO_STATISTICS", build_thumbnails="NO_THUMBNAILS",
-                                                                           operation_description="#", force_spatial_reference="NO_FORCE_SPATIAL_REFERENCE")
-                                Utility.addToolMessages()
+                    # Ensure the project_md_path is 1-band 32-bit floating point (i.e. is an elevation raster)
+                    bandCountresult = arcpy.GetRasterProperties_management(projectMD_path, property_type="BANDCOUNT", band_index="")
+                    bandCount = int(bandCountresult.getOutput(0))
+                    if bandCount == 1:
+            
+                        bitDepthresult = arcpy.GetRasterProperties_management(projectMD_path, property_type="VALUETYPE", band_index="")
+                        bitDepth = int(bitDepthresult.getOutput(0))
+                        if bitDepth == 9:
+                            
+                            # Determine the cell size of the Project Mosaic Dataset 
+                            cellsizeResult = arcpy.GetRasterProperties_management(projectMD_path, property_type="CELLSIZEX", band_index="")
+                            cellsize = float(cellsizeResult.getOutput(0))
+                            arcpy.AddMessage("Cell size of Project MD:  {0} {1}".format(cellsize, descProjectMDSR.linearUnitName))
+                            
+                            # Add the rows from the Project MD to the Master MD using the
+                            # Table raster type, and don't update the cell size ranges or the boundary
+                            raster_type = "Table"          
+                            arcpy.AddRastersToMosaicDataset_management(master_md_path, raster_type, projectMD_path, update_cellsize_ranges="NO_CELL_SIZES",
+                                                                       update_boundary="NO_BOUNDARY", update_overviews="NO_OVERVIEWS",
+                                                                       maximum_pyramid_levels="#", maximum_cell_size="0", minimum_dimension="1500",
+                                                                       spatial_reference=ProjectMDSpatialRef, filter="#", sub_folder="NO_SUBFOLDERS",
+                                                                       duplicate_items_action="ALLOW_DUPLICATES", build_pyramids="NO_PYRAMIDS",
+                                                                       calculate_statistics="NO_STATISTICS", build_thumbnails="NO_THUMBNAILS",
+                                                                       operation_description="#", force_spatial_reference="NO_FORCE_SPATIAL_REFERENCE")
+                            Utility.addToolMessages()
 #                                 messages = arcpy.GetMessages()
 #                                 arcpy.AddMessage("\nResults output from AddRastersToMosaicDataset are: \n{0}\n".format(messages))
                         
                                 # Get another record count from the Master MD 
-                                result = arcpy.GetCount_management(master_md_path)
-                                countMasterRasters = int(result.getOutput(0))
-                                arcpy.AddMessage("After ingest Master Mosaic Dataset: {0} has {1} row(s)".format(master_md_path, countMasterRasters))
+                            result = arcpy.GetCount_management(master_md_path)
+                            countMasterRasters = int(result.getOutput(0))
+                            arcpy.AddMessage("After ingest Master Mosaic Dataset: {0} has {1} row(s)".format(master_md_path, countMasterRasters))
                         
-                                # NOTE: The following section is commented, as setting Category to 2 for overviews created on the project_md_path doesn't work well
-                                # #      # Reset Category to 2 for all overview records ingested from the Project MD (for some reason
-                                # #      #   the table raster type sets all rows to Category of 1).
-                                # #      where_clause = "ItemTS > " + str(MaxItemTSValue) + " AND UPPER(Name) LIKE 'OV_%'"
-                                # #      arcpy.AddMessage("Mosaic Layer where clause: {0}".format(where_clause))
-                                # #      arcpy.MakeMosaicLayer_management(master_md_path,"MasterMDLayer",where_clause,template="#",band_index="#",
-                                # #                                       mosaic_method="BY_ATTRIBUTE",order_field="ProjectDate",order_base_value="3000",
-                                # #                                       lock_rasterid="#",sort_order="ASCENDING",mosaic_operator="LAST",cell_size="1")
-                                # #    
-                                # #      messages =  arcpy.GetMessages()
-                                # #      arcpy.AddMessage("\nResults output from MakeMosaicLayer are: \n{0}\n".format(messages))
-                                # #
-                                # #      arcpy.CalculateField_management("MasterMDLayer", field="Category", expression="2", expression_type="VB", code_block="")
-                                # #      messages =  arcpy.GetMessages()
-                                # #      arcpy.AddMessage("\nResults output from CalculateField are: \n{0}\n".format(messages))
-                        
-                                # Build the boundary
-                                # NOTE: if the boundary has been set to a large shape, then APPEND should have no effect
-                                #       on the existing boundary
-                                arcpy.BuildBoundary_management(master_md_path, where_clause="", append_to_existing="APPEND", simplification_method="NONE")
-                                
-                                messages = arcpy.GetMessages()
-                                arcpy.AddMessage("\nResults output from BuildBoundary are: \n{0}\n".format(messages))
-                                
-                                # set mosaic properties on the master *AGAIN* to ensure that clip to footprint doesn't get re-set
-                                #  Clip to footprint is somehow getting reset in 10.3.  It should be set so that footprints are NOT clipping data (NOT_CLIP)
-                                transmissionFields = "Name;LowPS;CenterX;CenterY;ProjectID;ProjectDate;ProjectSrs;ProjectSrsUnits;ProjectSrsUnitsZ;ProjectSource;PCSCode"
-                                arcpy.AddMessage("\ntransmissionFields: {0}".format(transmissionFields))
+                            # NOTE: The following section is commented, as setting Category to 2 for overviews created on the project_md_path doesn't work well
+                            # #      # Reset Category to 2 for all overview records ingested from the Project MD (for some reason
+                            # #      #   the table raster type sets all rows to Category of 1).
+                            # #      where_clause = "ItemTS > " + str(MaxItemTSValue) + " AND UPPER(Name) LIKE 'OV_%'"
+                            # #      arcpy.AddMessage("Mosaic Layer where clause: {0}".format(where_clause))
+                            # #      arcpy.MakeMosaicLayer_management(master_md_path,"MasterMDLayer",where_clause,template="#",band_index="#",
+                            # #                                       mosaic_method="BY_ATTRIBUTE",order_field="ProjectDate",order_base_value="3000",
+                            # #                                       lock_rasterid="#",sort_order="ASCENDING",mosaic_operator="LAST",cell_size="1")
+                            # #    
+                            # #      messages =  arcpy.GetMessages()
+                            # #      arcpy.AddMessage("\nResults output from MakeMosaicLayer are: \n{0}\n".format(messages))
+                            # #
+                            # #      arcpy.CalculateField_management("MasterMDLayer", field="Category", expression="2", expression_type="VB", code_block="")
+                            # #      messages =  arcpy.GetMessages()
+                            # #      arcpy.AddMessage("\nResults output from CalculateField are: \n{0}\n".format(messages))
+                    
+                            # Build the boundary
+                            # NOTE: if the boundary has been set to a large shape, then APPEND should have no effect
+                            #       on the existing boundary
+                            arcpy.BuildBoundary_management(master_md_path, where_clause="", append_to_existing="APPEND", simplification_method="NONE")
                             
-                                arcpy.SetMosaicDatasetProperties_management(master_md_path, rows_maximum_imagesize="25000", columns_maximum_imagesize="25000",
+                            messages = arcpy.GetMessages()
+                            arcpy.AddMessage("\nResults output from BuildBoundary are: \n{0}\n".format(messages))
+                            
+                            # set mosaic properties on the master *AGAIN* to ensure that clip to footprint doesn't get re-set
+                            #  Clip to footprint is somehow getting reset in 10.3.  It should be set so that footprints are NOT clipping data (NOT_CLIP)
+                            transmissionFields = "Name;LowPS;CenterX;CenterY;ProjectID;ProjectDate;ProjectSrs;ProjectSrsUnits;ProjectSrsUnitsZ;ProjectSource;PCSCode"
+                            arcpy.AddMessage("\ntransmissionFields: {0}".format(transmissionFields))
+                        
+                            arcpy.SetMosaicDatasetProperties_management(master_md_path, rows_maximum_imagesize="25000", columns_maximum_imagesize="25000",
                                                                           allowed_compressions="LERC;JPEG;None;LZ77", default_compression_type="LERC", JPEG_quality="75",
                                                                           LERC_Tolerance="0.001", resampling_type="BILINEAR", clip_to_footprints="NOT_CLIP",
                                                                           footprints_may_contain_nodata="FOOTPRINTS_MAY_CONTAIN_NODATA", clip_to_boundary="NOT_CLIP",
@@ -235,36 +235,36 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
                                                                           data_source_type="ELEVATION", minimum_pixel_contribution="1", processing_templates="None",
                                                                           default_processing_template="None")
                             
-                                messages = arcpy.GetMessages()
-                                arcpy.AddMessage("\nResults output from SetMosaicDatasetProperties are: \n{0}\n".format(messages))
+                            messages = arcpy.GetMessages()
+                            arcpy.AddMessage("\nResults output from SetMosaicDatasetProperties are: \n{0}\n".format(messages))
+                        
+                        
+                            # define the location of the mosaic dataset overviews
+                            loc = master_md_path.rfind(".gdb")
+                            # arcpy.AddMessage("loc = {0}".format(loc))
+                            # MasterMD_overview_path = master_md_path[:loc] + r".Overviews" + master_md_path[loc+4:]
+                            MasterMD_overview_path = master_md_path[:loc] + r".Overviews"
+                            arcpy.AddMessage("Mosaic Dataset Overview Location: {0}".format(MasterMD_overview_path))
+                        
+                            # Define and Build overviews 
+                                 
+                            # Begin building service overviews at low scale (305.74811 Meters)
                             
+                            cellsizeOVR = 305.74811
                             
-                                # define the location of the mosaic dataset overviews
-                                loc = master_md_path.rfind(".gdb")
-                                # arcpy.AddMessage("loc = {0}".format(loc))
-                                # MasterMD_overview_path = master_md_path[:loc] + r".Overviews" + master_md_path[loc+4:]
-                                MasterMD_overview_path = master_md_path[:loc] + r".Overviews"
-                                arcpy.AddMessage("Mosaic Dataset Overview Location: {0}".format(MasterMD_overview_path))
-                            
-                                # Define and Build overviews 
-                                     
-                                # Begin building service overviews at low scale (305.74811 Meters)
-                                
-                                cellsizeOVR = 305.74811
-                                
-                                DefineBuildOverviews (cellsizeOVR, master_md_path, MasterMD_overview_path, "#")
-                            else:
-                                arcpy.AddWarning("\nProject Mosaic bit depth is not 32-bit Floating Point. Ingoring mosaic dataset.")
+                            DefineBuildOverviews (cellsizeOVR, master_md_path, MasterMD_overview_path, "#")
                         else:
-                            arcpy.AddWarning("Project band count is not 1 (expecting single band elevation data). Ingoring mosaic dataset.")
+                            arcpy.AddWarning("\nProject Mosaic bit depth is not 32-bit Floating Point. Ingoring mosaic dataset.")
                     else:
-                        arcpy.AddWarning("Count of rasters in project mosaic dataset is 0. Please add some rasters to the project.")
+                        arcpy.AddWarning("Project band count is not 1 (expecting single band elevation data). Ingoring mosaic dataset.")
+                else:
+                    arcpy.AddWarning("Count of rasters in project mosaic dataset is 0. Please add some rasters to the project.")
 #                     else:
 #                         arcpy.AddWarning("Project Mosaic Dataset path is not found '{}'. Please create it before proceeding.".format(project_md_path))
-                else:
-                    arcpy.AddError("Master Mosaic Dataset path is not found '{}'. Please create it before proceeding.".format(master_md_path))
             else:
-                arcpy.AddWarning("Project Mosaic Dataset path is not found '{}'. Please create it before proceeding.".format(projectMD_path))
+                arcpy.AddError("Master Mosaic Dataset path is not found '{}'. Please create it before proceeding.".format(master_md_path))
+        else:
+            arcpy.AddWarning("Project Mosaic Dataset path is not found '{}'. Please create it before proceeding.".format(projectMD_path))
         # For loop
     
     

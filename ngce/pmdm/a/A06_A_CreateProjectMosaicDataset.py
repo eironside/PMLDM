@@ -88,8 +88,8 @@ def mergeFootprints(las_footprints, raster_footprints, el_type, fgdb_path):
                                             error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
         Utility.addToolMessages()
     
-    out_layer = arcpy.MakeFeatureLayer_management(in_features=output_path, out_layer="FootprintAll_DTM_LAS", where_clause="el_type IS NULL")
-    arcpy.CalculateField_management(in_table=out_layer, field="el_type", expression='"LAS"', expression_type="PYTHON_9.3", code_block="")
+        out_layer = arcpy.MakeFeatureLayer_management(in_features=output_path, out_layer="FootprintAll_DTM_LAS", where_clause="el_type IS NULL")
+        arcpy.CalculateField_management(in_table=out_layer, field="el_type", expression='"LAS"', expression_type="PYTHON_9.3", code_block="")
         
         arcpy.RepairGeometry_management(in_features=temp_path1, delete_null="DELETE_NULL")
         Utility.addToolMessages()
@@ -173,24 +173,24 @@ def generateOverviews(target_path, md_name, md_path, count_rasters, spatial_ref,
     Utility.setArcpyEnv(is_overwrite_output=True)
     a = datetime.now()      
     linearUnitName = spatial_ref.linearUnitName
-            # Set the cell size of the first level overview according to the cell size of the Mosaic Dataset
-            # Do this by doubling cell size and finding the next ArcGIS Online cache scale            
-            cellsizeOVR = Raster.getOverviewCellSize(cellsize)
+    # Set the cell size of the first level overview according to the cell size of the Mosaic Dataset
+    # Do this by doubling cell size and finding the next ArcGIS Online cache scale            
+    cellsizeOVR = Raster.getOverviewCellSize(cellsize)
     arcpy.AddMessage("Cell size of First level Overview:    {0} {1}".format(cellsizeOVR, linearUnitName))
             
-            # Location of Mosaic Dataset overview TIFF files (Note: this folder needs to be in the ArcGIS Server Data Store)
+    # Location of Mosaic Dataset overview TIFF files (Note: this folder needs to be in the ArcGIS Server Data Store)
     mosaic_dataset_overview_path = os.path.join(target_path, "{}.Overviews".format(md_name))
     A05_C_ConsolidateRasterInfo.deleteFileIfExists(mosaic_dataset_overview_path, True)
-            arcpy.AddMessage("Mosaic Dataset Overview Folder: {0}".format(mosaic_dataset_overview_path))
+    arcpy.AddMessage("Mosaic Dataset Overview Folder: {0}".format(mosaic_dataset_overview_path))
         
-            # Define how Overviews will be created and sets
-            # the location of Mosaic Dataset overview TIFF files
-            #     pixel size of the first level overview is cellsizeOVR
-            #     overview_factor="2"
-            #     force_overview_tiles="FORCE_OVERVIEW_TILES"
-            #     compression_method="LZW"
+    # Define how Overviews will be created and sets
+    # the location of Mosaic Dataset overview TIFF files
+    #     pixel size of the first level overview is cellsizeOVR
+    #     overview_factor="2"
+    #     force_overview_tiles="FORCE_OVERVIEW_TILES"
+    #     compression_method="LZW"
     arcpy.DefineOverviews_management(md_path, mosaic_dataset_overview_path, in_template_dataset="#", extent="#", pixel_size=cellsizeOVR, number_of_levels="#", tile_rows="5120", tile_cols="5120", overview_factor="2", force_overview_tiles="FORCE_OVERVIEW_TILES", resampling_method="BILINEAR", compression_method="LZ77", compression_quality="100")
-            Utility.addToolMessages()
+    Utility.addToolMessages()
         
                                 
                                 
@@ -241,41 +241,41 @@ def addLasFilesToMosaicDataset(out_las_dataset, las_folder, las_v_name, las_v_un
     las_h_code = LASSpatialRef.PCSCode
     arcpy.AddMessage("Adding LAS files with spatial reference:\n\tH Name '{}'\n\tH Unit '{}'\n\tH Code '{}'\n\tV Name '{}'\n\tV Unit '{}'".format(las_h_name, las_h_unit, las_h_code, las_v_name, las_v_unit))
 
-            # Get the maximum value of ItemTS From the Project Mosaic Dataset
-            #    The value of ItemTS is based on the last time the row was modified. Knowing
-            #    the current maximum value of ItemTS in the Project MD will help us determine which rows were
-            #    added as a result of the subsequent call to "Add Raster" (i.e. which rows represent LAS)
-            fc = r"in_memory/MaxItemTS"
-            arcpy.Statistics_analysis(md_path, fc, statistics_fields="ItemTS MAX", case_field="#")
-            fields = ['MAX_ITEMTS']
-            with arcpy.da.SearchCursor(fc, fields) as cursor:  # @UndefinedVariable
-                    for row in cursor:
-                            MaxItemTSValue = float(row[0])
-            # arcpy.AddMessage("Maximum value for ItemTS before adding LAS to Project Mosaic Dataset:             {0}".format(MaxItemTSValue))
+    # Get the maximum value of ItemTS From the Project Mosaic Dataset
+    #    The value of ItemTS is based on the last time the row was modified. Knowing
+    #    the current maximum value of ItemTS in the Project MD will help us determine which rows were
+    #    added as a result of the subsequent call to "Add Raster" (i.e. which rows represent LAS)
+    fc = r"in_memory/MaxItemTS"
+    arcpy.Statistics_analysis(md_path, fc, statistics_fields="ItemTS MAX", case_field="#")
+    fields = ['MAX_ITEMTS']
+    with arcpy.da.SearchCursor(fc, fields) as cursor:  # @UndefinedVariable
+            for row in cursor:
+                    MaxItemTSValue = float(row[0])
+    # arcpy.AddMessage("Maximum value for ItemTS before adding LAS to Project Mosaic Dataset:             {0}".format(MaxItemTSValue))
     del fc
         
-            # Add the LAS files to the Mosaic Dataset, but don't recalculate cell size ranges, since MaxPS will be
-            # set in a subsequent step. Don't update the boundary.
+    # Add the LAS files to the Mosaic Dataset, but don't recalculate cell size ranges, since MaxPS will be
+    # set in a subsequent step. Don't update the boundary.
     arcpy.AddRastersToMosaicDataset_management(md_path, LAS_RASTER_TYPE, las_folder, update_cellsize_ranges="NO_CELL_SIZES", update_boundary="NO_BOUNDARY", update_overviews="NO_OVERVIEWS", maximum_pyramid_levels="#", maximum_cell_size="0", minimum_dimension="1500", spatial_reference=LASSpatialRef, filter="#", sub_folder="NO_SUBFOLDERS", duplicate_items_action="ALLOW_DUPLICATES", build_pyramids="NO_PYRAMIDS", calculate_statistics="NO_STATISTICS", build_thumbnails="NO_THUMBNAILS", operation_description="#", force_spatial_reference="NO_FORCE_SPATIAL_REFERENCE")
-            Utility.addToolMessages()
+    Utility.addToolMessages()
             
-            # If the LAS have Z-units of FOOT_INTL or FOOT_US then append the appropriate function to their
-            # function chain to convert the elevation values from feet to meters                                
+    # If the LAS have Z-units of FOOT_INTL or FOOT_US then append the appropriate function to their
+    # function chain to convert the elevation values from feet to meters                                
     if las_v_unit.upper().endswith("Feet".upper()):
-                where_clause = "ItemTS > " + str(MaxItemTSValue) + " AND CATEGORY = 1"
+        where_clause = "ItemTS > " + str(MaxItemTSValue) + " AND CATEGORY = 1"
         arcpy.AddMessage("Inserting a function to convert LAS Feet to Meters, since LAS has Z_Unit of:    {}".format(las_v_unit))
-                arcpy.AddMessage("\nMosaic Layer where clause: {0}".format(where_clause))
+        arcpy.AddMessage("\nMosaic Layer where clause: {0}".format(where_clause))
         arcpy.MakeMosaicLayer_management(md_path, "ProjectMDLayer1", where_clause, template="#", band_index="#", mosaic_method="NORTH_WEST", order_field=CMDRConfig.PROJECT_DATE, order_base_value="", lock_rasterid="#", sort_order="ASCENDING", mosaic_operator="LAST", cell_size="1")
-                Utility.addToolMessages()
+        Utility.addToolMessages()
                 
-                # Use the applicable function chain for either Foot_US or Foot_Intl
+        # Use the applicable function chain for either Foot_US or Foot_Intl
         if las_v_unit.upper() == "International Feet".upper():
             functionChainDef = Raster.Intl_ft2mtrs_function_chain_path
-                else:
+        else:
             functionChainDef = Raster.Us_ft2mtrs_function_chain_path
                         
         arcpy.EditRasterFunction_management("ProjectMDLayer1", edit_mosaic_dataset_item="EDIT_MOSAIC_DATASET_ITEM", edit_options="INSERT", function_chain_definition=functionChainDef, location_function_name="#")
-                Utility.addToolMessages()
+        Utility.addToolMessages()
 
     # This tool is re-run because sometimes the clip_to_footprints="NOT_CLIP" gets re-set to "CLIP" for some reason
     setMosaicDatasetProperties(md_path)
@@ -332,8 +332,8 @@ def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, 
     # If the file gdb doesn't exist, then create it
     if os.path.exists(filegdb_path):
         A05_C_ConsolidateRasterInfo.deleteFileIfExists(filegdb_path, True)
-    arcpy.CreateFileGDB_management(publish_path, filegdb_name)
-            Utility.addToolMessages()
+        arcpy.CreateFileGDB_management(publish_path, filegdb_name)
+        Utility.addToolMessages()
             
     # Create the Mosaic Dataset
     arcpy.CreateMosaicDataset_management(filegdb_path, md_name, coordinate_system=SpatRefMD, num_bands="1", pixel_type="32_BIT_FLOAT", product_definition="NONE", product_band_definitions="#")
@@ -379,14 +379,14 @@ def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, 
 def updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, md_spatial_ref):
     arcpy.JoinField_management(in_data=md_path, in_field="Name", join_table=footprint_path, join_field="name", fields="area;el_type;zran;zmax;zmean;zmin;zdev;width;height;cell_h;cell_w;comp_type;format;pixel;unc_size;xmin;ymin;xmax;ymax;v_name;v_unit;h_name;h_unit;h_wkid;nodata;Project_ID;Project_Dir;Project_GUID;is_class;ra_pt_ct;ra_pt_sp;ra_zmin;ra_zmax;ra_zran")
     # @TODO: Move this to a metadata method & extract all the field names out!
-            # @TODO: Add a start and an end date?
-            # Calculate the value of certain metadata fields using an update cursor:
-            fields = [
-                      'OBJECTID',  # 0 
-                      'MINPS',  # 1
-                      'MAXPS',  # 2
-                      'CATEGORY',  # 3
-                      'ZORDER',  # 4
+    # @TODO: Add a start and an end date?
+    # Calculate the value of certain metadata fields using an update cursor:
+    fields = [
+              'OBJECTID',  # 0 
+              'MINPS',  # 1
+              'MAXPS',  # 2
+              'CATEGORY',  # 3
+              'ZORDER',  # 4
         CMDRConfig.PROJECT_DATE,  # 5
         CMDRConfig.PROJECT_SOURCE,  # 6
         CMDRConfig.RASTER_PATH,  # 7
@@ -395,35 +395,35 @@ def updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, md_spatial_r
         "h_name",  # 10
         "h_unit",  # 11
         "h_wkid"]  # 12
-            with arcpy.da.UpdateCursor(md_path, fields) as rows:  # @UndefinedVariable
-                for row in rows:
-                    # all new rows (primary raster, LAS, and overviews) will have ProjectID and ProjectDate
+    with arcpy.da.UpdateCursor(md_path, fields) as rows:  # @UndefinedVariable
+        for row in rows:
+            # all new rows (primary raster, LAS, and overviews) will have ProjectID and ProjectDate
             row[5] = dateDeliver
             row[6] = PROJECT_SOURCE_LAS
-                    category = row[3]
+            category = row[3]
             # spatialReference = (arcpy.Describe(row[7])).spatialReference
-                    # If MinPS is set (i.e. > 0), the row is a primary raster or an overview
-                    minps = row[1]
-                    if minps >= 0:
-                        # Set ZORDER = -1 for these raster items. This will ensure that the rasters are given priority over LAS data, if they are added.
-                        # This will ensure performance is maintained, in case LAS is also ingested (since LAS data takes longer to render).
-                        row[4] = -1
-                        if category == 1:
+            # If MinPS is set (i.e. > 0), the row is a primary raster or an overview
+            minps = row[1]
+            if minps >= 0:
+                # Set ZORDER = -1 for these raster items. This will ensure that the rasters are given priority over LAS data, if they are added.
+                # This will ensure performance is maintained, in case LAS is also ingested (since LAS data takes longer to render).
+                row[4] = -1
+                if category == 1:
                     row[6] = RasterConfig.PROJECT_SOURCE_RASTER
-                        elif category == 2:
+                elif category == 2:
                     row[6] = RasterConfig.PROJECT_SOURCE_OVERVIEW
                     row[10] = "METER"
                     row[10] = md_spatial_ref.name
                     row[11] = md_spatial_ref.linearUnitName
                     row[12] = md_spatial_ref.PCSCode
-                    else:
+            else:
                 # If MINPS is Null then the row is LAS
                 
-                        # set LAS MINPS to 0.0
-                        row[1] = 0.0000
-                        # Set LAS MAXPS to 0.25 Meter 
-                        row[2] = 0.25000
-                    rows.updateRow(row)
+                # set LAS MINPS to 0.0
+                row[1] = 0.0000
+                # Set LAS MAXPS to 0.25 Meter 
+                row[2] = 0.25000
+            rows.updateRow(row)
             
     
             del row
@@ -433,31 +433,31 @@ def updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, md_spatial_r
 def importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path):
     if footprint_path is not None:
         arcpy.ImportMosaicDatasetGeometry_management(md_path, target_featureclass_type="FOOTPRINT", target_join_field="Name", input_featureclass=footprint_path, input_join_field="name")
-            Utility.addToolMessages()
+        Utility.addToolMessages()
     if lasd_boundary_path is not None:
         arcpy.ImportMosaicDatasetGeometry_management(md_path, target_featureclass_type="BOUNDARY", target_join_field="OBJECTID", input_featureclass=lasd_boundary_path, input_join_field="OBJECTID")
-            Utility.addToolMessages()
+        Utility.addToolMessages()
             
                                     
 def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path):
     full_calc = False
-            minResult = arcpy.GetRasterProperties_management(md_path, property_type="MINIMUM", band_index="Band_1")
-            Utility.addToolMessages()
-            minMDValue = float(minResult.getOutput(0))
-        
-            maxResult = arcpy.GetRasterProperties_management(md_path, property_type="MAXIMUM", band_index="Band_1")
-            Utility.addToolMessages()
-            maxMDValue = float(maxResult.getOutput(0))
+    minResult = arcpy.GetRasterProperties_management(md_path, property_type="MINIMUM", band_index="Band_1")
+    Utility.addToolMessages()
+    minMDValue = float(minResult.getOutput(0))
+
+    maxResult = arcpy.GetRasterProperties_management(md_path, property_type="MAXIMUM", band_index="Band_1")
+    Utility.addToolMessages()
+    maxMDValue = float(maxResult.getOutput(0))
         
     arcpy.AddMessage("Before statistics calc Min/Max \n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
     
     
     
-            # Only Calculate Statistics if they are corrupted (The constants can apply to Meters or Feet)
-            if minMDValue < -300.0 or maxMDValue > 30000.0:
+    # Only Calculate Statistics if they are corrupted (The constants can apply to Meters or Feet)
+    if minMDValue < -300.0 or maxMDValue > 30000.0:
         arcpy.AddWarning("Mosaic values for Min/Max are way out of spec. Trying full calc statistics \n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
         full_calc = True
-                # Calculate stats on the Mosaic Dataset (note: if this takes too long, enlarge skip factors)
+        # Calculate stats on the Mosaic Dataset (note: if this takes too long, enlarge skip factors)
         arcpy.CalculateStatistics_management(md_path, x_skip_factor="1", y_skip_factor="1", ignore_values="#", skip_existing="OVERWRITE", area_of_interest="Feature Set")
         Utility.addToolMessages()
         
@@ -482,18 +482,18 @@ def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path):
             arcpy.BuildPyramidsandStatistics_management(md_path, include_subdirectories="INCLUDE_SUBDIRECTORIES", build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="NONE", block_field="#", estimate_statistics="NONE", x_skip_factor="10", y_skip_factor="10", ignore_values="#", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="BILINEAR", compression_type="DEFAULT", compression_quality="75", skip_existing="SKIP_EXISTING")
             Utility.addToolMessages()
             arcpy.CalculateStatistics_management(md_path, x_skip_factor="1", y_skip_factor="1", ignore_values="#", skip_existing="OVERWRITE", area_of_interest="Feature Set")
-                Utility.addToolMessages()
+            Utility.addToolMessages()
         
             # This tool is re-run because sometimes the clip_to_footprints="NOT_CLIP" gets re-set to "CLIP" for some reason
             setMosaicDatasetProperties(md_path)
             
-                minResult = arcpy.GetRasterProperties_management(md_path, property_type="MINIMUM", band_index="Band_1")
-                Utility.addToolMessages()
-                minMDValue = float(minResult.getOutput(0))
-        
-                maxResult = arcpy.GetRasterProperties_management(md_path, property_type="MAXIMUM", band_index="Band_1")
-                Utility.addToolMessages()
-                maxMDValue = float(maxResult.getOutput(0))
+            minResult = arcpy.GetRasterProperties_management(md_path, property_type="MINIMUM", band_index="Band_1")
+            Utility.addToolMessages()
+            minMDValue = float(minResult.getOutput(0))
+    
+            maxResult = arcpy.GetRasterProperties_management(md_path, property_type="MAXIMUM", band_index="Band_1")
+            Utility.addToolMessages()
+            maxMDValue = float(maxResult.getOutput(0))
             
             arcpy.AddMessage("After statistics calc Min/Max \n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
             
@@ -579,44 +579,44 @@ def processJob(ProjectJob, project, ProjectUID, dateDeliver, dateStart, dateEnd)
         if arcpy.Exists(md_path):
             arcpy.AddMessage("Mosaic exists: {}".format(md_path))
         else:
-        derived_fgdb_path = os.path.join(ProjectFolder.derived.fgdb_path)
+            derived_fgdb_path = os.path.join(ProjectFolder.derived.fgdb_path)
         
-        raster_footprint_path = A05_C_ConsolidateRasterInfo.getRasterFootprintPath(fgdb_path, imageDir)
-        footprint_path = mergeFootprints(las_footprint_path, raster_footprint_path, imageDir, derived_fgdb_path)
-                    
-        imagePath = target_path
-        SRMatchFlag, ras_count = isSpatialRefSameForAll(imagePath)
-        if not SRMatchFlag:
-            arcpy.AddError("SR doesn't match for all images, aborting.")
-        elif ras_count <= 0:
-            arcpy.AddError("No rasters for selected elevation type {}.".format(imageDir))
-        else:
-            arcpy.AddMessage("Working on {} rasters for elevation type {}.".format(ras_count, imageDir))            
-                   
-            count_rasters, md_cellsize = createMosaicDatasetAndAddRasters(raster_v_unit, publish_folder.path, filegdb_name, imagePath, md_name, md_path, SpatRefMD)
-            
-            importMosaicDatasetGeometries(md_path, None, lasd_boundary_path)
-            
-            count_overviews, count_total = generateOverviews(target_path, md_name, md_path, count_rasters, SpatRefMD, md_cellsize)
+            raster_footprint_path = A05_C_ConsolidateRasterInfo.getRasterFootprintPath(fgdb_path, imageDir)
+            footprint_path = mergeFootprints(las_footprint_path, raster_footprint_path, imageDir, derived_fgdb_path)
+                        
+            imagePath = target_path
+            SRMatchFlag, ras_count = isSpatialRefSameForAll(imagePath)
+            if not SRMatchFlag:
+                arcpy.AddError("SR doesn't match for all images, aborting.")
+            elif ras_count <= 0:
+                arcpy.AddError("No rasters for selected elevation type {}.".format(imageDir))
+            else:
+                arcpy.AddMessage("Working on {} rasters for elevation type {}.".format(ras_count, imageDir))            
+                       
+                count_rasters, md_cellsize = createMosaicDatasetAndAddRasters(raster_v_unit, publish_folder.path, filegdb_name, imagePath, md_name, md_path, SpatRefMD)
+                
+                importMosaicDatasetGeometries(md_path, None, lasd_boundary_path)
+                
+                count_overviews, count_total = generateOverviews(target_path, md_name, md_path, count_rasters, SpatRefMD, md_cellsize)
                                 
                 count_las=0
                 if imageDir == DTM:
-            count_las, count_total = addLasFilesToMosaicDataset(lasd_path, las_qainfo.las_directory, las_v_name, las_v_unit, isClassified, md_path, count_total)
+                    count_las, count_total = addLasFilesToMosaicDataset(lasd_path, las_qainfo.las_directory, las_v_name, las_v_unit, isClassified, md_path, count_total)
+                    
+                    importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path)
+                    
+                    updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, SpatRefMD)
+                                        
+                    calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path)
             
-            importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path)
+                # Analyze the Mosaic Dataset in preparation for publishing it
+                arcpy.AnalyzeMosaicDataset_management(md_path, where_clause="#", checker_keywords="FOOTPRINT;FUNCTION;RASTER;PATHS;SOURCE_VALIDITY;STALE;PYRAMIDS;STATISTICS;PERFORMANCE;INFORMATION")    
+                Utility.addToolMessages()
+                arcpy.AddMessage("To view detailed results, Add the MD to the map, rt-click --> Data --> View Analysis Results")
             
-            updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, SpatRefMD)
-                                
-            calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path)
-            
-            # Analyze the Mosaic Dataset in preparation for publishing it
-            arcpy.AnalyzeMosaicDataset_management(md_path, where_clause="#", checker_keywords="FOOTPRINT;FUNCTION;RASTER;PATHS;SOURCE_VALIDITY;STALE;PYRAMIDS;STATISTICS;PERFORMANCE;INFORMATION")    
-            Utility.addToolMessages()
-            arcpy.AddMessage("To view detailed results, Add the MD to the map, rt-click --> Data --> View Analysis Results")
-        
-            
-            arcpy.AddMessage("Mosaic dataset has {} rasters {} overviews and {} las files.".format(count_rasters, count_overviews, count_las))
-            doTime(a, "completed building mosaic dataset {}".format(md_path))
+                
+                arcpy.AddMessage("Mosaic dataset has {} rasters {} overviews and {} las files.".format(count_rasters, count_overviews, count_las))
+                doTime(a, "completed building mosaic dataset {}".format(md_path))
             
         
 #             # @TODO: Add a spatial reference check

@@ -167,10 +167,10 @@ def checkSpatialOnRaster(start_dir, elev_type, target_path, v_name, v_unit, h_na
     
     if prj_spatial_ref is not None:
         try:
-        arcpy.AddMessage("PRJ File Spatial Reference:\n\tH_Name: '{}'\n\tH_Unit: '{}'\n\tH_WKID: '{}'\n\tV_Name: '{}'\n\tV_Unit: '{}'".format(prj_horz_cs_name, prj_horz_cs_unit_name, prj_horz_cs_factory_code, prj_vert_cs_name, prj_vert_cs_unit_name))
-        errorMsg = getSRErrorMessage("\tPRJ File Spatial Reference:", prj_horz_cs_name, prj_horz_cs_unit_name, prj_vert_cs_name, prj_vert_cs_unit_name)
-        if errorMsg is not None:
-            arcpy.AddMessage(errorMsg)
+            arcpy.AddMessage("PRJ File Spatial Reference:\n\tH_Name: '{}'\n\tH_Unit: '{}'\n\tH_WKID: '{}'\n\tV_Name: '{}'\n\tV_Unit: '{}'".format(prj_horz_cs_name, prj_horz_cs_unit_name, prj_horz_cs_factory_code, prj_vert_cs_name, prj_vert_cs_unit_name))
+            errorMsg = getSRErrorMessage("\tPRJ File Spatial Reference:", prj_horz_cs_name, prj_horz_cs_unit_name, prj_vert_cs_name, prj_vert_cs_unit_name)
+            if errorMsg is not None:
+                arcpy.AddMessage(errorMsg)
         except:
             pass
     else:
@@ -460,7 +460,7 @@ def getFileProcessList(start_dir, elev_type, target_path, publish_path, return_f
         # if we get to here, there are no rasters in this folder
         return None
     else:
-    return fileList
+        return fileList
 
 
 def validateRasterSpaitialRef(ProjectFolder, start_dir, elev_type, target_path, v_name, v_unit, h_name, h_unit, h_wkid):
@@ -524,21 +524,22 @@ def processJob(ProjectJob, project, ProjectUID):
             f_name = getFileProcessList(start_dir, elev_type, target_path, publish_path, return_first=True, check_sr=False)
         
         if f_name is None:
-            arcpy.AddWarning("No {} rasters found to re-svalue in {}".format(elev_type, start_dir))
+            arcpy.AddWarning("No {} rasters found to re-value in {}".format(elev_type, start_dir))
         else:
-        spatial_ref = validateRasterSpaitialRef(ProjectFolder, start_dir, elev_type, target_path, v_name, v_unit, h_name, h_unit, h_wkid)
+            spatial_ref = validateRasterSpaitialRef(ProjectFolder, start_dir, elev_type, target_path, v_name, v_unit, h_name, h_unit, h_wkid)
         
         if spatial_ref is not None:
-            
-        fileList = getFileProcessList(start_dir, elev_type, target_path, publish_path)     
+            fileList = getFileProcessList(start_dir, elev_type, target_path, publish_path)     
             processRastersInFolder(fileList, target_path, publish_path, elev_type, lasd_boundary, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref)
-        raster_footprint, raster_boundary = A05_C_ConsolidateRasterInfo.createRasterBoundaryAndFootprints(fgdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID, elev_type)
+            raster_footprint, raster_boundary = A05_C_ConsolidateRasterInfo.createRasterBoundaryAndFootprints(fgdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID, elev_type)
         if raster_footprint is not None:
+            arcpy.RepairGeometry_management(in_features=raster_footprint, delete_null="KEEP_NULL")
             raster_footprints.append(raster_footprint)
-                    arcpy.RepairGeometry_management(in_features=raster_footprint, delete_null="KEEP_NULL")
+            
         if raster_boundary is not None:
+            arcpy.RepairGeometry_management(in_features=raster_boundary, delete_null="KEEP_NULL")
             raster_boundaries.append(raster_boundary)
-                    arcpy.RepairGeometry_management(in_features=raster_boundary, delete_null="KEEP_NULL")
+                    
     
     
     if arcpy.Exists(raster_footprint_main):
@@ -617,9 +618,7 @@ def RemoveDEMErrantValues(strJobId):
 
 
 if __name__ == '__main__':
-    
-    
-	jobID = sys.argv[1]
+    jobID = sys.argv[1]
     RemoveDEMErrantValues(jobID)
     
 #     UID = None  # field_ProjectJob_UID

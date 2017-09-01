@@ -152,7 +152,7 @@ def getJobAoi(jobId):
         #arcpy.AddMessage(where_clause)
         aoi = getExistingRecord(in_table, field_names, uidIndex, where_clause)[0]
         #arcpy.AddMessage(aoi[0])
-        shape[jobId] = arcpy.Geometry(aoi[0])
+        shape[jobId] = aoi[0]
         
     arcpy.AddMessage("Job {} AOI: {}".format(jobId, shape[jobId]))
     return shape[jobId]

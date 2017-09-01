@@ -66,7 +66,7 @@ def createRefDTMMosaic(in_md_path, out_md_path, v_unit):
     a = datetime.now()
     if arcpy.Exists(out_md_path):
         arcpy.AddMessage("Referenced mosaic dataset exists " + out_md_path)
-        else:
+    else:
         arcpy.CreateReferencedMosaicDataset_management(in_dataset=in_md_path, out_mosaic_dataset=out_md_path, where_clause="TypeID = 1")
 
         raster_function_path = Raster.Contour_Meters_function_chain_path
@@ -200,7 +200,7 @@ def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_pat
                     outDivide1 = Functions.Divide(divide1_name, 0.3048)
                 elif (userUnits == "FT" or userUnits == "FEET") and (vertUnits == "FOOT_US" or vertUnits == "FOOT_INTL"):
                     outDivide1 = Functions.Divide(divide1_name, 1.0)
-        else:
+                else:
                     arcpy.AddMessage("\nuserUnits: {}, vertUnits: {}".format(userUnits, vertUnits))
                     arcpy.AddError('\nUnable to create contours.')
                     raise Exception("Units not valid")
@@ -421,7 +421,7 @@ def processJob(ProjectJob, project, ProjectUID):
     distance_to_clip_md = DISTANCE_TO_CLIP_MOSAIC_DATASET
     distance_to_clip_contours = DISTANCE_TO_CLIP_CONTOURS
     
-        ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
+    ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
     derived_folder = ProjectFolder.derived.path
     published_folder = ProjectFolder.published.path
 #     project_id = ProjectJob.getProjectID(project)
@@ -481,31 +481,30 @@ def processJob(ProjectJob, project, ProjectUID):
         arcpy.AddWarning('Exception Raised During Script Initialization')
         arcpy.AddWarning('Exception: ' + str(e))
 
-        else:
-        try:
-            # Map Generate Contour Function to Footprints
-            pool = Pool(processes=cpu_count() - 1)
-            pool.map(
-                partial(
-                    generate_contour,
-                    ref_md,
-                    cont_int,
-                    cont_unit,
-                    raster_vertical_unit,
-                    smooth_unit,
-                    scratch_path
-                ),
-                run_dict.items()
-            )
-            pool.close()
-            pool.join()
-     
-            # Merge Contours
-            handle_results(scratch_path, contour_gdb)
+    try:
+        # Map Generate Contour Function to Footprints
+        pool = Pool(processes=cpu_count() - 1)
+        pool.map(
+            partial(
+                generate_contour,
+                ref_md,
+                cont_int,
+                cont_unit,
+                raster_vertical_unit,
+                smooth_unit,
+                scratch_path
+            ),
+            run_dict.items()
+        )
+        pool.close()
+        pool.join()
+ 
+        # Merge Contours
+        handle_results(scratch_path, contour_gdb)
 
-        except Exception as e:
-            arcpy.AddMessage('Exception Raised During Multiprocessing')
-            arcpy.AddError('Exception: ' + str(e))
+    except Exception as e:
+        arcpy.AddMessage('Exception Raised During Multiprocessing')
+        arcpy.AddError('Exception: ' + str(e))
 
     finally:
         run = time.time() - start
@@ -523,9 +522,9 @@ def CreateContoursFromMD(strJobId):
     doTime(aa, "Operation Complete: C01 Create Contours From MD")
 
 if __name__ == '__main__':
-	arcpy.env.overwriteOutput = True
-	projId = sys.argv[1]
-	CreateContoursFromMD(projId)
+    arcpy.env.overwriteOutput = True
+    projId = sys.argv[1]
+    CreateContoursFromMD(projId)
 
 
         

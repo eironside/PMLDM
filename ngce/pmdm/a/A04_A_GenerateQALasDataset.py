@@ -519,7 +519,7 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
             fileList = getLasFileProcessList(las_qainfo.las_directory, target_path, createQARasters, las_qainfo.isClassified)
             createLasStatistics(fileList, target_path, las_qainfo.lasd_spatial_ref, las_qainfo.isClassified, createQARasters, createMissingRasters, overrideBorderPath)
         
-        # Create the project's las dataset. Don't do this before you validated that each .las file has a .lasx
+            # Create the project's las dataset. Don't do this before you validated that each .las file has a .lasx
             if os.path.exists(las_qainfo.las_dataset_path):
                 arcpy.AddMessage("Using existing LAS Dataset {}".format(las_qainfo.las_dataset_path))
                 # arcpy.AddMessage("Deleting existing LAS Dataset {}".format(las_qainfo.las_dataset_path))
@@ -527,7 +527,7 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
             else:
                 a = datetime.now()
             # note: don't use method in A04_B because we don't want to compute statistics this time
-        arcpy.CreateLasDataset_management(input=las_qainfo.las_directory,
+            arcpy.CreateLasDataset_management(input=las_qainfo.las_directory,
                                           out_las_dataset=las_qainfo.las_dataset_path,
                                           folder_recursion="RECURSION",
                                           in_surface_constraints="",
@@ -535,15 +535,15 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
                                           compute_stats="NO_COMPUTE_STATS",
                                           relative_paths="RELATIVE_PATHS",
                                           create_las_prj="FILES_MISSING_PROJECTION")
-        Utility.addToolMessages()
-                a = doTime(a, "Created LAS Dataset '{}'".format(las_qainfo.las_dataset_path))
+            Utility.addToolMessages()
+            a = doTime(a, "Created LAS Dataset '{}'".format(las_qainfo.las_dataset_path))
                          
                      
-        desc = arcpy.Describe(las_qainfo.las_dataset_path)
+            desc = arcpy.Describe(las_qainfo.las_dataset_path)
         
             # las_qainfo.lasd_spatial_ref = desc.SpatialReference
-        las_qainfo.LASDatasetPointCount = desc.pointCount
-        las_qainfo.LASDatasetFileCount = desc.fileCount
+            las_qainfo.LASDatasetPointCount = desc.pointCount
+            las_qainfo.LASDatasetFileCount = desc.fileCount
         
 #             if spatial_ref is None:
 #                 las_spatial_ref = las_qainfo.lasd_spatial_ref
@@ -555,7 +555,7 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
 #                     pass
         
         
-        arcpy.AddMessage("LASDatasetPointCount {} and LASDatasetFileCount {}".format(desc.pointCount, desc.fileCount))
+            arcpy.AddMessage("LASDatasetPointCount {} and LASDatasetFileCount {}".format(desc.pointCount, desc.fileCount))
         
 #             las_qainfo.isValidSpatialReference()
 #             if las_qainfo.isUnknownSpatialReference():
@@ -627,7 +627,7 @@ if __name__ == '__main__':
     projId = sys.argv[1]
     createQARasters = False
     createMissingRasters = False
-	overrideBorderPath = None
+    overrideBorderPath = None
 
     if len(sys.argv) > 2:
         createQARasters = sys.argv[2]

@@ -11,17 +11,17 @@ from ngce.folders import ProjectFolders
 
 
 def getLogFolderFromWMXJobID(strJobId):
-    ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
-    ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
-    return ProjectFolder.derived.log_path
+    project_job, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
+    project_folder = ProjectFolders.getProjectFolderFromDBRow(project_job, project)
+    return project_folder.derived.log_path
 
 def getProjectFromWMXJobID(strJobId):
     setWMXJobDataAsEnvironmentWorkspace(strJobId)
     
-    ProjectJob = ProjectJob()
-    project, strUID = ProjectJob.getProject(strJobId)  # @UnusedVariable
+    project_job = ProjectJob()
+    project, strUID = project_job.getProject(strJobId)  # @UnusedVariable
     
     if project is None:
         arcpy.AddError('Failed to retrieve project info: project with WMX Job ID {} not found'.format(strJobId))
     
-    return ProjectJob, project, strUID
+    return project_job, project, strUID

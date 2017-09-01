@@ -10,7 +10,7 @@ from ngce.pmdm import RunUtil
 
 
 # from ngce.pmdm.a import A05RemoveDEMErrantValues
-PATH = r'ngce\pmdm\a\A05RemoveDEMErrantValues.py'
+PATH = r'ngce\pmdm\a\A05_A_RemoveDEMErrantValues.py'
 
 jobID = arcpy.GetParameterAsText(0)
 args = [jobID]

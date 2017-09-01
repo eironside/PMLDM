@@ -10,7 +10,7 @@ from ngce.pmdm import RunUtil
 
 
 # from ngce.pmdm.a import A06CreateProjectMosaicDataset
-PATH = r'ngce\pmdm\a\A06CreateProjectMosaicDataset.py'
+PATH = r'ngce\pmdm\a\A06_A_CreateProjectMosaicDataset.py'
 
 jobID = arcpy.GetParameterAsText(0)
 args = [jobID]

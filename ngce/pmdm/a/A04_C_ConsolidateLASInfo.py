@@ -441,20 +441,20 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
         lasd_boundary_B = "{}B".format(lasd_boundary)
         deleteFileIfExists(lasd_boundary_B, True)
         
-    las_footprint_1 = os.path.join(fgdb_path, "{}1".format(las_footprint))
-    deleteFileIfExists(las_footprint_1, True)
-    arcpy.Merge_management(inputs=b_file_list, output=las_footprint_1)
+        las_footprint_1 = os.path.join(fgdb_path, "{}1".format(las_footprint))
+        deleteFileIfExists(las_footprint_1, True)
+        arcpy.Merge_management(inputs=b_file_list, output=las_footprint_1)
     
-    a = doTime(a, "Merged las footprints {}".format(las_footprint_1))
+        a = doTime(a, "Merged las footprints {}".format(las_footprint_1))
     
         createBoundaryFeatureClass(las_footprint_1, lasd_boundary_B)
-    a = datetime.datetime.now()
+        a = datetime.datetime.now()
     
-    # Merge the other footprints before clipping
-    deleteFileIfExists(las_footprint_1, True)
-    arcpy.Merge_management(inputs=c_file_list, output=las_footprint_1)
+        # Merge the other footprints before clipping
+        deleteFileIfExists(las_footprint_1, True)
+        arcpy.Merge_management(inputs=c_file_list, output=las_footprint_1)
     
-    a = doTime(a, "Merged las footprints {}".format(las_footprint_1))
+        a = doTime(a, "Merged las footprints {}".format(las_footprint_1))
     
         lasd_boundary_C = "{}C".format(lasd_boundary)
         deleteFileIfExists(lasd_boundary_C, True)
@@ -482,25 +482,25 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
 
         a = doTime(a, "Created symetrical difference in boundaries {}".format(lasd_boundary_SD))
         
-    checkNullFields(las_footprint_1)
-    a = datetime.datetime.now()
+        checkNullFields(las_footprint_1)
+        a = datetime.datetime.now()
     
-    deleteFileIfExists(las_footprint, True)
+        deleteFileIfExists(las_footprint, True)
         arcpy.Clip_analysis(in_features=las_footprint_1, clip_features=lasd_boundary_B, out_feature_class=las_footprint, cluster_tolerance="")
-    deleteFileIfExists(las_footprint_1, True)
+        deleteFileIfExists(las_footprint_1, True)
         deleteFileIfExists(lasd_boundary_B, True)
         
         deleteFileIfExists(lasd_boundary, True)
-    a = doTime(a, "Clipped las footprints to dataset boundary {} ".format(las_footprint))
+        a = doTime(a, "Clipped las footprints to dataset boundary {} ".format(las_footprint))
     
     if not arcpy.Exists(lasd_boundary):
         
         deleteFileIfExists(lasd_boundary, True)
         
-    summary_string, field_alter = getStatsFields()
-    createBoundaryFeatureClass(las_footprint, lasd_boundary, summary_string, field_alter)
+        summary_string, field_alter = getStatsFields()
+        createBoundaryFeatureClass(las_footprint, lasd_boundary, summary_string, field_alter)
     
-    addProjectInfo(las_footprint, lasd_boundary, project_ID, project_path, project_UID)
+        addProjectInfo(las_footprint, lasd_boundary, project_ID, project_path, project_UID)
     
     arcpy.RepairGeometry_management(in_features=las_footprint, delete_null="KEEP_NULL")
     arcpy.RepairGeometry_management(in_features=lasd_boundary, delete_null="KEEP_NULL")

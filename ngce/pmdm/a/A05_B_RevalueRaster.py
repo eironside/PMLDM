@@ -90,9 +90,9 @@ def getFilePaths(f_path, elev_type, target_path, publish_path, raster_version=ST
     stat_file_path = os.path.join(stat_out_folder, "S_{}.txt".format(f_name))
     
     try:
-    # Make the STAT folder if it doesn't already exist
-    if not os.path.exists(stat_out_folder):
-        os.makedirs(stat_out_folder)
+        # Make the STAT folder if it doesn't already exist
+        if not os.path.exists(stat_out_folder):
+            os.makedirs(stat_out_folder)
     except:
         # Another thread must have made it or there is a lock
         pass
@@ -392,7 +392,7 @@ def processFile(bound_path, f_path, elev_type, target_path, publish_path, z_min,
     if os.path.exists(vector_bound_path):
         arcpy.AddMessage("\tBound file exists: {}".format(vector_bound_path))
     else:
-            raster_props = createRasterDatasetStats(publish_f_path)
+        raster_props = createRasterDatasetStats(publish_f_path)
         createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_bound_path, z_min, z_max, bound_path, elev_type)
     
     CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_props)
