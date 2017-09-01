@@ -195,6 +195,7 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
     lasd_boundary_1 = "{}1".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_1, True)
     arcpy.AddMessage("\tDissolving with statistics: {}".format(statistics_fields))
+    
     arcpy.Dissolve_management(in_features=raster_footprint, out_feature_class=lasd_boundary_1, statistics_fields=statistics_fields)
     a = doTime(a, "\tDissolved to {}".format(lasd_boundary_1))
     
@@ -235,6 +236,20 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
     
     a = doTime(aa, "Dissolved las footprints to dataset boundary {} ".format(target_raster_boundary))
     
+def addFieldsIfMissing(feature_class, field_list=None):
+    fieldnames = [field.name for field in arcpy.ListFields(feature_class)]
+    if field_list is not None:
+        for field_info in field_list:
+            addFieldIfMissing(feature_class, fieldnames, field_info)
+    return fieldnames
+
+def addFieldIfMissing(feature_class, fieldnames, field_info):
+      field_name = field_info[0]
+      if (False if field_name in fieldnames else True):
+          arcpy.AddField_management(in_table=feature_class, field_name=field_info[0], field_alias=field_info[1], field_type=field_info[2], field_length=field_info[3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+          #arcpy.CalculateField_management(in_table=feature_class, field=field_info[0], expression=0, expression_type="PYTHON_9.3")
+
+      
 
 '''
 ---------------------------------------------
@@ -242,7 +257,7 @@ creates a list of all of the standard statistics fields we are interested in
 and the summary info we want to get from them
 ---------------------------------------------
 '''
-def getStatsFields():
+def getStatsFields(feature_class = None):
     a = datetime.datetime.now()
     base_fields = [
                    [FIELD_INFO[NAME], "COUNT"],
@@ -301,8 +316,6 @@ def getStatsFields():
             value_field_summary = value_field_record[1]
             base_fields.append([["{}_{}".format(class_field_info[0], value_field_info[0]), "{} {}".format(class_field_info[1], value_field_info[1]) , value_field_info[2], value_field_info[3]], value_field_summary])
     
-    # @TODO: Delete fields that don't exist in a given feature class?
-    
     field_alter = []
     for base_field in base_fields:
         field_name = "{}_{}".format(base_field[1], base_field[0][0])
@@ -314,10 +327,18 @@ def getStatsFields():
             new_field = [field_name, field_name, "Number of LAS Files"]
         field_alter.append(new_field)
         # arcpy.AddMessage("Alter Field Name: '{}'".format(new_field))
-    
+
+    existing_fieldnames=None
+    if feature_class is not None:
+        existing_fieldnames = [field.name for field in arcpy.ListFields(feature_class)]
+  
     summary_fields = []
     for base_field in base_fields:
         base_field_info = base_field[0]
+        if (False if base_field_info[0] in existing_fieldnames else True):
+            arcpy.AddMessage("Adding field {} to {}".format(base_field_info, feature_class))
+            addFieldIfMissing(feature_class, existing_fieldnames, base_field_info)
+
         base_field_op = base_field[1]
         summary_field = "{} {}".format(base_field_info[0], base_field_op)
         summary_fields.append(summary_field)
@@ -498,7 +519,7 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
         
         deleteFileIfExists(lasd_boundary, True)
         
-        summary_string, field_alter = getStatsFields()
+        summary_string, field_alter = getStatsFields(las_footprint)
         createBoundaryFeatureClass(las_footprint, lasd_boundary, summary_string, field_alter)
     
         addProjectInfo(las_footprint, lasd_boundary, project_ID, project_path, project_UID)
