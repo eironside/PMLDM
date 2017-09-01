@@ -415,7 +415,7 @@ def addProjectInfo(raster_footprint, raster_boundary, project_ID, project_path, 
                       ]:
             
             arcpy.AddField_management(in_table=table, field_name=field[0], field_alias=field[0], field_type=field[1], field_length=field[2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-            arcpy.CalculateField_management(in_table=table, field=CMDRConfig.PROJECT_ID, expression='"{}"'.format(field[3]), expression_type="PYTHON_9.3")
+            arcpy.CalculateField_management(in_table=table, field=field[0], expression='"{}"'.format(field[3]), expression_type="PYTHON_9.3")
 
 '''
 ---------------------------------------------
