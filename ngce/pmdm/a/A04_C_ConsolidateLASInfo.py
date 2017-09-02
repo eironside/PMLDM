@@ -570,7 +570,7 @@ def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_fold
             if len(name) > 0:
                 md_name = "{}{}".format(method, name)
 
-            input_folder = os.path.join(target_folder, method, name)
+            input_folder = os.path.join(target_folder, method, name[1:])
 
             arcpy.AddMessage("Creating {} MD from {}".format(md_name, input_folder))
             try:
