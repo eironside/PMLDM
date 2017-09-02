@@ -27,12 +27,12 @@ SDE_WMX_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wm
 SDE_CMDR_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cmdr.sde')
 WMX_AOI_FC = "LDM_WMX.DBO.JTX_JOBS_AOI"
 
-def fileCounter(myPath, ext):
+def fileCounter(myPath, ext=None):
     fileCounter = 0
     firstFile = None
     for root, dirs, files in os.walk(myPath):  # @UnusedVariable
         for f in files:
-            if f.upper().endswith(ext.upper()):
+            if ext is None or f.upper().endswith(ext.upper()):
                 fileCounter += 1
                 if firstFile is None:
                     firstFile = f
