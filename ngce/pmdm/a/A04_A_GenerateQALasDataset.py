@@ -618,11 +618,13 @@ if __name__ == '__main__':
     overrideBorderPath = None
 
     if len(sys.argv) > 2:
-        createQARasters = (str(sys.argv[2]) == 'True')
+        createQARasters = sys.argv[2]
     if len(sys.argv) > 3:
-        createMissingRasters = (str(sys.argv[3]) == 'True')
+        createMissingRasters = sys.argv[3]
     if len(sys.argv) > 4:
         overrideBorderPath = str(sys.argv[4])
+    Utility.printArguments(["WMXJobID", "createQARasters", "createMissingRasters", "overrideBorderPath"],
+                           [projId, createQARasters, createMissingRasters, overrideBorderPath], "A04 GenerateQALasDataset")
 
     GenerateQALasDataset(projId, createQARasters, createMissingRasters, overrideBorderPath)
     

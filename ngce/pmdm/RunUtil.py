@@ -35,7 +35,7 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
     path = r'"{}"'.format(os.path.join(WMX_TOOLS, path))
 
     for index in range(0, len(toolArgs)):
-        if toolArgs[index].endswith('\\'):
+        if toolArgs[index] is not None and str(toolArgs[index]).endswith('\\'):
             toolArgs[index] = toolArgs[index][0:-1]
         toolArgs[index] = r'"{}"'.format(toolArgs[index])
     

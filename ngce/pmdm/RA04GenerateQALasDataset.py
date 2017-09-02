@@ -13,7 +13,16 @@ from ngce.pmdm import RunUtil
 PATH = r'ngce\pmdm\a\A04_A_GenerateQALasDataset.py'
 
 jobID = arcpy.GetParameterAsText(0)
-args = [jobID]
+createQARasters = arcpy.GetParameterAsText(1)
+createMissingRasters = arcpy.GetParameterAsText(2)
+overrideBorderPath = None
+try:
+    overrideBorderPath = arcpy.GetParameterAsText(3)
+except:
+    pass
+
+args = [jobID,createQARasters,createMissingRasters,overrideBorderPath]
+arcpy.AddMessage(args)
 
 # A04GenerateQALasDataset.GenerateQALasDataset(jobID)
 
