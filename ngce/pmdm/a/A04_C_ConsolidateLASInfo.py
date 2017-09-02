@@ -601,7 +601,8 @@ def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_fold
 
     md_name = CANOPY_DENSITY
     dhm_md_path = os.path.join(gdb_path, md_name)
-
+    mosaics.append(pc_all_md_path)
+    
     if arcpy.Exists(dhm_md_path):
         arcpy.AddMessage("{} already exists.".format(md_name))
     else:
@@ -610,10 +611,11 @@ def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_fold
             vert_cs_name, vert_unit_name = Utility.getVertCSInfo(spatial_reference)  # @UnusedVariable
             # No need to update boundary and footprints since it will inherit from the original
             createReferenceddMosaicDataset(pc_all_md_path, dhm_md_path, spatial_reference, vert_unit_name)
-            mosaics.append(pc_all_md_path)
+            
         except:
             arcpy.AddMessage("Failed to create {}".format(dhm_md_path))
 
+    
     deleteFileIfExists(simple_footprint_path, True)
     deleteFileIfExists(simple_lasd_boundary_path, True)
 
