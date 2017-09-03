@@ -335,7 +335,7 @@ def getStatsFields(feature_class=None):
     summary_fields = []
     for base_field in base_fields:
         base_field_info = base_field[0]
-        if (False if base_field_info[0] in existing_fieldnames else True):
+        if existing_fieldnames is not None and (False if base_field_info[0] in existing_fieldnames else True):
             arcpy.AddMessage("Adding field {} to {}".format(base_field_info, feature_class))
             addFieldIfMissing(feature_class, existing_fieldnames, base_field_info)
 

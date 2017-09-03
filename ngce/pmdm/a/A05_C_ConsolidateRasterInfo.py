@@ -91,13 +91,21 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
     a = doTime(aa, "Dissolved raster footprints to dataset boundary {} ".format(target_raster_boundary))
     
 
+def addFieldIfMissing(feature_class, fieldnames, field_info):
+    field_name = field_info[0]
+    if (False if field_name in fieldnames else True):
+        arcpy.AddField_management(in_table=feature_class, field_name=field_info[0], field_alias=field_info[1], field_type=field_info[2], field_length=field_info[3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+        # arcpy.CalculateField_management(in_table=feature_class, field=field_info[0], expression=0, expression_type="PYTHON_9.3")
+
+
+
 '''
 ---------------------------------------------
 creates a list of all of the standard statistics fields we are interested in
 and the summary info we want to get from them
 ---------------------------------------------
 '''
-def getStatsFields():
+def getStatsFields(feature_class=None):
     a = datetime.datetime.now()
     base_fields = [
                    [FIELD_INFO[PATH], "FIRST"],
@@ -146,9 +154,17 @@ def getStatsFields():
         field_alter.append(new_field)
         # arcpy.AddMessage("Alter Field Name: '{}'".format(new_field))
     
+    existing_fieldnames = None
+    if feature_class is not None:
+        existing_fieldnames = [field.name for field in arcpy.ListFields(feature_class)]
+        
     summary_fields = []
     for base_field in base_fields:
         base_field_info = base_field[0]
+        if existing_fieldnames is not None and (False if base_field_info[0] in existing_fieldnames else True):
+            arcpy.AddMessage("Adding field {} to {}".format(base_field_info, feature_class))
+            addFieldIfMissing(feature_class, existing_fieldnames, base_field_info)
+        
         base_field_op = base_field[1]
         summary_field = "{} {}".format(base_field_info[0], base_field_op)
         summary_fields.append(summary_field)
@@ -229,8 +245,8 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
         if arcpy.Exists(raster_boundary):
             arcpy.AddMessage("Raster Boundary exist: {}".format(raster_boundary))
         else:
-            summary_string, field_alter = getStatsFields()
-            createBoundaryFeatureClass(raster_footprint, raster_boundary, summary_string, field_alter)
+            summary_string, field_alter = getStatsFields(raster_footprint)
+            createBoundaryFeatureClass(raster_footprint, raster_boundary,    summary_string, field_alter)
             
             addProjectInfo(raster_footprint, raster_boundary, project_ID, project_path, project_UID)
             
@@ -245,7 +261,7 @@ if __name__ == '__main__':
 #     isClassified = True
     project_UID = None
     project_path = r'E:\NGCE\RasterDatasets\OK_SugarCreek_2008'
-    elev_types = ['DTM', 'DSM']
+    elev_types = ['DTM']
      
     for elev_type in elev_types:
         createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, project_path, project_UID, elev_type)
