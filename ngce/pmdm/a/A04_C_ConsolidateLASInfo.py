@@ -156,7 +156,7 @@ def createQARasterMosaicDataset(md_name, gdb_path, spatial_reference, input_fold
                                                        aux_inputs="")
 
             total_rows = int(arcpy.GetCount_management(md_path).getOutput(0))
-            if total_rows <=0:
+            if total_rows <= 0:
                 arcpy.AddWarning("No rasters found for '{}'".format(md_path))
                 deleteFileIfExists(md_path, True)
             else:
@@ -601,17 +601,16 @@ def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_fold
 
     md_name = CANOPY_DENSITY
     dhm_md_path = os.path.join(gdb_path, md_name)
-    mosaics.append(pc_all_md_path)
+    mosaics.append(dhm_md_path)
     
     if arcpy.Exists(dhm_md_path):
         arcpy.AddMessage("{} already exists.".format(md_name))
     else:
         try:
-            pc_all_md_path = os.path.join(gdb_path, "POINT_COUNT_ALL")
             vert_cs_name, vert_unit_name = Utility.getVertCSInfo(spatial_reference)  # @UnusedVariable
             # No need to update boundary and footprints since it will inherit from the original
+            pc_all_md_path = os.path.join(gdb_path, "POINT_COUNT_ALL")
             createReferenceddMosaicDataset(pc_all_md_path, dhm_md_path, spatial_reference, vert_unit_name)
-            
         except:
             arcpy.AddMessage("Failed to create {}".format(dhm_md_path))
 

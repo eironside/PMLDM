@@ -555,7 +555,7 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
             mxd = createMXD(las_qainfo, target_path, ProjectID)
             
             
-            #if createQARasters:
+            # if createQARasters:
             arcpy.AddMessage("Creating QA raster mosaics")
             mosaics = A04_C_ConsolidateLASInfo.createQARasterMosaics(las_qainfo.isClassified, las_qainfo.filegdb_path, las_qainfo.lasd_spatial_ref, target_path, mxd, las_footprint, lasd_boundary)
             if mxd is not None:
@@ -567,17 +567,17 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
                         arcpy.AddMessage("Adding QA raster mosaic {} to mxd {}".format(md_path, mxd_path))
                         try:
                             if not arcpy.Exists(md_path):
-                                a = doTime(a, "\tMD doesn't exist {}. Can't add to MXD {}. Is it open?".format(md_path,mxd_path))
+                                a = doTime(a, "\tMD doesn't exist {}. Can't add to MXD {}. Is it open?".format(md_path, mxd_path))
                             else:
                                 if not isLayerExist(mxd, df, md_name):
-                                    if len(str(md_name)) >0:
+                                    if len(str(md_name)) > 0:
                                         try:
                                             lyr_md = arcpy.MakeMosaicLayer_management(in_mosaic_dataset=md_path, out_mosaic_layer=md_name).getOutput(0)
                                             arcpy.mapping.AddLayer(df, lyr_md, 'BOTTOM')
-                                            #lyr_md.visible = False
+                                            # lyr_md.visible = False
                                             a = doTime(a, "\tAdded MD {} to MXD {}.".format(md_name, mxd_path))
                                         except:
-                                            a = doTime(a, "\tfailed to add MD {} to MXD {}. Is it open?".format(md_path,mxd_path))
+                                            a = doTime(a, "\tfailed to add MD {} to MXD {}. Is it open?".format(md_path, mxd_path))
                                 
                         except:
                             try:
