@@ -1,412 +1,440 @@
-#-------------------------------------------------------------------------------
-# Name:        gp_NRCS_PrepareContoursForPublishing
-#
-# Purpose:     To create a map document with the applicable Contour, Anno, and Mask
-#                layers to use as a basis for creating a cache of the contours.
-#                This GP tool requires a Production Mapping license to enable masking
-#                  of the Annotation
-#
-#                Note: This tool requires an accomanpanying MaskSymbology.lyr in
-#                        the same directory to assign symbology to the Mask layers
-#                        (no fill and no outline).
-#                        This tool also requires a template ArcMap document as input.
-#                        The existing layers in the template are all broken contour
-#                        layers (one for each of four scale levels). These broken layers
-#                        will be repaired with the specified contour feature class.
-#
-#                
-#
-# Author:         Roslyn Dunn
-# Organization: Esri Inc.
-#
-# Created:     07/02/2015
-#
-# Last Edited:
-# *
-#-------------------------------------------------------------------------------
-import arcpy
+from datetime import datetime
+from multiprocessing import Pool, cpu_count
 import os
+import sys
+
+import arcpy
+import arcpyproduction  # @UnresolvedImport
+from functools import partial
+from ngce import Utility
+from ngce.Utility import doTime
+from ngce.cmdr.JobUtil import getProjectFromWMXJobID
+from ngce.contour import ContourConfig
+from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, CONTOUR_NAME_OCS, \
+    CONTOUR_NAME_WM
+from ngce.folders import ProjectFolders
 import shutil
 
-import production  # @UnresolvedImport
-from ngce import Utility
-from ngce.cmdr import CMDR
-from ngce.contour import ContourConfig
-from ngce.folders import ProjectFolders
+#@TODO: Determine if final contours are moved to Publish directory
 
 
-def PrepareContoursForPublishing(jobID):
-    mxdTemplate = ContourConfig.MXD_TEMPLATE
-    Utility.printArguments(["WMX Job ID", "ContourMXDTemplate"],
-                           [jobID, mxdTemplate], "C02 PrepareContoursForPublishing")
-    
-    Utility.setWMXJobDataAsEnvironmentWorkspace(jobID)
-    
-    ProjectJob = CMDR.ProjectJob()
-    project, ProjectUID = ProjectJob.getProject(jobID)  # @UnusedVariable
-    
-    
-    if project is not None:
-        ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
-        projectID = ProjectJob.getProjectID(project)
-        
-#         ContourFolder = ProjectFolder.derived.contour_path
-        PublishFolder = ProjectFolder.published.path
-        contourMerged_Name = (ContourConfig.MERGED_FGDB_NAME).format(projectID)
-        contourMerged_file_gdb_path = os.path.join(PublishFolder, contourMerged_Name)
-        
-        ContourFC = os.path.join(contourMerged_file_gdb_path, ContourConfig.CONTOUR_FC_WEBMERC)
-                                 
-        ContourBoundFC = os.path.join(contourMerged_file_gdb_path, ContourConfig.CONTOUR_BOUND_FC_WEBMERC)
-    
-#         ProjectID = ProjectJob.getProjectID(project)
-#         ContourFolder = ProjectFolder.derived.contour_path
-#         rasterFolder = ProjectFolder.published.demFirstTiff_path
-    
-    
-    
-    
-        arcpy.env.overwriteOutput = True
+def gen_base_tiling_scheme(base_fc, scratch):
 
-        newMxdName = ContourConfig.CONTOUR_MXD_NAME
-        
-        # check out Production Mapping
-        productionMappingAvailable = 0
-        if arcpy.CheckExtension("Foundation") == "Available":
-            arcpy.CheckOutExtension("Foundation")
-            productionMappingAvailable = 1
-        
-        if productionMappingAvailable == 1:
-            arcpy.AddMessage("\nProduction Mapping license found and checked out...")
-     
-        arcpy.env.overwriteOutput = True
+    arcpy.env.overwriteOutput = True
 
-        # Get the extent of the Contour Feature Class   
-        descFC = arcpy.Describe(ContourFC)
-        arcpy.env.extent = ContourFC
-        arcpy.AddMessage("\nContourFC extent before: {0},{1},{2},{3}".format(descFC.extent.XMin, descFC.extent.YMin, descFC.extent.XMax, descFC.extent.YMax))
+    # Copy Template MXD
+    base_mxd = arcpy.mapping.MapDocument(ContourConfig.MXD_TEMPLATE)
+    section_mxd_name = os.path.join(scratch, 'Tiling_Scheme.mxd')
+    base_mxd.saveACopy(section_mxd_name)
 
-        loc = ContourFC.rfind(".gdb")
-        ContourFGDB = ContourFC[:loc + 4]
-        arcpy.AddMessage("Contour Feature Class FGDB:  {0}".format(ContourFGDB))
+    # Set MXD For Processing
+    first_mxd = arcpy.mapping.MapDocument(section_mxd_name)
 
-        ContourFCName = ContourFC[loc + 5:]
-        arcpy.AddMessage("Contour Feature Class name:  {0}".format(ContourFCName))
+    # Set Layers to Reference Input FC
+    broken = arcpy.mapping.ListBrokenDataSources(first_mxd)
+    db = os.path.split(base_fc)[0]
+    fc = os.path.split(base_fc)[1]
+    for item in broken:
+        if item.name.startswith(r'Contour'):
+            item.replaceDataSource(db, "FILEGDB_WORKSPACE", fc)
+    first_mxd.save()
 
-        # The folder that contains the File GDB that contains the Contour feature class
-        ContourFGDBPath = os.path.dirname(ContourFGDB)
-        arcpy.AddMessage("Contour File FGDB folder location:  {0}".format(ContourFGDBPath))
+    # Generate Tiling Scheme for Input MXD
+    base_tiling_scheme = os.path.join(db, 'Base_Tiling_Scheme')
+    arcpy.MapServerCacheTilingSchemeToPolygons_cartography(
+        map_document=first_mxd.filePath,
+        data_frame='Layers',
+        tiling_scheme=ContourConfig.TILING_SCHEME,
+        output_feature_class=base_tiling_scheme,
+        use_map_extent='USE_MAP_EXTENT',
+        clip_to_horizon='CLIP_TO_HORIZON',
+        antialiasing='ANTIALIASING',
+        levels="9027.977411;4513.988705;2256.994353;1128.497176"
+    )
 
-        # open the Map template mxd 
-        mxdTemp = arcpy.mapping.MapDocument(mxdTemplate)
+    return base_tiling_scheme
 
-        # Name of target mxd (to save the Template map document to)
-        newMxd = os.path.join(ContourFGDBPath, newMxdName)
-        
-        # But don't overwrite an existing mxd
-        if os.path.isfile(newMxd):
-            targetMxd = arcpy.CreateUniqueName(newMxdName, ContourFGDBPath)
-            arcpy.AddMessage("Renaming existing contour map document {} to {}".format(newMxd, targetMxd))
-            os.rename(newMxd, targetMxd)
-        # else:
-        targetMxd = newMxd
 
-        # Create a copy of the input mxd template to avoid writing to the template
-        arcpy.AddMessage("\nSaving Template mxd to {0}".format(targetMxd))
-        mxdTemp.saveACopy(targetMxd)
+def contour_prep(in_fc, scheme_poly, scratch, name):
 
-        del mxdTemp
+    print 'Started: ', name
 
-        # open the Project-specific mxd
-        mxd = arcpy.mapping.MapDocument(targetMxd)
-        arcpy.AddMessage("Open target mxd:  {0}".format(targetMxd))
+    arcpy.env.overwriteOutput = True
 
-        # the existing layers in the template are all broken contour layers (one
-        #   for each of four scale levels). Fix the data source with the Contour FC
-        #   specified as a parameter
-        arcpy.AddMessage("Fix broken data sources for mxd:  {0}".format(targetMxd))
-        brknList = arcpy.mapping.ListBrokenDataSources(mxd)
+    try:
+        # Copy Template MXD
+        base_mxd = arcpy.mapping.MapDocument(ContourConfig.MXD_TEMPLATE)
+        section_mxd_name = os.path.join(scratch, name, name + '.mxd')
+        base_mxd.saveACopy(section_mxd_name)
 
-        for brknItem in brknList:
-            # arcpy.AddMessage("\nBroken Layer Name: {0}".format(brknItem.name))
-            if brknItem.name.startswith(r"Contour"):
-                arcpy.AddMessage("Replacing data source for:  {0}".format(brknItem.name))
-                brknItem.replaceDataSource(ContourFGDB, "FILEGDB_WORKSPACE", ContourFCName)
+        # Set MXD For Processing
+        mxd = arcpy.mapping.MapDocument(section_mxd_name)
 
+        # Set Layers to Reference Input FC
+        broken = arcpy.mapping.ListBrokenDataSources(mxd)
+        db = os.path.split(in_fc)[0]
+        fc = os.path.split(in_fc)[1]
+        for item in broken:
+            if item.name.startswith(r'Contour'):
+                item.replaceDataSource(db, "FILEGDB_WORKSPACE", fc)
         mxd.save()
 
-        # Create a file of polygons to represent the location of each cache tile
-        # This is useful, since anno can be created at each of the tiles to avoid
-        # cutting off anno at the border of a tile
-        tilingSchemeFC = os.path.join(ContourFGDB, r"cacheTilingScheme")
-        
-        arcpy.MapServerCacheTilingSchemeToPolygons_cartography(map_document=targetMxd,
-                        data_frame="Layers", tiling_scheme=ContourConfig.TILING_SCHEME,
-                        output_feature_class=tilingSchemeFC, use_map_extent="USE_MAP_EXTENT",
-                        clip_to_horizon="CLIP_TO_HORIZON", antialiasing="ANTIALIASING",
-                        levels="9027.977411;4513.988705;2256.994353;1128.497176")
-        messages = arcpy.GetMessages()
-        arcpy.AddMessage("Results output from MapServerCacheTilingSchemeToPolygons are: \n{0}\n".format(messages))
+        # Create FGDB For Annotation Storage
+        scratch_db = os.path.join(scratch, name, name + '.gdb')
+        filter_folder = os.path.join(scratch, name)
+        if arcpy.Exists(scratch_db):
+            pass
+        else:
+            arcpy.CreateFileGDB_management(filter_folder, name + '.gdb')
 
-        mxd.save()
-        
-        # Enable Labels for Contour layers
-        # This is needed for TiledLabelsToAnnotation gp tool
+        # Filter for Section of Input FC
+        feat = arcpy.MakeFeatureLayer_management(
+            in_features=in_fc,
+            out_layer=name,
+            where_clause="name='" + name + "'"
+        )
+
+        # Select Subsection of Tiling Scheme
+        sel_lyr = arcpy.MakeFeatureLayer_management(scheme_poly, 'scheme_poly')
+        arcpy.SelectLayerByLocation_management(
+            in_layer=sel_lyr,
+            overlap_type="INTERSECT",
+            select_features=feat,
+            selection_type="NEW_SELECTION",
+            invert_spatial_relationship="NOT_INVERT"
+        )
+
+        # Save Subsection of Tilinng Scheme for TiledLabelsToAnnotation
+        target_scheme_polys = os.path.join(scratch_db, name + '_scheme_polys')
+        arcpy.CopyFeatures_management(
+            in_features=sel_lyr,
+            out_feature_class=target_scheme_polys
+        )
+
+        # Enable Labels for TiledLabelsToAnnotation tool
         for lyr in arcpy.mapping.ListLayers(mxd):
-            # arcpy.AddMessage("\nLayer name is: {0}".format(lyr.name))
             if lyr.name.upper().startswith("CONTOUR"):
                 lyr.showLabels = True
 
-        # Select those tiles that intersect with the contour features to avoid errors
-        # in the generation of Annotation
-        arcpy.MakeFeatureLayer_management(in_features=tilingSchemeFC, out_layer="cacheTilingScheme_Layer",
-                  where_clause="", workspace="", field_info="OID OID VISIBLE NONE;Shape Shape VISIBLE NONE;Tile_Scale Tile_Scale VISIBLE NONE;Tile_Level Tile_Level VISIBLE NONE;Tile_Row Tile_Row VISIBLE NONE;Tile_Col Tile_Col VISIBLE NONE;Shape_Length Shape_Length VISIBLE NONE;Shape_Area Shape_Area VISIBLE NONE")
+        # Reference Annotation FCs created with TiledLabelsToAnnotation
+        df = arcpy.mapping.ListDataFrames(mxd, 'Layers')[0]
+        anno1128 = os.path.join(scratch_db, r"Contours_1128Anno1128")
+        anno2257 = os.path.join(scratch_db, r"Contours_2257Anno2256")
+        anno4514 = os.path.join(scratch_db, r"Contours_4514Anno4513")
+        anno9028 = os.path.join(scratch_db, r"Contours_9028Anno9027")
 
-        # If the boundary of the contours was specified, then the boundary will be checked for intersection
-        # with the tiles (as opposed to the contours themselves). This will speed up the process.
-        if len(ContourBoundFC) > 0:
-            inputFC = ContourBoundFC
-        else:
-            inputFC = ContourFC
+        # Delete Existing Annotation FCs to Avoid Confusion with TiledLabelsToAnnotation Output
+        for a in [anno1128, anno2257, anno4514, anno9028]:
+            arcpy.Delete_management(in_data=a, data_type='FeatureClass')
 
-        arcpy.SelectLayerByLocation_management(in_layer="cacheTilingScheme_Layer", overlap_type="INTERSECT", select_features=inputFC,
-                  search_distance="", selection_type="NEW_SELECTION", invert_spatial_relationship="NOT_INVERT")
-
-        # Save the selection set to a file
-        tilingSchemeSubsetFC = os.path.join(ContourFGDB, r"cacheTilingSchemeSubset")
-        arcpy.CopyFeatures_management(in_features="cacheTilingScheme_Layer",
-                  out_feature_class=tilingSchemeSubsetFC, config_keyword="", spatial_grid_1="0",
-                  spatial_grid_2="0", spatial_grid_3="0")
-
-        # The names of the GDB Anno feature classes to be created
-        anno1128 = os.path.join(ContourFGDB, r"Contours_1128Anno1128")
-        anno2257 = os.path.join(ContourFGDB, r"Contours_2257Anno2256")
-        anno4514 = os.path.join(ContourFGDB, r"Contours_4514Anno4513")
-        anno9028 = os.path.join(ContourFGDB, r"Contours_9028Anno9027")
-        arcpy.AddMessage("Contours_1128Anno1128 Feature Class:  {0}".format(anno1128))
-        arcpy.AddMessage("Contours_2257Anno2256 Feature Class:  {0}".format(anno2257))
-        arcpy.AddMessage("Contours_4514Anno4513 Feature Class:  {0}".format(anno4514))
-        arcpy.AddMessage("Contours_9028Anno9027 Feature Class:  {0}".format(anno9028))
-
-        # Delete any existing Anno feature classes to avoid confusion
-        # This is done because the TiledLabelsToAnnotation tool does NOT
-        # overwrite the annotation (instead it appends "_n" to the name
-        arcpy.Delete_management(in_data=anno1128, data_type="FeatureClass")
-        arcpy.Delete_management(in_data=anno2257, data_type="FeatureClass")
-        arcpy.Delete_management(in_data=anno4514, data_type="FeatureClass")
-        arcpy.Delete_management(in_data=anno9028, data_type="FeatureClass")
-
-        # Create annotations using the subset of tiles (that intersect with contours)
-        arcpy.TiledLabelsToAnnotation_cartography(map_document=targetMxd, data_frame="Layers",
-                        polygon_index_layer=tilingSchemeSubsetFC, out_geodatabase=ContourFGDB,
-                        out_layer="GroupAnno", anno_suffix="Anno", reference_scale_value="9028",
-                        reference_scale_field="Tile_Scale", tile_id_field="OBJECTID",
-                        coordinate_sys_field="", map_rotation_field="", feature_linked="STANDARD",
-                        generate_unplaced_annotation="NOT_GENERATE_UNPLACED_ANNOTATION")
-        
-        messages = arcpy.GetMessages()
-        arcpy.AddMessage("Results output from TiledLabelsToAnnotation are: \n{0}\n".format(messages))
-
+        # Create Annotation with Filtered FC Extent
+        arcpy.TiledLabelsToAnnotation_cartography(
+            map_document=mxd.filePath,
+            data_frame='Layers',
+            polygon_index_layer=target_scheme_polys,
+            out_geodatabase=scratch_db,
+            out_layer='GroupAnno',
+            anno_suffix='Anno',
+            reference_scale_value='9028',
+            reference_scale_field="Tile_Scale",
+            tile_id_field="OBJECTID",
+            feature_linked="STANDARD",
+            generate_unplaced_annotation="NOT_GENERATE_UNPLACED_ANNOTATION"
+        )
         mxd.save()
-
-        # Disable Labels for Contour layers
-        # We don't need labels now that gdb anno has been created
-        for lyr in arcpy.mapping.ListLayers(mxd):
-            # arcpy.AddMessage("\nLayer name is: {0}".format(lyr.name))
-            if lyr.name.upper().startswith("CONTOUR"):
-                lyr.showLabels = False
-                
-        mxd.save()
-        
-        df = arcpy.mapping.ListDataFrames(mxd, "Layers")[0]
-
 
         # Create layer files for each of the Anno feature classes, and add to the map
-        
-        anno1128Lyr = os.path.join(ContourFGDBPath, r"Contours_1128Anno1128.lyr")
-        arcpy.AddMessage("anno1123lyr name:  {0}".format(anno1128Lyr))
-        arcpy.MakeFeatureLayer_management(anno1128, "Cont_1128Anno1128")
-        arcpy.SaveToLayerFile_management(in_layer="Cont_1128Anno1128", out_layer=anno1128Lyr, is_relative_path="ABSOLUTE", version="CURRENT")
-        # annoLayer = arcpy.mapping.Layer(anno1128Lyr)
-        annoLayer1128 = arcpy.mapping.Layer("Cont_1128Anno1128")
-        arcpy.mapping.AddLayer(df, annoLayer1128, "BOTTOM")
+        annotation_set = [
+            [anno1128, "Contours_1128Anno1128.lyr", "Cont_1128Anno1128"],
+            [anno2257, "Contours_2257Anno2256.lyr", "Cont_2257Anno2256"],
+            [anno4514, "Contours_4514Anno4513.lyr", "Cont_4514Anno4513"],
+            [anno9028, "Contours_9028Anno9027.lyr", "Cont_9028Anno9027"]
+        ]
 
-        anno2257Lyr = os.path.join(ContourFGDBPath, r"Contours_2257Anno2256.lyr")
-        arcpy.AddMessage("anno2257lyr name:  {0}".format(anno2257Lyr))
-        arcpy.MakeFeatureLayer_management(anno2257, "Cont_2257Anno2256")
-        arcpy.SaveToLayerFile_management(in_layer="Cont_2257Anno2256", out_layer=anno2257Lyr, is_relative_path="ABSOLUTE", version="CURRENT")
-        # annoLayer = arcpy.mapping.Layer(anno2257Lyr)
-        annoLayer2257 = arcpy.mapping.Layer("Cont_2257Anno2256")
-        arcpy.mapping.AddLayer(df, annoLayer2257, "BOTTOM")
-
-        anno4514Lyr = os.path.join(ContourFGDBPath, r"Contours_4514Anno4513.lyr")
-        arcpy.AddMessage("anno4514lyr name:  {0}".format(anno4514Lyr))
-        arcpy.MakeFeatureLayer_management(anno4514, "Cont_4514Anno4513")
-        arcpy.SaveToLayerFile_management(in_layer="Cont_4514Anno4513", out_layer=anno4514Lyr, is_relative_path="ABSOLUTE", version="CURRENT")
-        # annoLayer = arcpy.mapping.Layer(anno4514Lyr)
-        annoLayer4514 = arcpy.mapping.Layer("Cont_4514Anno4513")
-        arcpy.mapping.AddLayer(df, annoLayer4514, "BOTTOM")
-
-        anno9028Lyr = os.path.join(ContourFGDBPath, r"Contours_9028Anno9027.lyr")
-        arcpy.AddMessage("anno9028lyr name:  {0}".format(anno9028Lyr))
-        arcpy.MakeFeatureLayer_management(anno9028, "Cont_9028Anno9027")
-        arcpy.SaveToLayerFile_management(in_layer="Cont_9028Anno9027", out_layer=anno9028Lyr, is_relative_path="ABSOLUTE", version="CURRENT")
-        # annoLayer = arcpy.mapping.Layer(anno9028Lyr)
-        annoLayer9028 = arcpy.mapping.Layer("Cont_9028Anno9027")
-        arcpy.mapping.AddLayer(df, annoLayer9028, "BOTTOM")
-
+        # Create .lyr Files & Add to MXD
+        df = arcpy.mapping.ListDataFrames(mxd, 'Layers')[0]
+        for a in annotation_set:
+            lyr = os.path.join(filter_folder, a[1])
+            arcpy.MakeFeatureLayer_management(a[0], a[2])
+            arcpy.SaveToLayerFile_management(
+                in_layer=a[2],
+                out_layer=lyr,
+                is_relative_path='ABSOLUTE',
+                version='CURRENT'
+            )
+            add_lyr = arcpy.mapping.Layer(lyr)
+            arcpy.mapping.AddLayer(df, add_lyr, 'BOTTOM')
         mxd.save()
 
-        # For each of the Anno-related layers, create a Mask feature class to mask out
-        # the area under the Annotation (so the contour layer doesn't run through the Anno)
-        arcpy.env.workspace = ContourFGDBPath
-        
-        for lyrfile in arcpy.ListFiles("Contours*.lyr"):
-            # Generate Anno Masks
-            lyrpath = os.path.join(ContourFGDBPath, lyrfile)
-            arcpy.AddMessage("\n Full layer path used as input to FeatureOutlineMasks: {0}".format(lyrpath))
-            refScale = lyrfile[9:13]
-            # arcpy.AddMessage("Reference scale for this layer: {0}".format(refScale))
-            maskFC = os.path.join(ContourFGDB, r"Mask" + refScale)
-            arcpy.AddMessage("Mask feature class name is: {0}".format(maskFC))
-            
-            arcpy.FeatureOutlineMasks_cartography(input_layer=lyrpath, output_fc=maskFC, reference_scale=refScale,
-                spatial_reference="PROJCS['WGS_1984_Web_Mercator_Auxiliary_Sphere',GEOGCS['GCS_WGS_1984',DATUM['D_WGS_1984',SPHEROID['WGS_1984',6378137.0,298.257223563]],PRIMEM['Greenwich',0.0],UNIT['Degree',0.0174532925199433]],PROJECTION['Mercator_Auxiliary_Sphere'],PARAMETER['False_Easting',0.0],PARAMETER['False_Northing',0.0],PARAMETER['Central_Meridian',0.0],PARAMETER['Standard_Parallel_1',0.0],PARAMETER['Auxiliary_Sphere_Type',0.0],UNIT['Meter',1.0]];-11557726.487 5143156.3073 1909376159694.14;-100000 10000;-100000 10000;0.001;0.001;0.001;IsHighPrecision",
-                margin="2 Points", method="CONVEX_HULL", mask_for_non_placed_anno="ALL_FEATURES", attributes="ONLY_FID")
-            messages = arcpy.GetMessages()
-            arcpy.AddMessage("Results output from FeatureOutlineMasks are: \n{0}\n".format(messages))
-            
+        # Create Mask FC to Hide Contour Beneath Annotation
+        arcpy.env.workspace = filter_folder
+        for lyr_file in arcpy.ListFiles('Contours*.lyr'):
+            try:
+                lyr_path = os.path.join(filter_folder, lyr_file)
+                ref_scale = lyr_file[9:13]
+                mask_fc = os.path.join(scratch_db, r'Mask' + ref_scale)
+                arcpy.FeatureOutlineMasks_cartography(
+                    input_layer=lyr_path,
+                    output_fc=mask_fc,
+                    reference_scale=ref_scale,
+                    spatial_reference=ContourConfig.WEB_AUX_SPHERE,
+                    margin='1 Points',
+                    method='BOX',
+                    mask_for_non_placed_anno='ALL_FEATURES',
+                    attributes='ALL'
+                )
+            except Exception as e:
+                print 'Exception:', e
+                pass
         mxd.save()
 
-        df = arcpy.mapping.ListDataFrames(mxd, "Layers")[0]
+    except Exception as e:
+        print 'Dropped: ', name
+        print 'Exception: ', e
 
-        mask1128FC = os.path.join(ContourFGDB, r"Mask1128")
-        mask2257FC = os.path.join(ContourFGDB, r"Mask2257")
-        mask4514FC = os.path.join(ContourFGDB, r"Mask4514")
-        mask9028FC = os.path.join(ContourFGDB, r"Mask9028")
+    print 'Finished: ', name
 
-        # Copy the MaskSymbology.lyr file into the working directory to apply symbology to all mask layers
-        # This is needed because Mask layers shouldn't have any fill area or outline
-        originalMaskSymbologyLayerPath = ContourConfig.SYMBOLOGY_LAYER_PATH
-        maskSymbologyLyrName = os.path.join(ContourFGDBPath, ContourConfig.SYMBOLOGY_LAYER_NAME)
-        shutil.copyfile(originalMaskSymbologyLayerPath, maskSymbologyLyrName)
 
-        lyrSymFile = arcpy.mapping.Layer(maskSymbologyLyrName)
-        # arcpy.AddMessage("\nExisting Symbology file type: {0}".format(lyrSymFile.symbologyType))
-        
-        # add the mask layer to the map
-        maskLayer1128 = arcpy.mapping.Layer(mask1128FC)
-        maskLayer1128.minScale = 1129
-        arcpy.mapping.AddLayer(df, maskLayer1128, "BOTTOM")
-        # change it's symbology to be invisible (no outline or fill)
-        lyr1128 = arcpy.mapping.ListLayers(mxd, "Mask1128", df)[0]
-        # arcpy.AddMessage("\nlyr1128 Symbology type: {0}".format(lyr1128.symbologyType))
-        arcpy.mapping.UpdateLayer(df, lyr1128, lyrSymFile, True)
+def db_list_gen(scratch, dirs, names):
 
-        # add the mask layer to the map
-        maskLayer2257 = arcpy.mapping.Layer(mask2257FC)
-        maskLayer2257.minScale = 2258
-        maskLayer2257.maxScale = 1130
-        arcpy.mapping.AddLayer(df, maskLayer2257, "BOTTOM")
-        # change it's symbology to be invisible (no outline or fill)
-        lyr2257 = arcpy.mapping.ListLayers(mxd, "Mask2257", df)[0]
-        # arcpy.AddMessage("\nlyr2257 Symbology type: {0}".format(lyr2257.symbologyType))
-        arcpy.mapping.UpdateLayer(df, lyr2257, lyrSymFile, True)
-        
-        # add the mask layer to the map
-        maskLayer4514 = arcpy.mapping.Layer(mask4514FC)
-        maskLayer4514.minScale = 4515
-        maskLayer4514.maxScale = 2259
-        arcpy.mapping.AddLayer(df, maskLayer4514, "BOTTOM")
-        # change it's symbology to be invisible (no outline or fill)
-        lyr4514 = arcpy.mapping.ListLayers(mxd, "Mask4514", df)[0]
-        # arcpy.AddMessage("\nlyr4514 Symbology type: {0}".format(lyr4514.symbologyType))
-        arcpy.mapping.UpdateLayer(df, lyr4514, lyrSymFile, True)
-        
-        # add the mask layer to the map
-        maskLayer9028 = arcpy.mapping.Layer(mask9028FC)
-        maskLayer9028.minScale = 9029
-        maskLayer9028.maxScale = 4516
-        arcpy.mapping.AddLayer(df, maskLayer9028, "BOTTOM")
-        # change it's symbology to be invisible (no outline or fill)
-        lyr9028 = arcpy.mapping.ListLayers(mxd, "Mask9028", df)[0]
-        # arcpy.AddMessage("\nlyr9028 Symbology type: {0}".format(lyr9028.symbologyType))
-        arcpy.mapping.UpdateLayer(df, lyr9028, lyrSymFile, True)
+    lists = [
+        [],
+        [],
+        [],
+        []
+    ]
 
-        # Enable masking of the contour layers
-        #  (this requires a Production Mapping and Charting license)
-        arcpyproduction.mapping.EnableLayerMasking(df, 'true')
+    for dir_name in dirs:
+        db = os.path.join(scratch, dir_name, dir_name + '.gdb')
+        e_names = enumerate(names)
+        for index, name in e_names:
+            target = os.path.join(db, name)
+            if arcpy.Exists(target):
+                lists[index].append(target)
+    return lists
 
-        for lyr in arcpy.mapping.ListLayers(mxd):
-            # arcpy.AddMessage("Layer name is: {0}".format(lyr.name))
-            if   lyr.name.find(r"Contours 1128") >= 0:
-                # arcpy.AddMessage("\nMasking Contour 1128")
-                arcpyproduction.mapping.MaskLayer(df, 'APPEND', lyr1128, lyr)
 
-            elif lyr.name.find(r"Contours 2257") >= 0:
-                # arcpy.AddMessage("\nMasking Contour 2257")
-                arcpyproduction.mapping.MaskLayer(df, 'APPEND', lyr2257, lyr)
+def run_merge(lists, results):
 
-            elif lyr.name.find(r"Contours 4514") >= 0:
-                # arcpy.AddMessage("\nMasking Contour 4514")
-                arcpyproduction.mapping.MaskLayer(df, 'APPEND', lyr4514, lyr)
+    arcpy.env.overwriteOutput = True
 
-            elif lyr.name.find(r"Contours 9028") >= 0:
-                # arcpy.AddMessage("\nMasking Contour 9028")
-                arcpyproduction.mapping.MaskLayer(df, 'APPEND', lyr9028, lyr)
+    # Merge Each Set of Inputs
+    for x in lists:
+        output_name = os.path.split(x[0])[1]
+        arcpy.Merge_management(x, os.path.join(results, output_name))
 
-        mxd.relativePaths = True
-        mxd.title = "NRCS Contour dataset with a 2 foot interval, labeled in 10 foot intervals"
-        mxd.tags = "Contour, Elevation, Annotation"
-        mxd.description = "This service represents NRCS contours with a 2 foot interval, generated from Lidar datasets."
-        mxd.save()
 
-        del mxd
-        
+def handle_merge(scratch):
+
+    print 'Merging Multiprocessing Results'
+
+    arcpy.env.overwriteOutput = True
+
+    # Create FGDB For Annotation/Mask Storage
+    results = os.path.join(scratch, 'RESULTS.gdb')
+    if arcpy.Exists(results):
+        pass
     else:
-        arcpy.AddError("Failed to find project for job.")
+        arcpy.CreateFileGDB_management(scratch, 'RESULTS.gdb')
+
+    # Create Folder Directory for MXD files
+    results_folder = os.path.join(scratch, 'RESULTS')
+    if os.path.exists(results_folder):
+        pass
+    else:
+        os.mkdir(results_folder)
+
+    # Get Directories in Scratch Folder
+    dirs = [name for name in os.listdir(scratch) if os.path.isdir(os.path.join(scratch, name))]
+
+    # Annotation Names
+    a_names = [
+        'Contours_1128Anno1128',
+        'Contours_2257Anno2256',
+        'Contours_4514Anno4513',
+        'Contours_9028Anno9027'
+    ]
+
+    # Mask Names
+    m_names = [
+        'Mask1128',
+        'Mask2257',
+        'Mask4514',
+        'Mask9028'
+    ]
+
+    # Generate DB Merge Lists
+    a_list = db_list_gen(scratch, dirs, a_names)
+    m_list = db_list_gen(scratch, dirs, m_names)
+
+    # Merge Features
+    run_merge(a_list, results)
+    run_merge(m_list, results)
+
+    return results, results_folder
+
+
+def build_results_mxd(in_fc, final_db, folder):
+
+    print 'Create Results MXD'
+
+    arcpy.env.overwriteOutput = True
+
+    # Copy Template MXD
+    base_mxd = arcpy.mapping.MapDocument(ContourConfig.MXD_TEMPLATE)
+    section_mxd_name = os.path.join(folder, 'Results.mxd')
+    base_mxd.saveACopy(section_mxd_name)
+
+    # Set MXD For Processing
+    final_mxd = arcpy.mapping.MapDocument(section_mxd_name)
+
+    # Set Layers to Reference Input FC
+    broken = arcpy.mapping.ListBrokenDataSources(final_mxd)
+    fc_db = os.path.split(in_fc)[0]
+    fc = os.path.split(in_fc)[1]
+    for item in broken:
+        if item.name.startswith(r'Contour'):
+            item.replaceDataSource(fc_db, "FILEGDB_WORKSPACE", fc)
+    final_mxd.save()
+
+    anno_1128 = os.path.join(final_db, r"Contours_1128Anno1128")
+    anno_2257 = os.path.join(final_db, r"Contours_2257Anno2256")
+    anno_4514 = os.path.join(final_db, r"Contours_4514Anno4513")
+    anno_9028 = os.path.join(final_db, r"Contours_9028Anno9027")
+
+    # Create .lyr Files for Results Contours
+    annotation_set = [
+        [anno_1128, "Contours_1128Anno1128.lyr", "Cont_1128Anno1128"],
+        [anno_2257, "Contours_2257Anno2256.lyr", "Cont_2257Anno2256"],
+        [anno_4514, "Contours_4514Anno4513.lyr", "Cont_4514Anno4513"],
+        [anno_9028, "Contours_9028Anno9027.lyr", "Cont_9028Anno9027"]
+    ]
+
+    df = arcpy.mapping.ListDataFrames(final_mxd, 'Layers')[0]
+
+    # Create .lyr Files & Add to MXD
+    for a in annotation_set:
+        lyr = os.path.join(folder, a[1])
+        arcpy.MakeFeatureLayer_management(a[0], a[2])
+        arcpy.SaveToLayerFile_management(
+            in_layer=a[2],
+            out_layer=lyr,
+            is_relative_path='ABSOLUTE',
+            version='CURRENT'
+        )
+        add_lyr = arcpy.mapping.Layer(a[2])
+        arcpy.mapping.AddLayer(df, add_lyr, 'BOTTOM')
+    final_mxd.save()
+
+    df = arcpy.mapping.ListDataFrames(final_mxd, 'Layers')[0]
+
+    # Copy Blank Symbology
+    base_mask_symbology = ContourConfig.SYMBOLOGY_LAYER_PATH
+    mask_sym_lyr = os.path.join(folder, ContourConfig.SYMBOLOGY_LAYER_NAME)
+    shutil.copyfile(base_mask_symbology, mask_sym_lyr)
+    lyr_sym_file = arcpy.mapping.Layer(mask_sym_lyr)
+
+    arcpyproduction.mapping.EnableLayerMasking(df, 'true')
+
+    mask_list = [
+        ["Mask1128", 1129, None, "Contours 1128"],
+        ["Mask2257", 2258, 1130, "Contours 2257"],
+        ["Mask4514", 4515, 2259, "Contours 4514"],
+        ["Mask9028", 9029, 4516, "Contours 9028"]
+    ]
+
+    # Apply Masking to Contour Layers
+    for m in mask_list:
+        m_lyr = arcpy.mapping.Layer(os.path.join(final_db, m[0]))
+        m_lyr.minScale = m[1]
+        m_lyr.maxScale = m[2]
+        arcpy.mapping.AddLayer(df, m_lyr, 'BOTTOM')
+        update = arcpy.mapping.ListLayers(final_mxd, m[0], df)[0]
+        arcpy.mapping.UpdateLayer(df, update, lyr_sym_file, True)
+        for lyr in arcpy.mapping.ListLayers(final_mxd):
+            if lyr.name == m[3]:
+                arcpyproduction.mapping.MaskLayer(
+                    df,
+                    'APPEND',
+                    update,
+                    lyr
+                )
+
+    # MXD Metadata
+    final_mxd.relativePaths = True
+    final_mxd.title = "NRCS Contour dataset with a 2 foot interval, labeled in 10 foot intervals"
+    final_mxd.tags = "Contour, Elevation, Annotation"
+    final_mxd.description = "This service represents NRCS contours with a 2 foot interval, generated from Lidar datasets."
+
+    # Ensure Labels are Disabled
+    for lyr in arcpy.mapping.ListLayers(final_mxd):
+        if lyr.name.upper().startswith("CONTOUR"):
+            lyr.showLabels = False
+    final_mxd.save()
+
+
+def processJob(ProjectJob, project, strUID):
+#     in_cont_fc = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Contours.gdb\Contours_ABC'
+#     scratch_path = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Scratch'
+
+    project_folder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
+    derived = project_folder.derived
+    con_folder = derived.contour_path
+    contour_file_gdb_path = os.path.join(con_folder, CONTOUR_GDB_NAME)
+    scratch_path = os.path.join(con_folder, 'Scratch')
     
-    arcpy.AddMessage("Operation complete")
+    in_cont_fc = os.path.join(contour_file_gdb_path, CONTOUR_NAME_WM)
+    
+    # Create Base Tiling Scheme for Individual Raster Selection
+    base_scheme_poly = gen_base_tiling_scheme(in_cont_fc, scratch_path)
+
+    # Collect Unique Names from Input Feature Class
+    name_list = list(set([row[0] for row in arcpy.da.SearchCursor(in_cont_fc, ['name'])]))  # @UndefinedVariable
+
+    # Run Contour Preparation for Each Unique Name Found within  Input FC
+    pool = Pool(processes=cpu_count() - 2)
+    pool.map(
+        partial(
+            contour_prep,
+            in_cont_fc,
+            base_scheme_poly,
+            scratch_path
+        ),
+        name_list
+    )
+    pool.close()
+    pool.join()
+
+    # Merge Multiprocessing Results
+    res_db, res_dir = handle_merge(scratch_path)
+
+    # Create Final MXD
+    build_results_mxd(in_cont_fc, res_db, res_dir)
+    
+def PrepareContoursForJob(strJobId):
+    
+    
+    Utility.printArguments(["WMXJobID"],
+                           [strJobId], "C02 PrepareContoursForPublishing")
+    aa = datetime.now()
+    
+    ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
+    
+    processJob(ProjectJob, project, strUID)
+    
+    doTime(aa, "Operation Complete: C01 Create Contours From MD")
+
+    
 
 if __name__ == '__main__':
-    jobID = arcpy.GetParameterAsText(0)
-    # jobID = 4801
 
-    PrepareContoursForPublishing(jobID)
-
+    jobID = sys.argv[1]
+    PrepareContoursForJob(jobID)
     
-#     arcpy.AddMessage(inspect.getfile(inspect.currentframe()))
-#     arcpy.AddMessage(sys.version)
-#     arcpy.AddMessage(sys.executable)
-#     
-#     executedFrom = sys.executable.upper()
-#     
-#     if not ("ARCMAP" in executedFrom or "ARCCATALOG" in executedFrom or "RUNTIME" in executedFrom):
-#         arcpy.AddMessage("Getting parameters from command line...")
+#     jobID = 4801
+#     in_cont_fc = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Contours.gdb\Contours_ABC'
+#     scratch_path = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Scratch'
 # 
-#         mxdTemplate = sys.argv[1]
-#         arcpy.AddMessage("ArcMap Document:  {0}".format(mxdTemplate))
-#         mxdTemplate = mxdTemplate.strip()
-# 
-#         ContourFC = sys.argv[2]
-#         arcpy.AddMessage("Contour Feature Class:  {0}".format(ContourFC))
-#         ContourFC = ContourFC.strip()
-# 
-#         ContourBoundFC = sys.argv[3]
-#         arcpy.AddMessage("Contour Boundary Feature Class:  {0}".format(ContourBoundFC))
-#         ContourBoundFC = ContourBoundFC.strip()
-#     else:
-#         arcpy.AddMessage("Getting parameters from GetParameterAsText...")
-#         mxdTemplate = arcpy.GetParameterAsText(0)
-#         arcpy.AddMessage("ArcMap Document:  {0}".format(mxdTemplate))
-#         mxdTemplate = mxdTemplate.strip()
-# 
-#         ContourFC = arcpy.GetParameterAsText(1)
-#         arcpy.AddMessage("Contour Feature Class:  {0}".format(ContourFC))
-#         ContourFC = ContourFC.strip()
-# 
-#         ContourBoundFC = arcpy.GetParameterAsText(2)
-#         arcpy.AddMessage("Contour Boundary Feature Class:  {0}".format(ContourBoundFC))
-#         ContourBoundFC = ContourBoundFC.strip()
-# 
-#     PrepareContoursForPublishing(mxdTemplate, ContourFC, ContourBoundFC)
+#     try:
+#     except Exception as e:
+#         print 'Exception: ', e

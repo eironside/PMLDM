@@ -1,11 +1,18 @@
-import arcpy
-from functools import partial
+from datetime import datetime
 from multiprocessing import Pool, cpu_count
 import os
-import shutil
+import sys
 
+import arcpy
 import arcpyproduction  # @UnresolvedImport
+from functools import partial
+from ngce import Utility
+from ngce.Utility import doTime
+from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.contour import ContourConfig
+from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, CONTOUR_NAME_OCS
+from ngce.folders import ProjectFolders
+import shutil
 
 
 def gen_base_tiling_scheme(base_fc, scratch):
@@ -363,39 +370,68 @@ def build_results_mxd(in_fc, final_db, folder):
     final_mxd.save()
 
 
+def processJob(ProjectJob, project, strUID):
+#     in_cont_fc = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Contours.gdb\Contours_ABC'
+#     scratch_path = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Scratch'
+
+    project_folder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
+    derived = project_folder.derived
+    con_folder = derived.contour_path
+    contour_file_gdb_path = os.path.join(con_folder, CONTOUR_GDB_NAME)
+    scratch_path = os.path.join(con_folder, 'Scratch')
+    
+    in_cont_fc = os.path.join(contour_file_gdb_path, CONTOUR_NAME_OCS)
+    
+    # Create Base Tiling Scheme for Individual Raster Selection
+    base_scheme_poly = gen_base_tiling_scheme(in_cont_fc, scratch_path)
+
+    # Collect Unique Names from Input Feature Class
+    name_list = list(set([row[0] for row in arcpy.da.SearchCursor(in_cont_fc, ['name'])]))  # @UndefinedVariable
+
+    # Run Contour Preparation for Each Unique Name Found within  Input FC
+    pool = Pool(processes=cpu_count() - 2)
+    pool.map(
+        partial(
+            contour_prep,
+            in_cont_fc,
+            base_scheme_poly,
+            scratch_path
+        ),
+        name_list
+    )
+    pool.close()
+    pool.join()
+
+    # Merge Multiprocessing Results
+    res_db, res_dir = handle_merge(scratch_path)
+
+    # Create Final MXD
+    build_results_mxd(in_cont_fc, res_db, res_dir)
+    
+def PrepareContoursForJob(strJobId):
+    
+    
+    Utility.printArguments(["WMXJobID"],
+                           [strJobId], "C02 PrepareContoursForPublishing")
+    aa = datetime.now()
+    
+    ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
+    
+    processJob(ProjectJob, project, strUID)
+    
+    doTime(aa, "Operation Complete: C01 Create Contours From MD")
+
+    
+
 if __name__ == '__main__':
 
-    jobID = 4801
-
-    in_cont_fc = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Contours.gdb\Contours_ABC'
-    scratch_path = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Scratch'
-
-    try:
-        # Create Base Tiling Scheme for Individual Raster Selection
-        base_scheme_poly = gen_base_tiling_scheme(in_cont_fc, scratch_path)
-
-        # Collect Unique Names from Input Feature Class
-        name_list = list(set([row[0] for row in arcpy.da.SearchCursor(in_cont_fc, ['name'])]))  # @UndefinedVariable
-
-        # Run Contour Preparation for Each Unique Name Found within  Input FC
-        pool = Pool(processes=cpu_count() - 2)
-        pool.map(
-            partial(
-                contour_prep,
-                in_cont_fc,
-                base_scheme_poly,
-                scratch_path
-            ),
-            name_list
-        )
-        pool.close()
-        pool.join()
-
-        # Merge Multiprocessing Results
-        res_db, res_dir = handle_merge(scratch_path)
-
-        # Create Final MXD
-        build_results_mxd(in_cont_fc, res_db, res_dir)
-
-    except Exception as e:
-        print 'Exception: ', e
+    jobID = sys.argv[1]
+    PrepareContoursForJob(jobID)
+    
+#     jobID = 4801
+#     in_cont_fc = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Contours.gdb\Contours_ABC'
+#     scratch_path = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Scratch'
+# 
+#     try:
+#     except Exception as e:
+#         print 'Exception: ', e

@@ -12,7 +12,7 @@ from ngce import Utility
 from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, WEB_AUX_SPHERE, \
     CONTOUR_INTERVAL, CONTOUR_UNIT, CONTOUR_SMOOTH_UNIT, \
-    DISTANCE_TO_CLIP_MOSAIC_DATASET, DISTANCE_TO_CLIP_CONTOURS, SKIP_FACTOR
+    DISTANCE_TO_CLIP_MOSAIC_DATASET, DISTANCE_TO_CLIP_CONTOURS, SKIP_FACTOR,CONTOUR_NAME_OCS,CONTOUR_NAME_WM
 from ngce.folders import ProjectFolders
 from ngce.folders.FoldersConfig import DTM
 from ngce.pmdm.a import A05_C_ConsolidateRasterInfo
@@ -384,8 +384,8 @@ def handle_results(scratch_dir, contour_dir):
             merge_list.append(cont)
 
     a = datetime.now()
-    merge_name = os.path.join(contour_dir, 'Contours_OCS')
-    project_name = os.path.join(contour_dir, 'Contours_WM')
+    merge_name = os.path.join(contour_dir, CONTOUR_NAME_OCS)
+    project_name = os.path.join(contour_dir, CONTOUR_NAME_WM)
     if arcpy.Exists(merge_name):
         arcpy.AddMessage("Merged OCS Contours exist: " + merge_name)
     else:

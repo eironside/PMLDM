@@ -1,16 +1,19 @@
 # # Script for creating new cached map services for elevation projects
 # Import system modules
-import arcpy
 import datetime
 import os
-import shutil
 import sys
 import time
 
+import arcpy
 from ngce import Utility
 from ngce.cmdr import CMDR
 from ngce.contour import ContourConfig
+from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, CONTOUR_NAME_WM
 from ngce.folders import ProjectFolders
+from ngce.folders.FoldersConfig import DTM
+from ngce.pmdm.a import A05_C_ConsolidateRasterInfo
+import shutil
 import xml.dom.minidom as DOM
 
 
@@ -22,15 +25,17 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     
     projectID = ProjectJob.getProjectID(project)
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
-    ContourFolder = ProjectFolder.derived.contour_path
+    derived_filegdb_path = ProjectFolder.derived.fgdb_path
+    contour_folder = ProjectFolder.derived.contour_path
     PublishFolder = ProjectFolder.published.path
-    contourMerged_Name = (ContourConfig.MERGED_FGDB_NAME).format(projectID)
-    contourMerged_file_gdb_path = os.path.join(PublishFolder, contourMerged_Name)
-    contourMxd_Name = ContourConfig.CONTOUR_MXD_NAME 
+    contour_file_gdb_path = os.path.join(contour_folder, CONTOUR_GDB_NAME)
+    contourMerged_file_gdb_path = os.path.join(PublishFolder, CONTOUR_NAME_WM)
+    contourMxd_Name = ContourConfig.CONTOUR_MXD_NAME
     contourMxd_path = os.path.join(PublishFolder, contourMxd_Name)
-    ContourBoundFC = os.path.join(contourMerged_file_gdb_path, ContourConfig.CONTOUR_BOUND_FC_WEBMERC)
+#     ContourBoundFC = os.path.join(contourMerged_file_gdb_path, ContourConfig.CONTOUR_BOUND_FC_WEBMERC)
+    ContourBoundFC = A05_C_ConsolidateRasterInfo.getRasterBoundaryPath(derived_filegdb_path, DTM)
     
-    temp = os.path.join(ContourFolder, "temp")
+    temp = os.path.join(contour_folder, "temp")
     if os.path.exists(temp):
         shutil.rmtree(temp)
     os.mkdir(temp)
@@ -98,8 +103,8 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     scales = ContourConfig.CONTOUR_SCALES_STRING
     
     # Other map service properties that should not be modified
-    updateMode = "RECREATE_ALL_TILES"
-    waitForJobCompletion = "WAIT"
+    updateMode = "RECREATE_ALL_TILES" #@TODO: Can we change this to recreate missing?
+    waitForJobCompletion = "WAIT" #@TODO: What if we don't wait??
     updateExtents = ""
     
     # Construct path for local cached service
