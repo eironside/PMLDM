@@ -15,7 +15,7 @@ delivered_dir = "DELIVERED"
 metadata_dir = "METADATA"
 derived_dir = "DERIVED"
 published_dir = "PUBLISHED"
-qa_dir = "QAQC"
+qa_dir = "QA_QC"
 
 # Second level directories
 breaks_dir = "BREAKS"

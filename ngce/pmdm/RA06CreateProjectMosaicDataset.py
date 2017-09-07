@@ -13,8 +13,11 @@ from ngce.pmdm import RunUtil
 PATH = r'ngce\pmdm\a\A06_A_CreateProjectMosaicDataset.py'
 
 jobID = arcpy.GetParameterAsText(0)
-args = [jobID]
+dateDeliver = arcpy.GetParameterAsText(1)
+#@TODO: add the start and end dates
 
+args = [jobID, dateDeliver]
+arcpy.AddMessage(args)
 # A06CreateProjectMosaicDataset.CreateProjectMosaicDataset(jobID)
 
 RunUtil.runTool(PATH, args, log_path=getLogFolderFromWMXJobID(jobID))

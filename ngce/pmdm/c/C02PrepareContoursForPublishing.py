@@ -28,7 +28,7 @@ import arcpy
 import os
 import shutil
 
-import arcpyproduction  # @UnresolvedImport
+import production  # @UnresolvedImport
 from ngce import Utility
 from ngce.cmdr import CMDR
 from ngce.contour import ContourConfig

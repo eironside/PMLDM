@@ -132,7 +132,7 @@ def checkSpatialOnRaster(start_dir, elev_type, target_path, v_name, v_unit, h_na
     
     if ras_spatial_ref is not None:
         arcpy.AddMessage("{} File Spatial Reference:\n\tH_Name: '{}'\n\tH_Unit: '{}'\n\tH_WKID: '{}'\n\tV_Name: '{}'\n\tV_Unit: '{}'".format(elev_type, ras_horz_cs_name, ras_horz_cs_unit_name, ras_horz_cs_factory_code, ras_vert_cs_name, ras_vert_cs_unit_name))
-        arcpy.AddMessage(getSRErrorMessage("\t{} File Spatial Reference:".format(elev_type), ras_horz_cs_name, ras_horz_cs_unit_name, ras_vert_cs_name, ras_vert_cs_unit_name))
+        arcpy.AddMessage(getSRErrorMessage("\t{} File Spatial Reference:".format(elev_type), ras_horz_cs_name, ras_vert_cs_name, ras_horz_cs_unit_name, ras_vert_cs_unit_name))
     else:
         arcpy.AddMessage("{} File Spatial Reference DOES NOT EXIST".format(elev_type))
     
@@ -141,7 +141,7 @@ def checkSpatialOnRaster(start_dir, elev_type, target_path, v_name, v_unit, h_na
     if prj_spatial_ref is not None:
         try:
             arcpy.AddMessage("PRJ File Spatial Reference:\n\tH_Name: '{}'\n\tH_Unit: '{}'\n\tH_WKID: '{}'\n\tV_Name: '{}'\n\tV_Unit: '{}'".format(prj_horz_cs_name, prj_horz_cs_unit_name, prj_horz_cs_factory_code, prj_vert_cs_name, prj_vert_cs_unit_name))
-            errorMsg = getSRErrorMessage("\tPRJ File Spatial Reference:", prj_horz_cs_name, prj_horz_cs_unit_name, prj_vert_cs_name, prj_vert_cs_unit_name)
+            errorMsg = getSRErrorMessage("\tPRJ File Spatial Reference:", prj_horz_cs_name, prj_vert_cs_name, prj_horz_cs_unit_name, prj_vert_cs_unit_name)
             if errorMsg is not None:
                 arcpy.AddMessage(errorMsg)
         except:
@@ -150,14 +150,14 @@ def checkSpatialOnRaster(start_dir, elev_type, target_path, v_name, v_unit, h_na
         arcpy.AddMessage("PRJ File Spatial Reference DOES NOT EXIST")
     
     prj_horz_name_isValid = isSrValueValid(prj_horz_cs_name)
-    prj_vert_name_isValid = isSrValueValid(prj_vert_cs_name)
+    prj_vert_name_isValid = isSrValueValid(prj_vert_cs_name) or (elev_type =='INTENSITY')
     prj_horz_unit_isValid = isSrValueValid(prj_horz_cs_unit_name)
-    prj_vert_unit_isValid = isSrValueValid(prj_vert_cs_unit_name)
+    prj_vert_unit_isValid = isSrValueValid(prj_vert_cs_unit_name) or (elev_type =='INTENSITY')
     
     las_horz_name_isValid = isSrValueValid(ras_horz_cs_name)
-    las_vert_name_isValid = isSrValueValid(ras_vert_cs_name)
+    las_vert_name_isValid = isSrValueValid(ras_vert_cs_name) or (elev_type =='INTENSITY')
     las_horz_unit_isValid = isSrValueValid(ras_horz_cs_unit_name)
-    las_vert_unit_isValid = isSrValueValid(ras_vert_cs_unit_name)
+    las_vert_unit_isValid = isSrValueValid(ras_vert_cs_unit_name) or (elev_type =='INTENSITY')
     
     prj_isValid = prj_horz_name_isValid and prj_vert_name_isValid and prj_horz_unit_isValid and prj_vert_unit_isValid
     

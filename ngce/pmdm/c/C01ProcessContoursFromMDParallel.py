@@ -155,6 +155,10 @@ def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_pat
     
     name = proc_dict[0]
     index = str(proc_dict[1][2])
+
+    arcpy.AddMessage("Checking out licenses")
+    arcpy.CheckOutExtension("3D")
+    arcpy.CheckOutExtension("Spatial")
     
     try:
         
@@ -360,6 +364,12 @@ def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_pat
     except Exception as e:
         arcpy.AddMessage('Process Dropped: ' + name)
         arcpy.AddMessage('Exception: ' + str(e))
+    try:
+        arcpy.AddMessage("Checking in licenses")                        
+        arcpy.CheckInExtension("3D")
+        arcpy.CheckInExtension("Spatial")
+    except:
+        pass
 
 
 def handle_results(scratch_dir, contour_dir):
@@ -525,7 +535,19 @@ def CreateContoursFromMD(strJobId):
 if __name__ == '__main__':
     arcpy.env.overwriteOutput = True
     projId = sys.argv[1]
+
+    arcpy.AddMessage("Checking out licenses")
+    arcpy.CheckOutExtension("3D")
+    arcpy.CheckOutExtension("Spatial")
+    
     CreateContoursFromMD(projId)
+
+    try:
+        arcpy.AddMessage("Checking in licenses")                        
+        arcpy.CheckInExtension("3D")
+        arcpy.CheckInExtension("Spatial")
+    except:
+        pass
 
 
 #    UID = None  # field_ProjectJob_UID

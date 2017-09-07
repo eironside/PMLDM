@@ -36,6 +36,7 @@ import os
 import sys  # @UnusedImport
 
 from ngce import Utility
+from ngce.pmdm import RunUtil
 from ngce.Utility import doTime
 from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders, FoldersConfig
@@ -112,7 +113,7 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
     ProjectYear = ProjectJob.getYear(project)
     ProjectAlias = ProjectJob.getAlias(project)
     ProjectAliasClean = ProjectJob.getAliasClean(project)
-    startupType = None
+    startupType = "STARTED"
     
 #         serverFunctionPath = Raster.getServerRasterFunctionsPath(jobID)
     
@@ -234,19 +235,20 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
                         arcpy.AddMessage("Staging sddraft file to sd file")
                         sdPath = sddraftPath.replace(".sddraft", ".sd")
                         arcpy.Delete_management(sdPath)
-                        arcpy.StageService_server(sddraftPath, sdPath)
+                        RunUtil.runTool(r'ngce\pmdm\a\A07_B_StageSD.py', [sddraftPath, sdPath,serverConnectionFile,startupType], bit32=True, log_path=os.path.join(ProjectFolder.path,"Logs"))
+                        # arcpy.StageService_server(sddraftPath, sdPath)
                         
-                        try:
-                            # UploadServiceDefinition
-                            arcpy.AddMessage("Publishing mosaic data set as image service.")
-                            arcpy.UploadServiceDefinition_server(sdPath, serverConnectionFile, "#", "#", "#", "#", startupType)
-                        except Exception as e: 
-                            if runCount < 1:
-#                                 PublishMosaicDataset(jobID, serverConnectionFile, True, 1)
-                                processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunctionPath, update=True, runCount=1)
-                                break
-                            else:
-                                raise e
+##                        try:
+##                            # UploadServiceDefinition
+##                            arcpy.AddMessage("Publishing mosaic data set as image service.")
+##                            arcpy.UploadServiceDefinition_server(sdPath, serverConnectionFile, "#", "#", "#", "#", startupType)
+##                        except Exception as e: 
+##                            if runCount < 1:
+###                                 PublishMosaicDataset(jobID, serverConnectionFile, True, 1)
+##                                processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunctionPath, update=True, runCount=1)
+##                                break
+##                            else:
+##                                raise e
                     else:
                         # if the sddraft analysis contained errors, display them
                         arcpy.AddError(analysis['errors'])
@@ -267,8 +269,8 @@ def PublishMosaicDataset(strJobId, serverConnectionFile, serverFunctionPath, upd
     Utility.printArguments(["jobID", "serverConnectionFile", "serverFunctionPath", "update", "runCount"], [strJobId, serverConnectionFile, serverFunctionPath, update, runCount], "A07 PublishMosaicDataset")
     
     ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
-    
-    processJob(ProjectJob, project, strUID)
+
+    processJob(ProjectJob, project, strUID, serverConnectionFile, serverFunctionPath)
             
     doTime(aa, "Operation Complete: A06 Publish Mosaic Dataset")
 
