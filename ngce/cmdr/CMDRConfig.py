@@ -122,6 +122,13 @@ FILE_LINK_MAPSERVICE = "File_Link_MapService"
 
 SHAPE = 'SHAPE@'
 WMX_JOB_ID = 'WMX_JOB_ID'
+NOTES = "Notes"
+VERT_RMSE = "VertRMSE"
+BOUNDARY = "Boundary"
+
+LINK = "Link"
+METADATA_XML = "MetadataXML"
+USER_GUIDE = "UserGuide"
 
 field_Contract_ProjID = PROJECT_ID
 field_Contract_UID = PROJECT_GUID  
@@ -182,6 +189,12 @@ field_Deliver_BoundXMin = "{}_{}_{}".format(fcName_Deliver, EXTENT, MIN_LON)
 field_Deliver_BoundYMin = "{}_{}_{}".format(fcName_Deliver, EXTENT, MIN_LAT)
 field_Deliver_BoundXMax = "{}_{}_{}".format(fcName_Deliver, EXTENT, MAX_LON)
 field_Deliver_BoundYMax = "{}_{}_{}".format(fcName_Deliver, EXTENT, MAX_LAT)
+
+field_Deliver_Notes = "{}_{}".format(fcName_Deliver,NOTES)
+field_Deliver_VertRMSE = "{}_{}".format(fcName_Deliver,VERT_RMSE)
+field_Deliver_Boundary_Exists = "{}_{}_{}".format(fcName_Deliver, EXISTS, BOUNDARY)
+field_Deliver_Link_MetaXML = "{}_{}_{}".format(fcName_Deliver, LINK, METADATA_XML)
+field_Deliver_Link_UserGuide ="{}_{}_{}".format(fcName_Deliver, LINK, USER_GUIDE)
 
 
 field_QC_ProjID = PROJECT_ID
@@ -325,7 +338,12 @@ fields_Deliver = [field_Deliver_UID,
                   
                   field_Deliver_Date_CollectionBegin,
                   field_Deliver_Date_CollectionEnd,
-                  field_Deliver_Date
+                  field_Deliver_Date,
+                  field_Deliver_Notes,
+                  field_Deliver_VertRMSE,
+                  field_Deliver_Boundary_Exists,
+                  field_Deliver_Link_MetaXML,
+                  field_Deliver_Link_UserGuide
                   ]
 
 fields_QC = [field_QC_UID,

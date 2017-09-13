@@ -24,6 +24,7 @@ WMX_TOOLS = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools"
 #WMX_TOOLS = r"C:\Users\eric5946\workspaceEE\NGCE_PMDM\src-ngce"
 #WMX_TOOLS = r'C:\Temp'
 
+PROD_TOOLS = r"C:\Program Files (x86)\ArcGIS\EsriProductionMapping\Desktop10.5\arcpyproduction\arcpyproduction"
 
 
     
@@ -47,7 +48,7 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
         path_python27 = PATH_PYTHON27_32
 
     env = os.environ.copy()
-    env['PYTHONPATH'] = r'{}\Lib\site-packages;{}'.format(path_python27, WMX_TOOLS)
+    env['PYTHONPATH'] = r'{}\Lib\site-packages;{};{}'.format(path_python27, WMX_TOOLS, PROD_TOOLS)
     env['PATH'] = path_python27
     exe = r'"{}\pythonw.exe"'.format(path_python27)
 

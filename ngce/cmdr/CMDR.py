@@ -263,6 +263,18 @@ class Deliver(object):
         return setFieldValue(self, row, field_Deliver_BoundXMax, value)
     def setBoundYMax(self, row, value):
         return setFieldValue(self, row, field_Deliver_BoundYMax, value)
+    def setNotes(self, row, value):
+        return setFieldValue(self, row, field_Deliver_Notes, value)
+    def setVertRMSE(self, row, value):
+        return setFieldValue(self, row, field_Deliver_VertRMSE, value)
+    def setBoundaryExists(self, row, value):
+        return setFieldValue(self, row, field_Deliver_Boundary_Exists, value)
+    def setLinkMetadataXML(self, row, value):
+        return setFieldValue(self, row, field_Deliver_Link_MetaXML, value)
+    def setLinkUserGuide(self, row, value):
+        return setFieldValue(self, row, field_Deliver_Link_UserGuide, value)
+
+    
 
 
     def setDTMExists(self, row, value):
@@ -284,10 +296,16 @@ class Deliver(object):
         return getFieldValue(self, row, field_Deliver_ValidZMax)
     def getDeliverDate(self, row):
         return getFieldValue(self, row, field_Deliver_Date)
+    def setDeliverDate(self, row, value):
+        return setFieldValue(self, row, field_Deliver_Date, value)
     def getCollectionBeginDate(self, row):
         return getFieldValue(self, row, field_Deliver_Date_CollectionBegin)
+    def setCollectionBeginDate(self, row, value):
+        return setFieldValue(self, row, field_Deliver_Date_CollectionBegin, value)
     def getCollectionEndDate(self, row):
         return getFieldValue(self, row, field_Deliver_Date_CollectionEnd)
+    def setCollectionEndDate(self, row, value):
+        return setFieldValue(self, row, field_Deliver_Date_CollectionEnd, value)
     def getIsClassified(self, row):
         result = getFieldValue(self, row, field_Deliver_Las_Classified)
         if result is not None:

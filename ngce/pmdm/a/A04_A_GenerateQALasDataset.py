@@ -573,9 +573,10 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
                                     if len(str(md_name)) > 0:
                                         try:
                                             lyr_md = arcpy.MakeMosaicLayer_management(in_mosaic_dataset=md_path, out_mosaic_layer=md_name).getOutput(0)
-                                            arcpy.mapping.AddLayer(df, lyr_md, 'BOTTOM')
+                                            arcpy.mapping.AddLayer(df, md_name, 'BOTTOM')
                                             # lyr_md.visible = False
-                                            a = doTime(a, "\tAdded MD {} to MXD {}.".format(md_name, mxd_path))
+                                            mxd.save()
+                                            a = doTime(a, "\tAdded MD {} to MXD {} as {}".format(md_name, mxd_path,lyr_md))
                                         except:
                                             a = doTime(a, "\tfailed to add MD {} to MXD {}. Is it open?".format(md_path, mxd_path))
                                 
