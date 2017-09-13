@@ -158,7 +158,7 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[AREA][0], field_alias=FIELD_INFO[AREA][1], field_type=FIELD_INFO[AREA][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[ELEV_TYPE][0], field_alias=FIELD_INFO[ELEV_TYPE][1], field_type=FIELD_INFO[ELEV_TYPE][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[RANGE][0], field_alias=FIELD_INFO[RANGE][1], field_type=FIELD_INFO[RANGE][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-     
+    
     try:
         arcpy.DeleteField_management(in_table=vector_1_bound_path, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
     except:
@@ -204,7 +204,7 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
 def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, minZ, maxZ, bound_path, spatial_ref=None):
     Utility.setArcpyEnv(is_overwrite_output=True)
     a = datetime.now()
-    nodata = RasterConfig.NODATA_DEFAULT     
+    nodata = RasterConfig.NODATA_DEFAULT
     isInt = (elev_type == INT)
     if isInt:
         minZ, maxZ = 0, 255
@@ -236,7 +236,7 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                 if arcpy.Exists(target_f_path):
                     arcpy.AddMessage("\tDerived Raster exists: {}".format(target_f_path))
                 else:
-                    deleteFileIfExists(target_f_path, True)
+                    deleteFileIfExists(target_f_path, True) 
                     arcpy.AddMessage("\tSaving derived raster to {}".format(target_f_path))
                     
                     # Compression isn't being applied properly so results are uncompressed
@@ -265,7 +265,7 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
 #                                                                 compression_type="LZ77",
 #                                                                 compression_quality="75",
 #                                                                 skip_existing="SKIP_EXISTING")
-                    
+    
                     
                     # make sure we make a new published copy of this
                     if arcpy.Exists(publish_f_path):
@@ -337,7 +337,7 @@ def CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_p
             else:
                 arcpy.AddWarning("WARNING: RASTER CHECK '{}': Horizontal Unit from LAS '{}' {} raster file '{}'".format(f_name, h_unit, ("Matches" if isHUnit else "Does NOT Match"), raster_props[H_UNIT]))
                 
-                
+            
             isHwkid = isMatchingStringValue(h_wkid, raster_props[H_WKID])
             if isHUnit:
                 arcpy.AddMessage("RASTER CHECK '{}': Horizontal WKID from LAS '{}' {} raster file '{}'".format(f_name, h_wkid, ("Matches" if isHwkid else "Does NOT Match"), raster_props[H_WKID]))
@@ -351,7 +351,7 @@ def CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_p
             # @TODO: exit if a coordinate system is not present or not complete (make them project or define projection)
     except:
         pass
-       
+    
     return sr
 
     

@@ -28,8 +28,6 @@ PROCESS_SPARES = 2  # processors to leave as spares
 arcpy.env.parallelProcessingFactor = "80%"
 
 arcpy.env.overwriteOutput = True
-TOOLS_PATH = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools\ngce\pmdm\a"
-# TOOLS_PATH = r"C:\Users\eric5946\workspaceEE\NGCE_PMDM\src-ngce\ngce\pmdm\a"
 
 
 '''
@@ -40,7 +38,7 @@ statistics datasets for each
 '''
 def createLasStatistics(fileList, target_path, spatial_reference=None, isClassified=True, createQARasters=False, createMissingRasters=False, overrideBorderPath=None, runAgain=True):
     a = datetime.now()
-    path = os.path.join(TOOLS_PATH, "A04_B_CreateLASStats.py")
+    path = os.path.join(RunUtil.TOOLS_PATH, "A04_B_CreateLASStats.py")
     Utility.printArguments(["fileList", "target_path", "spatial_reference", "isClassified", "createQARasters", "createMissingRasters", "overrideBorderPath"],
                            [fileList, target_path, spatial_reference, isClassified, createQARasters, createMissingRasters, overrideBorderPath], "createLasStatistics")
     
@@ -573,7 +571,7 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
                                     if len(str(md_name)) > 0:
                                         try:
                                             lyr_md = arcpy.MakeMosaicLayer_management(in_mosaic_dataset=md_path, out_mosaic_layer=md_name).getOutput(0)
-                                            arcpy.mapping.AddLayer(df, md_name, 'BOTTOM')
+                                            arcpy.mapping.AddLayer(df, lyr_md, 'BOTTOM')
                                             # lyr_md.visible = False
                                             mxd.save()
                                             a = doTime(a, "\tAdded MD {} to MXD {} as {}".format(md_name, mxd_path,lyr_md))

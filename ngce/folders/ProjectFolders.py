@@ -178,14 +178,14 @@ class Derived(object):
                          
                          lasClassified_dir,
                          lasUnclassified_dir,
-                         
+                        
                         pulse_count_dir,
                         point_count_dir,
                         predominant_last_return_dir,
                         predominant_class_dir,
                         intensity_range_dir,
                         z_range_dir,
-                         
+                        
                            stats_dir,
                            contour_dir
                          ]
@@ -232,7 +232,7 @@ class Derived(object):
                         predominant_class_path,
                         intensity_range_path,
                         z_range_path,
-                         
+
                         stats_path,
                         contour_path
                          ]
@@ -342,84 +342,84 @@ class Derived(object):
             self.fgdb_path = os.path.join(self.path, self.fgdb_name)
         
         self.pathList = [
-                         self.demFirst_path,
-                         self.demLast_path,
-        self.demHeight_path,
-        self.demLAll_path,
-        
-        self.intensity_path,
-        self.intensity_first_path,
-        
-        self.elev_path,
-        self.elev_first_path,
-        self.elev_last_path,
-        self.elev_all_path,
-        
-        self.lasClassified_path,
-        self.lasClassified_lasd_path,
-        
-        self.lasUnclassified_path,
-        self.lasUnclassified_lasd_path,
-                         
-                         
-        self.pulse_count_path,
-        self.pulse_count_all_path,
-        self.pulse_count_first_path,
-        self.pulse_count_last_path,
-        
-        self.point_count_path,
-        self.point_count_all_path,
-        self.point_count_first_path,
-        self.point_count_last_path,
-        
-        self.predominant_last_return_path,
-        self.predominant_last_return_all_path,
-        self.predominant_last_return_first_path,
-        self.predominant_last_return_last_path,
-        
-        self.predominant_class_path,
-        self.predominant_class_all_path,
-        self.predominant_class_first_path,
-        self.predominant_class_last_path,
-        
-        self.intensity_range_path,
-        self.intensity_range_all_path,
-        self.intensity_range_first_path,
-        self.intensity_range_last_path,
-        
-        self.z_range_path,
-        self.z_range_all_path,
-        self.z_range_first_path,
-        self.z_range_last_path,
-                         
+                        self.demFirst_path,
+                        self.demLast_path,
+                        self.demHeight_path,
+                        self.demLAll_path,
+                        
+                        self.intensity_path,
+                        self.intensity_first_path,
+                        
+                        self.elev_path,
+                        self.elev_first_path,
+                        self.elev_last_path,
+                        self.elev_all_path,
+                        
+                        self.lasClassified_path,
+                        self.lasClassified_lasd_path,
+                        
+                        self.lasUnclassified_path,
+                        self.lasUnclassified_lasd_path,
+                        
+                        
+                        self.pulse_count_path,
+                        self.pulse_count_all_path,
+                        self.pulse_count_first_path,
+                        self.pulse_count_last_path,
+                        
+                        self.point_count_path,
+                        self.point_count_all_path,
+                        self.point_count_first_path,
+                        self.point_count_last_path,
+                        
+                        self.predominant_last_return_path,
+                        self.predominant_last_return_all_path,
+                        self.predominant_last_return_first_path,
+                        self.predominant_last_return_last_path,
+                        
+                        self.predominant_class_path,
+                        self.predominant_class_all_path,
+                        self.predominant_class_first_path,
+                        self.predominant_class_last_path,
+                        
+                        self.intensity_range_path,
+                        self.intensity_range_all_path,
+                        self.intensity_range_first_path,
+                        self.intensity_range_last_path,
+                        
+                        self.z_range_path,
+                        self.z_range_all_path,
+                        self.z_range_first_path,
+                        self.z_range_last_path,
+                        
                         self.stats_path,
-        self.stats_las_path,
-        
-        self.stats_raster_path,
-        
-        self.stats_raster_dlm_path,
-        self.stats_raster_dlm_derived_path,
-        self.stats_raster_dlm_original_path,
-        self.stats_raster_dlm_published_path,
-        
-        self.stats_raster_dtm_path,
-        self.stats_raster_dtm_derived_path,
-        self.stats_raster_dtm_original_path,
-        self.stats_raster_dtm_published_path,
-        
-        self.stats_raster_dsm_path,
-        self.stats_raster_dsm_derived_path,
-        self.stats_raster_dsm_original_path,
-        self.stats_raster_dsm_published_path,
-        
-        self.stats_raster_intensity_path,
-        self.stats_raster_intensity_derived_path,
-        self.stats_raster_intensity_original_path,
-        self.stats_raster_intensity_published_path,
-        
-        self.contour_path,
-        self.contour_scratch_path,
-        self.log_path
+                        self.stats_las_path,
+                        
+                        self.stats_raster_path,
+                        
+                        self.stats_raster_dlm_path,
+                        self.stats_raster_dlm_derived_path,
+                        self.stats_raster_dlm_original_path,
+                        self.stats_raster_dlm_published_path,
+                        
+                        self.stats_raster_dtm_path,
+                        self.stats_raster_dtm_derived_path,
+                        self.stats_raster_dtm_original_path,
+                        self.stats_raster_dtm_published_path,
+                        
+                        self.stats_raster_dsm_path,
+                        self.stats_raster_dsm_derived_path,
+                        self.stats_raster_dsm_original_path,
+                        self.stats_raster_dsm_published_path,
+                        
+                        self.stats_raster_intensity_path,
+                        self.stats_raster_intensity_derived_path,
+                        self.stats_raster_intensity_original_path,
+                        self.stats_raster_intensity_published_path,
+                        
+                        self.contour_path,
+                        self.contour_scratch_path,
+                        self.log_path
                          ]
         
         
@@ -829,7 +829,7 @@ def getProjectFolderFromDBRow(ProjectJob, project_job_row):
                    alias=ProjectJob.getAlias(project_job_row),
                    aliasClean=ProjectJob.getAliasClean(project_job_row),
                    UID=ProjectJob.getUID(project_job_row))
-    
+
 
 '''
 ------------------------------------------------------------

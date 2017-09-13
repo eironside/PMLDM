@@ -24,11 +24,10 @@ WMX_TOOLS = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools"
 #WMX_TOOLS = r"C:\Users\eric5946\workspaceEE\NGCE_PMDM\src-ngce"
 #WMX_TOOLS = r'C:\Temp'
 
+TOOLS_PATH = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools\ngce\pmdm\a"
+# TOOLS_PATH = r"C:\Users\eric5946\workspaceEE\NGCE_PMDM\src-ngce\ngce\pmdm\a"
+
 PROD_TOOLS = r"C:\Program Files (x86)\ArcGIS\EsriProductionMapping\Desktop10.5\arcpyproduction\arcpyproduction"
-
-
-    
-
 
 def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
 
