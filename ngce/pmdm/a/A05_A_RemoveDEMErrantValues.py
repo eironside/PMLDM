@@ -295,7 +295,7 @@ def getLasdBoundData(bound_path, add_buffer=True):
 
 def processRastersInFolder(fileList, target_path, publish_path, elev_type, bound_path, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref, runAgain=True):
     a = datetime.now()
-    path = os.path.join(A04_A_GenerateQALasDataset.TOOLS_PATH, "A05_B_RevalueRaster.py")
+    path = os.path.join(RunUtil.TOOLS_PATH, "A05_B_RevalueRaster.py")
     Utility.printArguments(["fileList", "target_path", "publish_path", "elev_type", "bound_path", "spatial_ref", "runAgain"],
                            [(None if fileList is None else len(fileList)), target_path, publish_path, elev_type, bound_path, spatial_ref, runAgain], "createLasStatistics")
     
