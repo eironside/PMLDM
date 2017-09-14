@@ -604,6 +604,7 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
 def GenerateQALasDataset(strJobId, createQARasters=False, createMissingRasters=False, overrideBorderPath=None):
     Utility.printArguments(["WMXJobID", "createQARasters", "createMissingRasters", "overrideBorderPath"],
                            [strJobId, createQARasters, createMissingRasters, overrideBorderPath], "A04 GenerateQALasDataset")
+    
     aa = datetime.now()
     arcpy.AddMessage("Checking out licenses")
     arcpy.CheckOutExtension("3D")

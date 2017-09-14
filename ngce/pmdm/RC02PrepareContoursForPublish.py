@@ -14,6 +14,6 @@ PATH = r'ngce\pmdm\c\C02PrepareContoursForPublishing.py'
 
 jobID = arcpy.GetParameterAsText(0)
 args = [jobID]
-
+arcpy.AddMessage(PATH)
 # C02PrepareContoursForPublishing.PrepareContoursForPublishing(jobID)
-RunUtil.runTool(PATH, args, log_path=getLogFolderFromWMXJobID(jobID))
+RunUtil.runTool(PATH, args, bit32=True, log_path=getLogFolderFromWMXJobID(jobID))

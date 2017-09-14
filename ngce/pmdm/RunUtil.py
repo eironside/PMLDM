@@ -27,7 +27,7 @@ WMX_TOOLS = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools"
 TOOLS_PATH = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools\ngce\pmdm\a"
 # TOOLS_PATH = r"C:\Users\eric5946\workspaceEE\NGCE_PMDM\src-ngce\ngce\pmdm\a"
 
-PROD_TOOLS = r"C:\Program Files (x86)\ArcGIS\EsriProductionMapping\Desktop10.5\arcpyproduction\arcpyproduction"
+PROD_TOOLS = r"C:\Program Files (x86)\ArcGIS\EsriProductionMapping\Desktop10.5\arcpyproduction"
 
 def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
 
@@ -47,11 +47,15 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
         path_python27 = PATH_PYTHON27_32
 
     env = os.environ.copy()
-    env['PYTHONPATH'] = r'{}\Lib\site-packages;{};{}'.format(path_python27, WMX_TOOLS, PROD_TOOLS)
+    #env['PYTHONPATH'] = r'{}\Lib\site-packages;{};{}'.format(path_python27, WMX_TOOLS, PROD_TOOLS)
+    env['PYTHONPATH'] = r'{}\Lib\site-packages;{}'.format(path_python27, WMX_TOOLS)
     env['PATH'] = path_python27
     exe = r'"{}\pythonw.exe"'.format(path_python27)
-
-    log_path = os.path.join(log_path, "Logs")
+    #exe = path_python27
+    
+    log_parts = os.path.split(log_path)
+    if len(log_parts) >= 2 and (not str(log_parts[1]).upper()=="LOGS"):  
+        log_path = os.path.join(log_path, "Logs")
     arcpy.AddMessage("Logs are written to: " + str(log_path))
     if not os.path.exists(log_path):
         os.makedirs(log_path)

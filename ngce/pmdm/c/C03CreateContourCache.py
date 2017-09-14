@@ -7,6 +7,7 @@ import time
 
 import arcpy
 from ngce import Utility
+from ngce.pmdm import RunUtil
 from ngce.cmdr import CMDR
 from ngce.contour import ContourConfig
 from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, CONTOUR_NAME_WM
@@ -30,8 +31,10 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     PublishFolder = ProjectFolder.published.path
     contour_file_gdb_path = os.path.join(contour_folder, CONTOUR_GDB_NAME)
     contourMerged_file_gdb_path = os.path.join(PublishFolder, CONTOUR_NAME_WM)
-    contourMxd_Name = ContourConfig.CONTOUR_MXD_NAME
-    contourMxd_path = os.path.join(PublishFolder, contourMxd_Name)
+    #@TODO: move all the derived contour stuff to a publihsed location
+    # P:\OK_SugarCreekElaine_2006\DERIVED\CONTOUR\SCRATCH\RESULTS\Results.mxd
+    contourMxd_Name = "Results.mxd" # ContourConfig.CONTOUR_MXD_NAME
+    contourMxd_path = os.path.join(contour_folder, "SCRATCH","RESULTS",contourMxd_Name)
 #     ContourBoundFC = os.path.join(contourMerged_file_gdb_path, ContourConfig.CONTOUR_BOUND_FC_WEBMERC)
     ContourBoundFC = A05_C_ConsolidateRasterInfo.getRasterBoundaryPath(derived_filegdb_path, DTM)
     
@@ -151,11 +154,13 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     
     # Check for analyzer errors
     if analysis['errors'] == {}:
-        arcpy.AddMessage("Staging service definition {}".format(sd))
-        arcpy.StageService_server(outsddraft, sd)
-        arcpy.AddMessage("Uploading service definition {} to server {}".format(sd, localServer))
-        arcpy.UploadServiceDefinition_server(sd, localServer)
-        arcpy.AddMessage("Service publishing completed")
+
+        RunUtil.runTool(r'ngce\pmdm\c\C03_B_StageSD.py', [outsddraft, sd, localServer], bit32=True, log_path=ProjectFolder.path)
+##        arcpy.AddMessage("Staging service definition {}".format(sd))
+##        arcpy.StageService_server(outsddraft, sd)
+##        arcpy.AddMessage("Uploading service definition {} to server {}".format(sd, localServer))
+##        arcpy.UploadServiceDefinition_server(sd, localServer)
+##        arcpy.AddMessage("Service publishing completed")
     else:
         # If the SDDraft analysis contained errors, display them
         arcpy.AddError("\nERROR\nErrors encountered during analysis of the MXD: " + str(analysis['errors']))

@@ -114,7 +114,8 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
     ProjectAlias = ProjectJob.getAlias(project)
     ProjectAliasClean = ProjectJob.getAliasClean(project)
     startupType = "STARTED"
-    
+    Utility.printArguments(["ProjectJob", "project", "ProjectUID", "serverConnectionFile", "serverFunctionPath", "update", "runCount", "ProjectFolder", "ProjectID", "ProjectState", "ProjectYear", "ProjectAlias", "ProjectAliasClean", "startupType"],
+                   [ProjectJob, project, ProjectUID, serverConnectionFile, serverFunctionPath, update, runCount,ProjectFolder,ProjectID,ProjectState,ProjectYear,ProjectAlias,ProjectAliasClean,startupType], "A07_A Publish Project")
 #         serverFunctionPath = Raster.getServerRasterFunctionsPath(jobID)
     
     ssFunctions = None

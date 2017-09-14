@@ -37,17 +37,21 @@ arcpy.env.tileSize = RasterConfig.TILE_SIZE_256
 arcpy.env.nodata = RasterConfig.NODATA_DEFAULT
 
 def getServerSideFunctions(folderPath):
+    arcpy.AddMessage(folderPath)
     result = []
 #     localPath = os.path.dirname(os.path.realpath(__file__))
 #     toolIndex = localPath.lower().rfind("ngce")
 #     localPath = localPath[toolIndex:]
 #     uncPath = os.path.join(rootPath, "tools",localPath)
 #     
-    folderPath = os.path.join(str(folderPath))
-    serverFunctionFiles = [f for f in listdir(folderPath) if isfile(join(str(folderPath), f))]
+    #folderPath = os.path.join(str(folderPath))
+    #arcpy.AddMessage(folderPath)
+    serverFunctionFiles = [f for f in listdir(folderPath) if str(f).endswith(".xml")]#isfile(join(str(folderPath), f))]
     for serverFunctionFile in serverFunctionFiles:
-        if(serverFunctionFile.endswith(".xml")):
-            result.append(os.path.join(folderPath, serverFunctionFile))
+        #if(serverFunctionFile.endswith(".xml")):
+        result.append(os.path.join(folderPath, serverFunctionFile))
+
+    arcpy.AddMessage(result)
     return ";".join(result)
     
 def getOverviewCellSize(cell_size):

@@ -1,10 +1,11 @@
-from datetime import datetime
+
+import datetime
 from multiprocessing import Pool, cpu_count
 import os
 import sys
 
 import arcpy
-import production  # @UnresolvedImport
+import arcpyproduction  # @UnresolvedImport
 from functools import partial
 from ngce import Utility
 from ngce.Utility import doTime
@@ -14,6 +15,8 @@ from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, CONTOUR_NAME_OCS, \
     CONTOUR_NAME_WM
 from ngce.folders import ProjectFolders
 import shutil
+
+CPU_HANDICAP = 0 # set higher to use fewer CPUs
 
 #@TODO: Determine if final contours are moved to Publish directory
 
@@ -57,7 +60,7 @@ def gen_base_tiling_scheme(base_fc, scratch):
 
 def contour_prep(in_fc, scheme_poly, scratch, name):
 
-    print 'Started: ', name
+    arcpy.AddMessage('Started: '+ name)
 
     arcpy.env.overwriteOutput = True
 
@@ -184,15 +187,15 @@ def contour_prep(in_fc, scheme_poly, scratch, name):
                     attributes='ALL'
                 )
             except Exception as e:
-                print 'Exception:', e
+                arcpy.AddError('Exception:' + e)
                 pass
         mxd.save()
 
     except Exception as e:
-        print 'Dropped: ', name
-        print 'Exception: ', e
+        arcpy.AddError( 'Dropped: '+ name)
+        arcpy.AddError( 'Exception: '+ e)
 
-    print 'Finished: ', name
+    arcpy.AddMessage('Finished: '+ name)
 
 
 def db_list_gen(scratch, dirs, names):
@@ -226,7 +229,7 @@ def run_merge(lists, results):
 
 def handle_merge(scratch):
 
-    print 'Merging Multiprocessing Results'
+    arcpy.AddMessage( 'Merging Multiprocessing Results')
 
     arcpy.env.overwriteOutput = True
 
@@ -276,7 +279,7 @@ def handle_merge(scratch):
 
 def build_results_mxd(in_fc, final_db, folder):
 
-    print 'Create Results MXD'
+    arcpy.AddMessage(  'Create Results MXD')
 
     arcpy.env.overwriteOutput = True
 
@@ -392,7 +395,7 @@ def processJob(ProjectJob, project, strUID):
     name_list = list(set([row[0] for row in arcpy.da.SearchCursor(in_cont_fc, ['name'])]))  # @UndefinedVariable
 
     # Run Contour Preparation for Each Unique Name Found within  Input FC
-    pool = Pool(processes=cpu_count() - 2)
+    pool = Pool(processes=cpu_count() - CPU_HANDICAP)
     pool.map(
         partial(
             contour_prep,
@@ -416,7 +419,10 @@ def PrepareContoursForJob(strJobId):
     
     Utility.printArguments(["WMXJobID"],
                            [strJobId], "C02 PrepareContoursForPublishing")
-    aa = datetime.now()
+    aa = datetime.datetime.now()
+
+    
+    
     
     ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
     
@@ -427,14 +433,24 @@ def PrepareContoursForJob(strJobId):
     
 
 if __name__ == '__main__':
+    exception = None
+    try:
+        arcpy.CheckOutExtension("Foundation")
+        
+        jobID = sys.argv[1]
+        PrepareContoursForJob(jobID)
+    except Exception as e:
+        exception = e
+    finally:
+        arcpy.CheckInExtension("Foundation")
 
-    jobID = sys.argv[1]
-    PrepareContoursForJob(jobID)
-    
+    if exception is not None:
+        raise exception
+
 #     jobID = 4801
 #     in_cont_fc = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Contours.gdb\Contours_ABC'
 #     scratch_path = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Scratch'
 # 
 #     try:
 #     except Exception as e:
-#         print 'Exception: ', e
+#         arcpy.AddError(  'Exception: '+ e)
