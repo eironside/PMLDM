@@ -17,7 +17,7 @@ from ngce.pmdm.a import A05_C_ConsolidateRasterInfo
 
 
 def ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceName, update=False, runCount=0):
-    a = datetime.now()
+    a = datetime.datetime.now()
     aa = a
     cache_dir = ContourConfig.CACHE_FOLDER
     Utility.printArguments(

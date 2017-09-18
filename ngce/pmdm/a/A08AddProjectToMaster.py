@@ -278,7 +278,7 @@ def AddProjectToMaster(strJobId, masterParentDir, masterService):
     
     ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
     
-    processJob(ProjectJob, project, strUID)
+    processJob(ProjectJob, project, strUID, MasterMDs_parent_path, master_md_name)
     
     doTime(aa, "Operation Complete: A06 Publish Mosaic Dataset")
 

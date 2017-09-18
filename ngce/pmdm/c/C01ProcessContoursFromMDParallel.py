@@ -20,6 +20,7 @@ from ngce.pmdm.a.A04_B_CreateLASStats import doTime, deleteFileIfExists
 from ngce.pmdm.a.A05_B_RevalueRaster import FIELD_INFO, V_UNIT
 from ngce.raster import Raster
 
+CPU_HANDICAP = 1
 
 def generateHighLow(workspace, name, clip_contours, ref_md):
     cont_poly1 = os.path.join(workspace, 'O12_poly_' + name + '.shp')
@@ -418,9 +419,36 @@ def isProcessFile(f_name, scratch_dir):
     if f_name is not None:
         cont = os.path.join(scratch_dir, 'Scratch', 'O11_ClipCont_' + f_name + '.shp')
         if not os.path.exists(cont):
+            arcpy.AddMessage("PROCESS: " + cont)
             process_file = True
 
     return process_file
+
+
+
+def createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smooth_unit, scratch_path, run_dict, run_again=True):
+    arcpy.AddMessage("---- Creating Contours on {} -----".format(len(run_dict.items())))
+    # Map Generate Contour Function to Footprints
+    pool = Pool(processes=cpu_count() - CPU_HANDICAP)
+    pool.map(
+        partial(
+            generate_contour,
+            ref_md,
+            cont_int,
+            cont_unit,
+            raster_vertical_unit,
+            smooth_unit,
+            scratch_path
+        ),
+        run_dict.items()
+    )
+    pool.close()
+    pool.join()
+
+    if run_again:
+        # run again to re-create missing tiles if one or more dropped
+        #@TODO: Figure out why we have to do this!!
+        createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smooth_unit, scratch_path,run_dict, False)
 
 def processJob(ProjectJob, project, ProjectUID):
     start = time.time()
@@ -493,22 +521,7 @@ def processJob(ProjectJob, project, ProjectUID):
 
     
     try:
-        # Map Generate Contour Function to Footprints
-        pool = Pool(processes=cpu_count() - 1)
-        pool.map(
-            partial(
-                generate_contour,
-                ref_md,
-                cont_int,
-                cont_unit,
-                raster_vertical_unit,
-                smooth_unit,
-                scratch_path
-            ),
-            run_dict.items()
-        )
-        pool.close()
-        pool.join()
+        createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smooth_unit, scratch_path, run_dict)
  
         # Merge Contours
         handle_results(scratch_path, contour_gdb)
