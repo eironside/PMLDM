@@ -1,24 +1,24 @@
 
+import arcpy
 import datetime
+from functools import partial
 from multiprocessing import Pool, cpu_count
 import os
+import shutil
 import sys
 
-import arcpy
 import arcpyproduction  # @UnresolvedImport
-from functools import partial
 from ngce import Utility
 from ngce.Utility import doTime
 from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.contour import ContourConfig
-from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, CONTOUR_NAME_OCS, \
-    CONTOUR_NAME_WM
+from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, CONTOUR_NAME_WM
 from ngce.folders import ProjectFolders
-import shutil
 
-CPU_HANDICAP = 0 # set higher to use fewer CPUs
 
-#@TODO: Determine if final contours are moved to Publish directory
+CPU_HANDICAP = 0  # set higher to use fewer CPUs
+
+# @TODO: Determine if final contours are moved to Publish directory
 
 
 def gen_base_tiling_scheme(base_fc, scratch):
@@ -60,14 +60,14 @@ def gen_base_tiling_scheme(base_fc, scratch):
 
 def contour_prep(in_fc, scheme_poly, scratch, name):
 
-    arcpy.AddMessage('Started: '+ name)
+    arcpy.AddMessage('Started: {}'.format(name))
 
     arcpy.env.overwriteOutput = True
 
     try:
         # Copy Template MXD
         base_mxd = arcpy.mapping.MapDocument(ContourConfig.MXD_TEMPLATE)
-        section_mxd_name = os.path.join(scratch, name, name + '.mxd')
+        section_mxd_name = os.path.join(scratch, name, '{}.mxd'.format(name))
         base_mxd.saveACopy(section_mxd_name)
 
         # Set MXD For Processing
@@ -83,18 +83,18 @@ def contour_prep(in_fc, scheme_poly, scratch, name):
         mxd.save()
 
         # Create FGDB For Annotation Storage
-        scratch_db = os.path.join(scratch, name, name + '.gdb')
+        scratch_db = os.path.join(scratch, name, '{}.gdb'.format(name))
         filter_folder = os.path.join(scratch, name)
         if arcpy.Exists(scratch_db):
             pass
         else:
-            arcpy.CreateFileGDB_management(filter_folder, name + '.gdb')
+            arcpy.CreateFileGDB_management(filter_folder, '{}.gdb'.format(name))
 
         # Filter for Section of Input FC
         feat = arcpy.MakeFeatureLayer_management(
             in_features=in_fc,
             out_layer=name,
-            where_clause="name='" + name + "'"
+            where_clause="name='{}'".format(name)
         )
 
         # Select Subsection of Tiling Scheme
@@ -108,7 +108,7 @@ def contour_prep(in_fc, scheme_poly, scratch, name):
         )
 
         # Save Subsection of Tilinng Scheme for TiledLabelsToAnnotation
-        target_scheme_polys = os.path.join(scratch_db, name + '_scheme_polys')
+        target_scheme_polys = os.path.join(scratch_db, '{}_scheme_polys'.format(name))
         arcpy.CopyFeatures_management(
             in_features=sel_lyr,
             out_feature_class=target_scheme_polys
@@ -175,7 +175,7 @@ def contour_prep(in_fc, scheme_poly, scratch, name):
             try:
                 lyr_path = os.path.join(filter_folder, lyr_file)
                 ref_scale = lyr_file[9:13]
-                mask_fc = os.path.join(scratch_db, r'Mask' + ref_scale)
+                mask_fc = os.path.join(scratch_db, r'Mask{}'.format(ref_scale))
                 arcpy.FeatureOutlineMasks_cartography(
                     input_layer=lyr_path,
                     output_fc=mask_fc,
@@ -187,15 +187,15 @@ def contour_prep(in_fc, scheme_poly, scratch, name):
                     attributes='ALL'
                 )
             except Exception as e:
-                arcpy.AddError('Exception:' + e)
+                arcpy.AddError('Exception: {}'.format(e))
                 pass
         mxd.save()
 
     except Exception as e:
-        arcpy.AddError( 'Dropped: '+ name)
-        arcpy.AddError( 'Exception: '+ e)
+        arcpy.AddError('Dropped: {}'.format(name))
+        arcpy.AddError('Exception: {}'.format(e))
 
-    arcpy.AddMessage('Finished: '+ name)
+    arcpy.AddMessage('Finished: {}'.format(name))
 
 
 def db_list_gen(scratch, dirs, names):
@@ -208,7 +208,7 @@ def db_list_gen(scratch, dirs, names):
     ]
 
     for dir_name in dirs:
-        db = os.path.join(scratch, dir_name, dir_name + '.gdb')
+        db = os.path.join(scratch, dir_name, '{}.gdb'.format(dir_name))
         e_names = enumerate(names)
         for index, name in e_names:
             target = os.path.join(db, name)
@@ -229,7 +229,7 @@ def run_merge(lists, results):
 
 def handle_merge(scratch):
 
-    arcpy.AddMessage( 'Merging Multiprocessing Results')
+    arcpy.AddMessage('Merging Multiprocessing Results')
 
     arcpy.env.overwriteOutput = True
 
@@ -279,7 +279,7 @@ def handle_merge(scratch):
 
 def build_results_mxd(in_fc, final_db, folder):
 
-    arcpy.AddMessage(  'Create Results MXD')
+    arcpy.AddMessage('Create Results MXD')
 
     arcpy.env.overwriteOutput = True
 
@@ -445,7 +445,8 @@ if __name__ == '__main__':
         arcpy.CheckInExtension("Foundation")
 
     if exception is not None:
-        raise exception
+        arcpy.AddError('Exception: {}'.format(exception))
+        
 
 #     jobID = 4801
 #     in_cont_fc = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Contours.gdb\Contours_ABC'
@@ -453,4 +454,4 @@ if __name__ == '__main__':
 # 
 #     try:
 #     except Exception as e:
-#         arcpy.AddError(  'Exception: '+ e)
+#         arcpy.AddError(  'Exception: {}'.format(e))
