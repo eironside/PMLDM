@@ -26,6 +26,7 @@ JTC_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'WMXAdm
 SDE_WMX_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wmx.sde')
 SDE_CMDR_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cmdr.sde')
 WMX_AOI_FC = "LDM_WMX.DBO.JTX_JOBS_AOI"
+#WMX_AOI_FC = "NGCE_WMX.DBO.JTX_JOBS_AOI"
 
 def fileCounter(myPath, ext=None):
     fileCounter = 0

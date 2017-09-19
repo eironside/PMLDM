@@ -223,6 +223,9 @@ def createLasDataset(f_name, f_path, spatial_reference, target_path, isClassifie
         las_type_folder = lasUnclassified_dir
     target_las_path = os.path.join(target_path, las_type_folder)
     target_lasd_path = os.path.join(target_las_path, lasd_dir)
+    if not os.path.exists(target_lasd_path):
+        os.makedirs(target_lasd_path)
+    
     out_lasd_path = os.path.join(target_lasd_path, "{}.lasd".format(f_name))
     temp1_lasd_path = os.path.join(target_lasd_path, "temp1_{}.lasd".format(f_name))
     

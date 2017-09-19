@@ -105,9 +105,12 @@ def createLasStatistics(fileList, target_path, spatial_reference=None, isClassif
         while len(processList) > 0:
             for  i, [p, l] in enumerate(processList):
                 if p.poll() is not None:
-                    RunUtil.endRun_async(path, p, l)
+                    retCode = RunUtil.endRun_async(path, p, l)
+                    if retCode <> 0:
+                        fileList_repeat.append(f_path)
                     del processList[i]
-                    arcpy.AddMessage("\tWaiting for process list to clear {} jobs".format(len(processList)))
+                    if len(processList) > 0:
+                        arcpy.AddMessage("\tWaiting for process list to clear {} jobs".format(len(processList)))
     
                 else:
                     # arcpy.AddMessage("Waiting for process list to clear {} jobs".format(len(processList)))
@@ -116,6 +119,9 @@ def createLasStatistics(fileList, target_path, spatial_reference=None, isClassif
         if runAgain and len(fileList_repeat) > 0:
             # try to clean up any errors along the way
             createLasStatistics(fileList, target_path, spatial_reference, isClassified, createQARasters, createMissingRasters, overrideBorderPath, runAgain=False)
+        elif not runAgain and len(fileList_repeat) > 0:
+            arcpy.AddError("Error processing .las files.")
+            raise Exception("Error precessign .las files.")
             
         doTime(a, 'createLasStatistics: All jobs completed.')        
 
@@ -574,7 +580,7 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
                                             arcpy.mapping.AddLayer(df, lyr_md, 'BOTTOM')
                                             # lyr_md.visible = False
                                             mxd.save()
-                                            a = doTime(a, "\tAdded MD {} to MXD {} as {}".format(md_name, mxd_path,lyr_md))
+                                            a = doTime(a, "\tAdded MD {} to MXD {} as {}".format(md_name, mxd_path, lyr_md))
                                         except:
                                             a = doTime(a, "\tfailed to add MD {} to MXD {}. Is it open?".format(md_path, mxd_path))
                                 
@@ -626,7 +632,7 @@ def GenerateQALasDataset(strJobId, createQARasters=False, createMissingRasters=F
 
 if __name__ == '__main__':
     
-    projId = sys.argv[1]
+    strJobID = sys.argv[1]
     createQARasters = False
     createMissingRasters = False
     overrideBorderPath = None
@@ -638,9 +644,9 @@ if __name__ == '__main__':
     if len(sys.argv) > 4:
         overrideBorderPath = str(sys.argv[4])
     Utility.printArguments(["WMXJobID", "createQARasters", "createMissingRasters", "overrideBorderPath"],
-                           [projId, createQARasters, createMissingRasters, overrideBorderPath], "A04 GenerateQALasDataset")
+                           [strJobID, createQARasters, createMissingRasters, overrideBorderPath], "A04 GenerateQALasDataset")
 
-    GenerateQALasDataset(projId, createQARasters, createMissingRasters, overrideBorderPath)
+    GenerateQALasDataset(strJobID, createQARasters, createMissingRasters, overrideBorderPath)
     
 #     UID = None  # field_ProjectJob_UID
 #     wmx_job_id = 1

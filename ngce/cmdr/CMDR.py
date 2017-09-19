@@ -397,7 +397,7 @@ class ProjectJob(object):
 
     def getProject(self, wmx_job_id):
         where_clause = "{} = {}".format(arcpy.AddFieldDelimiters(self.fclass, field_ProjectJob_WMXJobID), wmx_job_id)
-        arcpy.AddMessage("Getting Project from '{}' where '{}'".format(self.fclass, wmx_job_id))
+        arcpy.AddMessage("Getting Project from '{}' where '{}'".format(self.fclass, where_clause))
         row, UID = Utility.getExistingRecord(in_table=self.fclass, field_names=self.fields, uidIndex=self.uid_index, where_clause=where_clause)
 
         return row, UID
