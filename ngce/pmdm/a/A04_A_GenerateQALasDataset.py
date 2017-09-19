@@ -566,17 +566,20 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
                 a = datetime.now()
                 try:
                     mxd_path = mxd.filePath
-                    df = mxd.activeDataFrame
                     for [md_path, md_name] in mosaics:
                         arcpy.AddMessage("Adding QA raster mosaic {} to mxd {}".format(md_path, mxd_path))
                         try:
                             if not arcpy.Exists(md_path):
                                 a = doTime(a, "\tMD doesn't exist {}. Can't add to MXD {}. Is it open?".format(md_path, mxd_path))
                             else:
-                                if not isLayerExist(mxd, df, md_name):
+                                df = mxd.activeDataFrame
+                                if isLayerExist(mxd, df, md_name):
+                                    a = doTime(a, "\t MD {} already exists in MXD {}".format(md_name, mxd_path))
+                                else:
                                     if len(str(md_name)) > 0:
                                         try:
                                             lyr_md = arcpy.MakeMosaicLayer_management(in_mosaic_dataset=md_path, out_mosaic_layer=md_name).getOutput(0)
+                                            df = mxd.activeDataFrame
                                             arcpy.mapping.AddLayer(df, lyr_md, 'BOTTOM')
                                             # lyr_md.visible = False
                                             mxd.save()

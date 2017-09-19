@@ -601,7 +601,7 @@ def createQARasterMosaics(isClassified, gdb_path, spatial_reference, target_fold
 
     md_name = CANOPY_DENSITY
     dhm_md_path = os.path.join(gdb_path, md_name)
-    mosaics.append(dhm_md_path)
+    mosaics.append([dhm_md_path, md_name])
     
     if arcpy.Exists(dhm_md_path):
         arcpy.AddMessage("{} already exists.".format(md_name))
