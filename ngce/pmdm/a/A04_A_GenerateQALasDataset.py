@@ -23,7 +23,7 @@ from ngce.pmdm.a import A04_C_ConsolidateLASInfo
 
 PROCESS_DELAY = 10
 PROCESS_CHUNKS = 4  # files per thread
-PROCESS_SPARES = 2  # processors to leave as spares
+PROCESS_SPARES = -5  # processors to leave as spares
 
 arcpy.env.parallelProcessingFactor = "80%"
 

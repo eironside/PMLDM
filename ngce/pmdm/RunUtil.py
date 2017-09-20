@@ -52,14 +52,17 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
     env['PATH'] = path_python27
     exe = r'"{}\pythonw.exe"'.format(path_python27)
     #exe = path_python27
-    
+
     log_parts = os.path.split(log_path)
     if len(log_parts) >= 2 and (not str(log_parts[1]).upper()=="LOGS"):  
         log_path = os.path.join(log_path, "Logs")
+
+    ##Override to local for testing, didn't make a difference
+    #log_path = r"C:\Temp\logs"
     arcpy.AddMessage("Logs are written to: " + str(log_path))
     if not os.path.exists(log_path):
         os.makedirs(log_path)
-
+    
     logfile = tempfile.NamedTemporaryFile(
         prefix=script_name[:-3] + '_',
         suffix=".log",
@@ -133,8 +136,11 @@ def runToolx64_async(path, toolArgs, logpre="", logpath=None):
     exe = r'"{}\pythonw.exe"'.format(path_python27)        
         
     logpath = os.path.join(logpath, 'logs')
+    ##Override to local for testing, didn't make a difference
+    #log_path = r"C:\Temp\logs"
     if not os.path.exists(logpath):
         os.makedirs(logpath)
+    
     logfile = tempfile.NamedTemporaryFile(prefix=logpre, suffix=".log", dir=logpath, delete=False)
     
     args = [exe, path]
