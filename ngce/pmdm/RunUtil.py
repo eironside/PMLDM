@@ -13,11 +13,11 @@ import tempfile
 import time
 
 
-PATH_PYTHON27_32 = r"C:\Program Files (x86)\PYTHON27\ArcGIS10.5"
-#PATH_PYTHON27_32= r"C:\Python27\ArcGIS10.5"
+#PATH_PYTHON27_32 = r"C:\Program Files (x86)\PYTHON27\ArcGIS10.5"
+PATH_PYTHON27_32= r"C:\Python27\ArcGIS10.5"
 
-PATH_PYTHON27_64 = r"C:\Program Files (x86)\PYTHON27\ArcGISx6410.5"
-#PATH_PYTHON27_64 = r"C:\Python27\ArcGISx6410.5"
+#PATH_PYTHON27_64 = r"C:\Program Files (x86)\PYTHON27\ArcGISx6410.5"
+PATH_PYTHON27_64 = r"C:\Python27\ArcGISx6410.5"
 #PATH_PYTHON27_64= r'C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3'
 
 WMX_TOOLS = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools"
