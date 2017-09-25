@@ -28,6 +28,7 @@ CONTOUR_RESOURCE_FOLDER = 'contourResources'
 CONTOUR_MXD_NAME = r"PublishContours.mxd"
 
 MXD_TEMPLATE = os.path.join(os.path.dirname(os.path.realpath(__file__)), CONTOUR_RESOURCE_FOLDER, "PrepareContoursForPublishingTemplate.mxd")
+MXD_ANNO_TEMPLATE = os.path.join(os.path.dirname(os.path.realpath(__file__)), CONTOUR_RESOURCE_FOLDER, "TileAnnotationTemplate.mxd")
 MERGED_FGDB_NAME = r"{}_CONT.gdb"
 CONTOUR_FC_WEBMERC = r"CONT_2FT_WM"
 CONTOUR_BOUND_FC_WEBMERC = r"BOUNDARY_CONT_2FT_WM"

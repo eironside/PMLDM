@@ -56,7 +56,7 @@ def generate_con_workspace(con_folder):
         )
 
     # Create Scratch Folder for Intermediate Products
-    scratch_path = os.path.join(con_folder, 'Scratch')
+    scratch_path = os.path.join(con_folder, 'C01Scratch')
     arcpy.AddMessage("\nCreating Scratch Folder:    " + scratch_path)
     if not os.path.exists(scratch_path):
         os.makedirs(scratch_path)

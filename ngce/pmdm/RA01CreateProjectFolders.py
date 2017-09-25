@@ -5,6 +5,8 @@ Created on Feb 12, 2016
 '''
 
 import arcpy
+import os
+
 from ngce.pmdm import RunUtil
 
 PATH = r'ngce\pmdm\a\A01CreateProjectFolders.py'
@@ -15,5 +17,5 @@ project_path = arcpy.GetParameterAsText(2)
 
 args = [parent_path, project_id, project_path]
 
-RunUtil.runTool(PATH, args, log_path=project_path)
+RunUtil.runTool(PATH, args, log_path=os.path.join(project_path, "DERIVED"))
 

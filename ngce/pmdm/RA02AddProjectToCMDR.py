@@ -24,4 +24,4 @@ args = [strProjID, strAlias, strState, strYear, strJobId, strParentDir, strArchi
 project_path = os.path.join(strParentDir, strProjID)
 # A02AddProjectToCMDR.AddPrjectToCMDR(strProjID, strAlias, strState, strYear, strJobId, strParentDir, strArchiveDir)
 
-RunUtil.runTool(PATH, args, log_path=project_path)
+RunUtil.runTool(PATH, args, log_path=os.path.join(project_path, "DERIVED"))
