@@ -123,13 +123,14 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
         ssFunctions = Raster.getServerSideFunctions(serverFunctionPath)
     
     folderName = ProjectState
-    # @TODO Add more info here!
-    serviceDescription = "for project '{}' within state {} published in {}.".format(ProjectAlias, ProjectState, ProjectYear)
-    serviceTags = ",".join([ProjectID, ProjectAliasClean, ProjectState, str(ProjectYear)])
+    
     
     md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.DCM, FoldersConfig.INT]
     for md_name in md_list:
-        
+        # @TODO Add more info here!
+        serviceDescription = "for project '{}' within state {} published in {}.".format(ProjectAlias, ProjectState, ProjectYear)
+        serviceTags = ",".join([ProjectID, ProjectAliasClean, ProjectState, str(ProjectYear)])
+    
         filegdb_name = "{}_{}.gdb".format(ProjectFolder.published.fgdb_name, md_name)
         if ProjectFolder.published.fgdb_name.endswith(".gdb"):
             filegdb_name = "{}_{}.gdb".format(ProjectFolder.published.fgdb_name[:-4], md_name)

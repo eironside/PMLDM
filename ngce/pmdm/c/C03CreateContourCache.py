@@ -1,26 +1,67 @@
 # # Script for creating new cached map services for elevation projects
-# Import system modules
+
+import arcpy
 import datetime
 import os
+import shutil
 import sys
 import time
 
-import arcpy
 from ngce import Utility
-from ngce.pmdm import RunUtil
 from ngce.cmdr import CMDR
 from ngce.contour import ContourConfig
-from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, CONTOUR_NAME_WM
 from ngce.folders import ProjectFolders
 from ngce.folders.FoldersConfig import DTM
+from ngce.pmdm import RunUtil
 from ngce.pmdm.a import A05_C_ConsolidateRasterInfo
-import shutil
 import xml.dom.minidom as DOM
 
 
 arcpy.env.overwriteOutput = True
 
 
+def updateSDDraft(sddraftPath, outsddraft, update=False):
+    Utility.printArguments(["sddraftPath", "outsddraft", 'update'], [sddraftPath, outsddraft, update], "C03 Update SD Draft XML")
+    
+    newAntialiasingMode = "Fast"
+    
+    xml = sddraftPath
+    dom = DOM.parse(xml)
+    keys = dom.getElementsByTagName('Key')
+    arcpy.AddMessage("Editing minInstances setting in service definition draft file...")
+    for key in keys:
+        # Set the min and max instances
+        if key.firstChild.data == 'MinInstances': key.nextSibling.firstChild.data = 0
+        elif key.firstChild.data == 'MaxInstances': key.nextSibling.firstChild.data = ContourConfig.CACHE_INSTANCES
+        
+        # Set the antialiasing mode to 'Fast'
+        if key.hasChildNodes():
+            if key.firstChild.data == 'antialiasingMode':
+                # Modify the antialiasing mode
+                arcpy.AddMessage("Updating anti-aliasing to: {}".format(newAntialiasingMode))
+                key.nextSibling.firstChild.data = newAntialiasingMode
+
+    
+    if update:
+        arcpy.AddMessage("Changing publish from CREATE to UPDATE service...")
+        tagsType = dom.getElementsByTagName('Type')
+        for tagType in tagsType:
+            if tagType.parentNode.tagName == 'SVCManifest':
+                if tagType.hasChildNodes():
+                    tagType.firstChild.data = "esriServiceDefinitionType_Replacement"
+          
+        tagsState = dom.getElementsByTagName('State')
+        for tagState in tagsState:
+            if tagState.parentNode.tagName == 'SVCManifest':
+                if tagState.hasChildNodes():
+                    tagState.firstChild.data = "esriSDState_Published"
+       
+                    
+    # Save a new SDDraft file
+    f = open(outsddraft, 'w')
+    dom.writexml(f)
+    f.close()
+    
 def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     cache_dir = ContourConfig.CACHE_FOLDER
     
@@ -28,13 +69,13 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
     derived_filegdb_path = ProjectFolder.derived.fgdb_path
     contour_folder = ProjectFolder.derived.contour_path
-    PublishFolder = ProjectFolder.published.path
-    contour_file_gdb_path = os.path.join(contour_folder, CONTOUR_GDB_NAME)
-    contourMerged_file_gdb_path = os.path.join(PublishFolder, CONTOUR_NAME_WM)
-    #@TODO: move all the derived contour stuff to a publihsed location
+#     PublishFolder = ProjectFolder.published.path
+#     contour_file_gdb_path = os.path.join(contour_folder, CONTOUR_GDB_NAME)
+#     contourMerged_file_gdb_path = os.path.join(PublishFolder, CONTOUR_NAME_WM)
+    # @TODO: move all the derived contour stuff to a published location
     # P:\OK_SugarCreekElaine_2006\DERIVED\CONTOUR\SCRATCH\RESULTS\Results.mxd
-    contourMxd_Name = "Results.mxd" # ContourConfig.CONTOUR_MXD_NAME
-    contourMxd_path = os.path.join(contour_folder, "SCRATCH","RESULTS",contourMxd_Name)
+    contourMxd_Name = "Results.mxd"  # ContourConfig.CONTOUR_MXD_NAME
+    contourMxd_path = os.path.join(contour_folder, "C02Scratch", "RESULTS", contourMxd_Name)
 #     ContourBoundFC = os.path.join(contourMerged_file_gdb_path, ContourConfig.CONTOUR_BOUND_FC_WEBMERC)
     ContourBoundFC = A05_C_ConsolidateRasterInfo.getRasterBoundaryPath(derived_filegdb_path, DTM)
     
@@ -106,8 +147,8 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     scales = ContourConfig.CONTOUR_SCALES_STRING
     
     # Other map service properties that should not be modified
-    updateMode = "RECREATE_ALL_TILES" #@TODO: Can we change this to recreate missing?
-    waitForJobCompletion = "WAIT" #@TODO: What if we don't wait??
+    updateMode = "RECREATE_ALL_TILES"  # @TODO: Can we change this to recreate missing?
+    waitForJobCompletion = "WAIT"  # @TODO: What if we don't wait??
     updateExtents = ""
     
     # Construct path for local cached service
@@ -130,23 +171,25 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
         folder_name=folder
     )
     
-    # Parse the SDDraft file in order to modify service properties before publishing
-    doc = DOM.parse(sddraft)
-    # Set the antialiasing mode to 'Fast'
-    newAntialiasingMode = "Fast"
-    keys = doc.getElementsByTagName('Key')
-    for key in keys:
-        if key.hasChildNodes():
-            if key.firstChild.data == 'antialiasingMode':
-                # Modify the antialiasing mode
-                arcpy.AddMessage("Updating anti-aliasing to: {}".format(newAntialiasingMode))
-                key.nextSibling.firstChild.data = newAntialiasingMode
     
-    # Save a new SDDraft file
+#     # Parse the SDDraft file in order to modify service properties before publishing
+#     doc = DOM.parse(sddraft)
+#     # Set the antialiasing mode to 'Fast'
+#     newAntialiasingMode = "Fast"
+#     keys = doc.getElementsByTagName('Key')
+#     for key in keys:
+#         if key.hasChildNodes():
+#             if key.firstChild.data == 'antialiasingMode':
+#                 # Modify the antialiasing mode
+#                 arcpy.AddMessage("Updating anti-aliasing to: {}".format(newAntialiasingMode))
+#                 key.nextSibling.firstChild.data = newAntialiasingMode
+#     
+#     # Save a new SDDraft file
     outsddraft = os.path.join(temp + "\\" + serviceName + "_aa.sddraft")
-    f = open(outsddraft, 'w')
-    doc.writexml(f)
-    f.close()
+#     f = open(outsddraft, 'w')
+#     doc.writexml(f)
+#     f.close()
+    updateSDDraft(sddraft, outsddraft)
     
     # Analyze the SDDraft file
     arcpy.AddMessage("Analyzing draft service definition: {}".format(outsddraft))
@@ -155,18 +198,19 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     # Check for analyzer errors
     if analysis['errors'] == {}:
 
-        RunUtil.runTool(r'ngce\pmdm\c\C03_B_StageSD.py', [outsddraft, sd, localServer], bit32=True, log_path=ProjectFolder.path)
-##        arcpy.AddMessage("Staging service definition {}".format(sd))
-##        arcpy.StageService_server(outsddraft, sd)
-##        arcpy.AddMessage("Uploading service definition {} to server {}".format(sd, localServer))
-##        arcpy.UploadServiceDefinition_server(sd, localServer)
-##        arcpy.AddMessage("Service publishing completed")
+        RunUtil.runTool(r'ngce\pmdm\c\C03_B_StageSD.py', [outsddraft, sd, localServer], bit32=True, log_path=ProjectFolder.derived.path)
+# #        arcpy.AddMessage("Staging service definition {}".format(sd))
+# #        arcpy.StageService_server(outsddraft, sd)
+# #        arcpy.AddMessage("Uploading service definition {} to server {}".format(sd, localServer))
+# #        arcpy.UploadServiceDefinition_server(sd, localServer)
+# #        arcpy.AddMessage("Service publishing completed")
     else:
         # If the SDDraft analysis contained errors, display them
         arcpy.AddError("\nERROR\nErrors encountered during analysis of the MXD: " + str(analysis['errors']))
         os.remove(sddraft)
         os.remove(outsddraft)
-    
+        raise Exception("\nERROR\nErrors encountered during analysis of the MXD: " + str(analysis['errors']))
+        
     try:
         # Create the cache schema for the local project service
         arcpy.AddMessage("Creating cache schema for service {} in: {}".format(inputService, cacheFolder))
@@ -180,7 +224,7 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
         arcpy.AddMessage("Cache schema created for local project service")
     except arcpy.ExecuteError:
         arcpy.AddWarning(arcpy.GetMessages(2))
-        
+    
     # Create the cache tiles for the local project service
     ts = time.time()
     st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
@@ -216,7 +260,6 @@ def CreateContourCache(jobID, serverConnectionFile):
     project, ProjectUID = ProjectJob.getProject(jobID)  # @UnusedVariable
     
     if project is not None:
-    
         processJob(ProjectJob, project, ProjectUID, serverConnectionFile)
 
 
@@ -226,9 +269,13 @@ def CreateContourCache(jobID, serverConnectionFile):
     arcpy.AddMessage("Operation complete")
 
 if __name__ == '__main__':
-    jobID = sys.argv[1]
-    serverConnectionFile = sys.argv[2]
-    
+    if len(sys.argv) > 2:
+        jobID = sys.argv[1]
+        serverConnectionFile = sys.argv[2]
+    else:
+        jobID = 16402
+        serverConnectionFile = None
+        
     CreateContourCache(jobID, serverConnectionFile)
     
   

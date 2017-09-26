@@ -150,14 +150,14 @@ def checkSpatialOnRaster(start_dir, elev_type, target_path, v_name, v_unit, h_na
         arcpy.AddMessage("PRJ File Spatial Reference DOES NOT EXIST")
     
     prj_horz_name_isValid = isSrValueValid(prj_horz_cs_name)
-    prj_vert_name_isValid = isSrValueValid(prj_vert_cs_name) or (elev_type =='INTENSITY')
+    prj_vert_name_isValid = isSrValueValid(prj_vert_cs_name) or (elev_type == 'INTENSITY')
     prj_horz_unit_isValid = isSrValueValid(prj_horz_cs_unit_name)
-    prj_vert_unit_isValid = isSrValueValid(prj_vert_cs_unit_name) or (elev_type =='INTENSITY')
+    prj_vert_unit_isValid = isSrValueValid(prj_vert_cs_unit_name) or (elev_type == 'INTENSITY')
     
     las_horz_name_isValid = isSrValueValid(ras_horz_cs_name)
-    las_vert_name_isValid = isSrValueValid(ras_vert_cs_name) or (elev_type =='INTENSITY')
+    las_vert_name_isValid = isSrValueValid(ras_vert_cs_name) or (elev_type == 'INTENSITY')
     las_horz_unit_isValid = isSrValueValid(ras_horz_cs_unit_name)
-    las_vert_unit_isValid = isSrValueValid(ras_vert_cs_unit_name) or (elev_type =='INTENSITY')
+    las_vert_unit_isValid = isSrValueValid(ras_vert_cs_unit_name) or (elev_type == 'INTENSITY')
     
     prj_isValid = prj_horz_name_isValid and prj_vert_name_isValid and prj_horz_unit_isValid and prj_vert_unit_isValid
     
@@ -481,9 +481,10 @@ def processJob(ProjectJob, project, ProjectUID):
     raster_footprint_main = A05_C_ConsolidateRasterInfo.getRasterFootprintPath(fgdb_path)
     raster_boundary_main = A05_C_ConsolidateRasterInfo.getRasterBoundaryPath(fgdb_path)
     
+    spatialRef_error = {}
     z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, is_classified = getLasdBoundData(lasd_boundary)  # @UnusedVariable
     for elev_type in elev_types:
-        
+        spatialRef_error[elev_type] = False
         start_dir = os.path.join(ProjectFolder.delivered.path, elev_type)
         f_name = getFileProcessList(start_dir, elev_type, target_path, publish_path, return_first=True, check_sr=False)
         if f_name is None:
@@ -501,7 +502,9 @@ def processJob(ProjectJob, project, ProjectUID):
         else:
             spatial_ref = validateRasterSpaitialRef(ProjectFolder, start_dir, elev_type, target_path, v_name, v_unit, h_name, h_unit, h_wkid)
             
-            if spatial_ref is not None:
+            if spatial_ref is None:
+                spatialRef_error[elev_type] = True
+            else:
                 
                 fileList = getFileProcessList(start_dir, elev_type, target_path, publish_path)     
                 processRastersInFolder(fileList, target_path, publish_path, elev_type, lasd_boundary, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref)
@@ -566,6 +569,15 @@ def processJob(ProjectJob, project, ProjectUID):
     except:
         pass
     
+    errorMsg = []
+    for elev_type in spatialRef_error.keys():
+        if spatial_ref[elev_type]:
+            arcpy.AddError("Failed to process {} correctly".format(elev_type))
+            errorMsg.append(elev_type)
+            
+    return errorMsg
+        
+    
     
     
 
@@ -582,11 +594,13 @@ def RemoveDEMErrantValues(strJobId):
     
     ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
     
-    processJob(ProjectJob, project, strUID)
+    errorMsg = processJob(ProjectJob, project, strUID)
         
     arcpy.CheckInExtension("3D")
     arcpy.CheckInExtension("Spatial")
     doTime(aa, "Operation Complete: A05 Remove DEM Errant Values")
+    if len(errorMsg) > 0:
+        raise Exception("Failed to process {} raster data correctly".format(" ".join(errorMsg)))
 
 
 if __name__ == '__main__':
