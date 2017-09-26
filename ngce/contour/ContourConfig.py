@@ -13,7 +13,8 @@ CONTOUR_SCALES_STRING = "9027.977411;4513.988705;2256.994353;1128.497176"
 CONTOUR_SCALES_NUM = 4
 CONTOUR_2FT_SERVICE_NAME = "CONT_2FT"
 CACHE_INSTANCES = 6  # This should be increased based on server resources
-CACHE_FOLDER = "E:/arcgisserver/directories/arcgiscache"
+# CACHE_FOLDER = "E:/arcgisserver/directories/arcgiscache"
+CACHE_FOLDER = r"\\aiotxftw6na01data\SMB03\elevation\LiDAR\cache"
 
 CONTOUR_NAME_OCS = 'Contours_OCS'
 CONTOUR_NAME_WM = 'Contours_WM'

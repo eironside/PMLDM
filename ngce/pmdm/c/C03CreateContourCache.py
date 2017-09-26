@@ -167,17 +167,20 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
         os.remove(sddraft)
         os.remove(outsddraft)
     
-    # Create the cache schema for the local project service
-    arcpy.AddMessage("Creating cache schema for service {} in: {}".format(inputService, cacheFolder))
-    arcpy.CreateMapServerCache_server(
-        inputService,
-        cacheFolder,
-        "PREDEFINED",
-        predefined_tiling_scheme=tilingScheme,
-        scales=scales
-    )  # , scales_type="STANDARD", num_of_scales=len(scales))
-    arcpy.AddMessage("Cache schema created for local project service")
-    
+    try:
+        # Create the cache schema for the local project service
+        arcpy.AddMessage("Creating cache schema for service {} in: {}".format(inputService, cacheFolder))
+        arcpy.CreateMapServerCache_server(
+            inputService,
+            cacheFolder,
+            "PREDEFINED",
+            predefined_tiling_scheme=tilingScheme,
+            scales=scales
+        )  # , scales_type="STANDARD", num_of_scales=len(scales))
+        arcpy.AddMessage("Cache schema created for local project service")
+    except arcpy.ExecuteError:
+        arcpy.AddWarning(arcpy.GetMessages(2))
+        
     # Create the cache tiles for the local project service
     ts = time.time()
     st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
