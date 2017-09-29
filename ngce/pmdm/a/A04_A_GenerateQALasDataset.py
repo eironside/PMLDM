@@ -621,7 +621,7 @@ def GenerateQALasDataset(strJobId, createQARasters=False, createMissingRasters=F
     
     ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
         
-    processJob(ProjectJob, project, createQARasters, createMissingRasters, overrideBorderPath)
+    las_qainfo, lasd_boundary = processJob(ProjectJob, project, createQARasters, createMissingRasters, overrideBorderPath)
         
         # @TODO: Move this to another standalone script
         # updateCMDR(ProjectJob, project, las_qainfo, updatedBoundary)
@@ -629,6 +629,9 @@ def GenerateQALasDataset(strJobId, createQARasters=False, createMissingRasters=F
     arcpy.AddMessage("Checking in licenses")                        
     arcpy.CheckInExtension("3D")
     arcpy.CheckInExtension("Spatial")
+
+    if las_qainfo.num_las_files <= 0:
+        raise Exception("Project has no .las files in DELIVERED LAS_CLASSIFIED or LAS_UNCLASSIFIED folders, CANNOT CONTINUE.\nERROR: {}".format(project))
     
     doTime(aa, "Operation Complete: A04 Generate QA LASDataset")
 

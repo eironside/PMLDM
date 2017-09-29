@@ -335,7 +335,10 @@ def createLasDatasetStats(lasd_path, f_path, spatial_reference, stat_file_path):
     
     deleteFileIfExists(stat_file_path)
     arcpy.LasDatasetStatistics_management(in_las_dataset=lasd_path,
-                                          calculation_type="SKIP_EXISTING_STATS",
+                                          # Originally this was skip existing, however some las files were 'outdated'
+                                          # calculation_type="SKIP_EXISTING_STATS",
+                                          # Changed to OVERWRITE_EXISTING_STATS, but this will take longer
+                                          calculation_type="OVERWRITE_EXISTING_STATS",
                                           out_file=stat_file_path,
                                           summary_level="LAS_FILES",
                                           delimiter="COMMA",

@@ -102,18 +102,53 @@ def ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceNam
 #         ts = time.time()
 #         st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 #         arcpy.AddMessage("Import started at: {0}".format(st))
-        a = doTime(a, "Ready to start import of '{}' into '{}'".format(projectCache, masterService))
-        arcpy.ImportMapServerCache_server(
-            input_service=masterService,
-            source_cache_type="CACHE_DATASET",
-            source_cache_dataset=projectCache,
-            source_tile_package="",
-            upload_data_to_server="DO_NOT_UPLOAD",
-            scales=ContourConfig.CONTOUR_SCALES_STRING,
-            num_of_caching_service_instances=ContourConfig.CACHE_INSTANCES,
-            area_of_interest=areaOfInterest,
-            overwrite="OVERWRITE"  # @TODO: Verify this is right 
-        )
+        a = doTime(a, "eric Ready to start import of '{}' into '{}'".format(projectCache, masterService))
+##        arcpy.ImportMapServerCache_server(
+##            input_service=masterService,
+##            source_cache_type="CACHE_DATASET",
+##            source_cache_dataset=projectCache,
+##            source_tile_package="",
+##            upload_data_to_server="DO_NOT_UPLOAD",
+##            scales=ContourConfig.CONTOUR_SCALES_STRING,
+##            num_of_caching_service_instances=ContourConfig.CACHE_INSTANCES,
+##            area_of_interest=areaOfInterest,
+##            overwrite="OVERWRITE"  # @TODO: Verify this is right 
+##        )
+        arcpy.ImportMapServerCache_server(input_service="//aiotxftw6na01data/SMB03/elevation/WorkflowManager/arcgis on aiotxftw3gi013.usda.net/Master/Elevation_1M_CONT_2FT.MapServer",
+                                          source_cache_type="CACHE_DATASET",
+                                          source_cache_dataset="//aiotxftw6na01data/SMB03/elevation/LiDAR/cache/OK_OK_SugarCreekEric_2008_CONT_2FT/Layers",
+                                          source_tile_package="",
+                                          upload_data_to_server="DO_NOT_UPLOAD",
+                                          scales="9027.977411;4513.988705;2256.994353;1128.497176",
+                                          num_of_caching_service_instances="6",
+                                          area_of_interest="//aiotxftw6na01data/sql1/elevation/OK_SugarCreekEric_2008/DERIVED/OK_SugarCreekEric_2008.gdb/BoundaryLASDataset",
+                                          overwrite="OVERWRITE")
+        a = doTime(a, "TWO: Ready to start import of '{}' into '{}'".format(projectCache, masterService))
+##        arcpy.ImportMapServerCache_server(input_service=r"//aiotxftw6na01data/SMB03/elevation/WorkflowManager/arcgis on aiotxftw3gi013.usda.net.ags/Master/Elevation_1M_CONT_2FT.MapServer",
+##                                          source_cache_type="CACHE_DATASET",
+##                                          source_cache_dataset=r"\\aiotxftw6na01data\SMB03\elevation\LiDAR\cache\OK_OK_SugarCreekEric_2008_CONT_2FT\Layers",
+##                                          upload_data_to_server="DO_NOT_UPLOAD",
+##                                          scales="9027.977411;4513.988705;2256.994353;1128.497176",
+##                                          num_of_caching_service_instances="6",
+##                                          area_of_interest=r"\\aiotxftw6na01data\SQL1\elevation\OK_SugarCreekEric_2008\DERIVED\OK_SugarCreekEric_2008.gdb\BoundaryRaster_DTM",
+##                                          
+##                                          overwrite="OVERWRITE")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
 #         ts = time.time()
 #         st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 #         arcpy.AddMessage("Import completed at: {0}".format(st))

@@ -545,7 +545,7 @@ def createReferenceddMosaicDataset(in_md_path, out_md_path, spatial_ref, raster_
 
     # arcpy.CalculateStatistics_management(in_raster_dataset=out_md_path, x_skip_factor="1", y_skip_factor="1", ignore_values="", skip_existing="OVERWRITE", area_of_interest="Feature Set")
 
-    arcpy.AddMessage("\tNOTE: !!! Please edit the MR Point Density function. Change to replace input to 'Multiply LAST by 100' with this project's POINT_COUNT_ALL mosaic dataset.\n\n\t{}\n".format(out_md_path))
+    arcpy.AddMessage("\tNOTE: !!! Please edit the MR Point Density function. Change to replace input to 'Multiply LAST by 100' with this project's POINT_COUNT_LAST mosaic dataset.\n\n\t{}\n".format(out_md_path))
     doTime(a, "Created DHM '{}'".format(out_md_path))
 
 

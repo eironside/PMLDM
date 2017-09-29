@@ -505,7 +505,7 @@ def processJob(ProjectJob, project, ProjectUID):
             if spatial_ref is None:
                 spatialRef_error[elev_type] = True
             else:
-                
+                spatialRef_error[elev_type] = False
                 fileList = getFileProcessList(start_dir, elev_type, target_path, publish_path)     
                 processRastersInFolder(fileList, target_path, publish_path, elev_type, lasd_boundary, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref)
                 raster_footprint, raster_boundary = A05_C_ConsolidateRasterInfo.createRasterBoundaryAndFootprints(fgdb_path, target_path, ProjectID, ProjectFolder.path, ProjectUID, elev_type)
@@ -571,7 +571,7 @@ def processJob(ProjectJob, project, ProjectUID):
     
     errorMsg = []
     for elev_type in spatialRef_error.keys():
-        if spatial_ref[elev_type]:
+        if spatialRef_error[elev_type]:
             arcpy.AddError("Failed to process {} correctly".format(elev_type))
             errorMsg.append(elev_type)
             
