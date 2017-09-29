@@ -271,10 +271,10 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
     
 
 
-def AddProjectToMaster(strJobId, masterParentDir, masterService):
+def AddProjectToMaster(strJobId, MasterMDs_parent_path, masterService):
     aa = datetime.now()
     Utility.printArguments(["WMX Job ID", "masterParentDir", "masterService"],
-                           [strJobId, masterParentDir, masterService], "A08 AddPrjectToMaster")
+                           [strJobId, MasterMDs_parent_path, masterService], "A08 AddPrjectToMaster")
     
     ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
     
