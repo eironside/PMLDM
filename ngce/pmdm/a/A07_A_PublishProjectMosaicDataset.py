@@ -128,7 +128,7 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
     md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.DCM, FoldersConfig.INT]
     for md_name in md_list:
         # @TODO Add more info here!
-        serviceDescription = "for project '{}' within state {} published in {}.".format(ProjectAlias, ProjectState, ProjectYear)
+        serviceDescription = "for project '{}' within state {} published in the year {}".format(ProjectAlias, ProjectState, ProjectYear)
         serviceTags = ",".join([ProjectID, ProjectAliasClean, ProjectState, str(ProjectYear)])
     
         filegdb_name = "{}_{}.gdb".format(ProjectFolder.published.fgdb_name, md_name)
@@ -161,7 +161,9 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
             
                 # append the cellsize and units of the Mosaic Dataset to the tags
                 serviceTags = "{}, {}, {}".format(serviceTags, cellsizeX, SpatRefUnitsMD)
-                serviceDescription = "{} {} horizontal spatial reference is {} and cell size is {} {}".format(md_name, serviceDescription, SpatRefNameMD, cellsizeX, SpatRefUnitsMD)
+                serviceDescription = "{} {}. Horizontal spatial reference is {} and cell size is {} {}.".format(md_name, serviceDescription, SpatRefNameMD, cellsizeX, SpatRefUnitsMD)
+                serviceDescription = "{}. Please note that cell size does not refer to the underlying data's cell size.".format(serviceDescription)
+                serviceDescription = "{}. You must check the meta-data for the underlying elevation data's resolution information (cell width, cell height, and Lidar point spacing).".format(serviceDescription)
                 
                 arcpy.AddMessage("Service Tags: {0}".format(serviceTags))
                 arcpy.AddMessage("Service description: {0}".format(serviceDescription))

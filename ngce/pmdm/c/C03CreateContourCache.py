@@ -63,7 +63,7 @@ def updateSDDraft(sddraftPath, outsddraft, update=False):
     f.close()
     
 def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
-    cache_dir = ContourConfig.CACHE_FOLDER
+    cache_path = ContourConfig.CACHE_FOLDER
     
     projectID = ProjectJob.getProjectID(project)
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
@@ -103,21 +103,21 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     # The following paths and values can be modified if needed
     
     # Path to the local cache folder where project tiles will be created
-    cacheFolder = cache_dir  # r"C:\arcgisserver\directories\arcgiscache"
-    cacheDir = os.path.join(cache_dir, serviceName)
-    if folder is not None and len(folder) > 0:
-        cacheDir = os.path.join(cache_dir, "{}_{}".format(folder, serviceName))
-    if os.path.exists(cacheDir):
-        now = datetime.datetime.now()
-        updatedCacheDir = "{}_{}{}{}_{}{}{}".format(cacheDir,
-                                                    ("0000{}".format(now.year))[-4:],
-                                                    ("00{}".format(now.month))[-2:],
-                                                    ("00{}".format(now.day))[-2:],
-                                                    ("00{}".format(now.hour))[-2:],
-                                                    ("00{}".format(now.minute))[-2:],
-                                                    ("00{}".format(now.second))[-2:])
-        arcpy.AddMessage("The existing cache folder will be moved to: {0}".format(updatedCacheDir))
-        shutil.move(cacheDir, updatedCacheDir) 
+#     cacheFolder = cache_path  # r"C:\arcgisserver\directories\arcgiscache"
+#     cacheDir = os.path.join(cache_path, serviceName)
+#     if folder is not None and len(folder) > 0:
+#         cacheDir = os.path.join(cache_path, "{}_{}".format(folder, serviceName))
+#     if os.path.exists(cacheDir):
+#         now = datetime.datetime.now()
+#         updatedCacheDir = "{}_{}{}{}_{}{}{}".format(cacheDir,
+#                                                     ("0000{}".format(now.year))[-4:],
+#                                                     ("00{}".format(now.month))[-2:],
+#                                                     ("00{}".format(now.day))[-2:],
+#                                                     ("00{}".format(now.hour))[-2:],
+#                                                     ("00{}".format(now.minute))[-2:],
+#                                                     ("00{}".format(now.second))[-2:])
+#         arcpy.AddMessage("The existing cache folder will be moved to: {0}".format(updatedCacheDir))
+#         shutil.move(cacheDir, updatedCacheDir) 
     
     # Other map service properties
     cachingInstances = ContourConfig.CACHE_INSTANCES  # This should be increased based on server resources
@@ -131,7 +131,7 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
          "sddraft",
          "sd",
          "tilingScheme",
-         "cacheFolder"],
+         "cache_path"],
         [mxd,
          areaOfInterest,
          serviceName,
@@ -139,7 +139,7 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
          sddraft,
          sd,
          tilingScheme,
-         cacheFolder],
+         cache_path],
         "C03 CreateContourCache"
     )
     # List of scales to create tiles at. If additional scales are needed, the tiling
@@ -213,10 +213,10 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
         
     try:
         # Create the cache schema for the local project service
-        arcpy.AddMessage("Creating cache schema for service {} in: {}".format(inputService, cacheFolder))
+        arcpy.AddMessage("Creating cache schema for service {} in: {}".format(inputService, cache_path))
         arcpy.CreateMapServerCache_server(
             inputService,
-            cacheFolder,
+            cache_path,
             "PREDEFINED",
             predefined_tiling_scheme=tilingScheme,
             scales=scales

@@ -131,7 +131,7 @@ def PublishMDMasterMosaicDataset(jobID, serverFunctionPath, update=False, runCou
         serviceDescription = "Elevation master service '{}'.".format(MasterMDName)
         serviceTags = ",".join([MasterMDName, "Master", "Elevation", "Mosaic", "Dataset"])
         
-        md_list = [FoldersConfig.DTM, FoldersConfig.DSM]
+        md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.DCM, FoldersConfig.INT]
         for md_name in md_list:
             serviceName = "{}_{}".format(MasterMDName, md_name)
             local_fgdb_name = "{}.gdb".format(serviceName)
