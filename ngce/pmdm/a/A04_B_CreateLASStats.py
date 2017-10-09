@@ -225,10 +225,12 @@ def createLasDataset(f_name, f_path, spatial_reference, target_path, isClassifie
     target_lasd_path = os.path.join(target_las_path, lasd_dir)
     if not os.path.exists(target_lasd_path):
         os.makedirs(target_lasd_path)
-    
+    temp_lasd_path = os.path.join(target_las_path, "temp")
+    if not os.path.exists(temp_lasd_path):
+        os.makedirs(temp_lasd_path)
+        
     out_lasd_path = os.path.join(target_lasd_path, "{}.lasd".format(f_name))
-    temp1_lasd_path = os.path.join(target_lasd_path, "temp1_{}.lasd".format(f_name))
-    
+    temp1_lasd_path = os.path.join(temp_lasd_path, "temp_{}.lasd".format(f_name))
     
     out_las_path = os.path.join(target_las_path, "{}.las".format(f_name))
     out_las_rear_path = os.path.join(target_las_path, "Rearrange_{}.las".format(f_name))
@@ -259,7 +261,13 @@ def createLasDataset(f_name, f_path, spatial_reference, target_path, isClassifie
             lasd_layer = "{}_lasd_layer".format(f_name)
             lasd_layer = arcpy.MakeLasDatasetLayer_management(temp1_lasd_path, lasd_layer, "0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", "'Last Return';'First of Many';'Last of Many';'Single Return';1;2;3;4;5", "INCLUDE_UNFLAGGED", "INCLUDE_SYNTHETIC", "INCLUDE_KEYPOINT", "EXCLUDE_WITHHELD", "")
                 
-        arcpy.ExtractLas_3d(lasd_layer, target_las_path, "DEFAULT", "", "PROCESS_EXTENT", "", "MAINTAIN_VLR", "REARRANGE_POINTS", "COMPUTE_STATS", out_lasd_path)
+        arcpy.ExtractLas_3d(in_las_dataset=lasd_layer,
+                            target_folder=target_las_path,
+                            process_entire_files="PROCESS_EXTENT",
+                            remove_vlr="MAINTAIN_VLR",
+                            rearrange_points="REARRANGE_POINTS",
+                            compute_stats="COMPUTE_STATS",
+                            out_las_dataset=out_lasd_path)
         
         a = doTime(a, "\tExtracted LAS to '{}'".format(out_las_path))
         
@@ -334,10 +342,10 @@ def createLasDatasetStats(lasd_path, f_path, spatial_reference, stat_file_path):
     a = datetime.now()
     
     deleteFileIfExists(stat_file_path)
-    arcpy.LasDatasetStatistics_management(in_las_dataset=lasd_path,
                                           # Originally this was skip existing, however some las files were 'outdated'
-                                          # calculation_type="SKIP_EXISTING_STATS",
                                           # Changed to OVERWRITE_EXISTING_STATS, but this will take longer
+                                          # calculation_type="SKIP_EXISTING_STATS",
+    arcpy.LasDatasetStatistics_management(in_las_dataset=lasd_path,
                                           calculation_type="OVERWRITE_EXISTING_STATS",
                                           out_file=stat_file_path,
                                           summary_level="LAS_FILES",
