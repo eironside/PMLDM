@@ -1,16 +1,15 @@
 # # Script for importing a project cached service into the master cached service
 # Import system modules
+import arcpy
 import datetime
 import os
 import sys
-import time
 
-import arcpy
 from ngce import Utility
 from ngce.Utility import doTime
 from ngce.cmdr import CMDR
 from ngce.contour import ContourConfig
-from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, CONTOUR_NAME_WM
+
 from ngce.folders import ProjectFolders
 from ngce.folders.FoldersConfig import DTM
 from ngce.pmdm.a import A05_C_ConsolidateRasterInfo
@@ -20,7 +19,8 @@ def ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceNam
     a = datetime.datetime.now()
     aa = a
     cache_dir = ContourConfig.CACHE_FOLDER
-    if serverConnectionFilePath is None or len(str(serverConnectionFilePath)) <=1 or str(serverConnectionFilePath).lower().find("aiotxftw3gi013".lower())<0:
+    #@TODO: Remove this workaround once fix is validated on NGCE
+    if serverConnectionFilePath is None or len(str(serverConnectionFilePath)) <= 1 or str(serverConnectionFilePath).lower().find("aiotxftw3gi013".lower()) < 0:
         serverConnectionFilePath = "//aiotxftw6na01data/SMB03/elevation/WorkflowManager/arcgis on aiotxftw3gi013.usda.net"
     Utility.printArguments(
         ["WMX Job ID",
@@ -47,13 +47,13 @@ def ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceNam
         projectID = ProjectJob.getProjectID(project)
         
         ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
-        con_folder = ProjectFolder.derived.contour_path
-        contour_file_gdb_path = os.path.join(con_folder, CONTOUR_GDB_NAME)
-        PublishFolder = ProjectFolder.published.path
+#         con_folder = ProjectFolder.derived.contour_path
+#         contour_file_gdb_path = os.path.join(con_folder, CONTOUR_GDB_NAME)
+#         PublishFolder = ProjectFolder.published.path
         derived_filegdb_path = ProjectFolder.derived.fgdb_path
 #         contourMerged_Name = (ContourConfig.MERGED_FGDB_NAME).format(projectID)
-        contourMerged_Name = in_cont_fc = os.path.join(contour_file_gdb_path, CONTOUR_NAME_WM)
-        contour_pub_file_gdb_path = os.path.join(PublishFolder, contourMerged_Name)
+#         contourMerged_Name = in_cont_fc = os.path.join(contour_file_gdb_path, CONTOUR_NAME_WM)
+#         contour_pub_file_gdb_path = os.path.join(PublishFolder, contourMerged_Name)
 #         contourMxd_Name = ContourConfig.CONTOUR_MXD_NAME 
 #         contourMxd_path = os.path.join(PublishFolder, contourMxd_Name)
 #         ContourFC = os.path.join(contour_pub_file_gdb_path, ContourConfig.CONTOUR_FC_WEBMERC)

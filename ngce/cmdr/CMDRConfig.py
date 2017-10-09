@@ -75,6 +75,8 @@ DLM = "DLM"
 INT = "INTENSITY"
 DATE = "Date"
 
+OCS = "_OCS"
+
 EXISTS = 'Exists'
 EXTENT = 'Extent'
 

@@ -46,8 +46,8 @@ import os
 import sys
 
 from ngce import Utility
-from ngce.cmdr import CMDRConfig
-from ngce.cmdr.CMDRConfig import DSM, DTM, DHM, INT
+from ngce.cmdr import CMDRConfig, CMDR
+from ngce.cmdr.CMDRConfig import DSM, DTM, DHM, INT, OCS
 from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders
 from ngce.folders.FoldersConfig import DLM, DCM
@@ -331,10 +331,10 @@ def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, 
     filegdb_path = os.path.join(publish_path, filegdb_name)
     
     # If the file gdb doesn't exist, then create it
-    if os.path.exists(filegdb_path):
-        A05_C_ConsolidateRasterInfo.deleteFileIfExists(filegdb_path, True)
-    arcpy.CreateFileGDB_management(publish_path, filegdb_name)
-    Utility.addToolMessages()
+    if not os.path.exists(filegdb_path):
+        # A05_C_ConsolidateRasterInfo.deleteFileIfExists(filegdb_path, True)
+        arcpy.CreateFileGDB_management(publish_path, filegdb_name)
+        Utility.addToolMessages()
     
     # Create the Mosaic Dataset
     arcpy.CreateMosaicDataset_management(filegdb_path, md_name, coordinate_system=SpatRefMD, num_bands="1", pixel_type="32_BIT_FLOAT", product_definition="NONE", product_band_definitions="#")
@@ -530,19 +530,40 @@ def createHeightRefMD(imageDir, publish_folder, md_paths, SpatRefMD, raster_v_un
         arcpy.AddMessage("Height Model already exists. {}".format(dhm_md_path))
     else:
         createReferenceddMosaicDataset(md_paths[DSM], dhm_md_path, SpatRefMD, raster_v_unit)
+
+def getOriginalCoordinateSystem(publish_folder):
+    ocs_spatial_ref = None
+    dtm_folder = publish_folder.demLastTiff_path
+    arcpy.AddMessage("getting spatial reference from DTM: {}".format(dtm_folder))
+    first_raster = None
+    for dtm_file in os.listdir(dtm_folder):
+        arcpy.AddMessage("\tgetting spatial reference from DTM: {}".format(dtm_file))
+        if str(dtm_file).upper().endswith(".TIF"):
+            arcpy.AddMessage("\t\tgetting spatial reference from DTM: {}".format(dtm_file))
+            first_raster = dtm_file
+            break
+    
+    if first_raster is not None:
+        first_raster = os.path.join(dtm_folder, first_raster)
+        arcpy.AddMessage("getting spatial reference from DTM: {}".format(first_raster))
+        ocs_spatial_ref = arcpy.Describe(first_raster).spatialReference
+    
+    arcpy.AddMessage("Found spatial reference from DTM: {}".format(ocs_spatial_ref))
+    return ocs_spatial_ref
         
-        
-def processJob(ProjectJob, project, ProjectUID, dateDeliver, dateStart, dateEnd):
+def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd):
     a = datetime.now()
     aa = a
     
-    ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
+    ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(project_job, project)
 #     ProjectID = ProjectJob.getProjectID(project)
-    project_year = ProjectJob.getYear(project)
+    project_year = project_job.getYear(project)
     las_qainfo = A04_A_GenerateQALasDataset.getLasQAInfo(ProjectFolder)
     
     publish_folder = ProjectFolder.published
     fgdb_path = ProjectFolder.derived.fgdb_path
+    
+    
     
     lasd_path = ProjectFolder.derived.lasd_path
     lasd_boundary_path = A04_C_ConsolidateLASInfo.getLasdBoundaryPath(fgdb_path)
@@ -559,65 +580,69 @@ def processJob(ProjectJob, project, ProjectUID, dateDeliver, dateStart, dateEnd)
     
     SpatRefMD = arcpy.SpatialReference()
     SpatRefMD.loadFromString(RasterConfig.SpatRef_WebMercator)
+    
+    SpatRefOCS = getOriginalCoordinateSystem(publish_folder)
 #     PCSCodeZeroFlag = 0
         
     dateDeliver, dateStart, dateEnd = getDates(dateDeliver, dateStart, dateEnd, project_year)
                     
             
-    ImageDirectories = [DSM, DTM, DLM, INT]
+    ImageDirectories = [[DTM, SpatRefOCS, OCS], [DTM, SpatRefMD, None], [DSM, SpatRefMD, None], [DLM, SpatRefMD, None], [INT, SpatRefMD, None]]
     md_paths = {}
-    for imageDir in ImageDirectories:
-        
-        raster_z_min, raster_z_max, raster_v_name, raster_v_unit, raster_h_name, raster_h_unit, raster_h_wkid = A05_A_RemoveDEMErrantValues.getRasterBoundData(raster_boundary_md, imageDir, False)  # @UnusedVariable
-        filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)  # @UnusedVariable   
-        filegdb_name = "{}_{}.gdb".format(filegdb_name, imageDir)
-        target_path = os.path.join(publish_folder.path, imageDir) 
-        filegdb_path = os.path.join(publish_folder.path, filegdb_name)
-        md_name = imageDir
-        md_path = os.path.join(filegdb_path, md_name)
-        
-        md_paths[imageDir] = md_path
-        if arcpy.Exists(md_path):
-            arcpy.AddMessage("Mosaic exists: {}".format(md_path))
-        else:
-            derived_fgdb_path = os.path.join(ProjectFolder.derived.fgdb_path)
-        
-            raster_footprint_path = A05_C_ConsolidateRasterInfo.getRasterFootprintPath(fgdb_path, imageDir)
-            footprint_path = mergeFootprints(las_footprint_path, raster_footprint_path, imageDir, derived_fgdb_path)
-                        
-            imagePath = target_path
-            SRMatchFlag, ras_count = isSpatialRefSameForAll(imagePath)
-            if not SRMatchFlag:
-                arcpy.AddError("SR doesn't match for all images, aborting.")
-            elif ras_count <= 0:
-                arcpy.AddError("No rasters for selected elevation type {}.".format(imageDir))
+    for imageDir, SpatRef, fix  in ImageDirectories:
+        if SpatRef is not None:
+            raster_z_min, raster_z_max, raster_v_name, raster_v_unit, raster_h_name, raster_h_unit, raster_h_wkid = A05_A_RemoveDEMErrantValues.getRasterBoundData(raster_boundary_md, imageDir, False)  # @UnusedVariable
+            filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)  # @UnusedVariable   
+            filegdb_name = "{}_{}.gdb".format(filegdb_name, imageDir)
+            target_path = os.path.join(publish_folder.path, imageDir) 
+            filegdb_path = os.path.join(publish_folder.path, filegdb_name)
+            md_name = imageDir
+            if fix is not None:
+                md_name = "{}{}".format(imageDir, fix)
+            md_path = os.path.join(filegdb_path, md_name)
+            
+            md_paths[imageDir] = md_path
+            if arcpy.Exists(md_path):
+                arcpy.AddMessage("Mosaic exists: {}".format(md_path))
             else:
-                arcpy.AddMessage("Working on {} rasters for elevation type {}.".format(ras_count, imageDir))            
-                       
-                count_rasters, md_cellsize = createMosaicDatasetAndAddRasters(raster_v_unit, publish_folder.path, filegdb_name, imagePath, md_name, md_path, SpatRefMD)
-                
-                importMosaicDatasetGeometries(md_path, None, lasd_boundary_path)
-                
-                count_overviews, count_total = generateOverviews(target_path, md_name, md_path, count_rasters, SpatRefMD, md_cellsize)
-                                
-                count_las = 0
-                if imageDir == DTM:
-                    count_las, count_total = addLasFilesToMosaicDataset(lasd_path, las_qainfo.las_directory, las_v_name, las_v_unit, isClassified, md_path, count_total)
-                
-                importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path)
-                
-                updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, SpatRefMD)
+                derived_fgdb_path = os.path.join(ProjectFolder.derived.fgdb_path)
+            
+                raster_footprint_path = A05_C_ConsolidateRasterInfo.getRasterFootprintPath(fgdb_path, imageDir)
+                footprint_path = mergeFootprints(las_footprint_path, raster_footprint_path, imageDir, derived_fgdb_path)
+                            
+                imagePath = target_path
+                SRMatchFlag, ras_count = isSpatialRefSameForAll(imagePath)
+                if not SRMatchFlag:
+                    arcpy.AddError("SR doesn't match for all images, aborting.")
+                elif ras_count <= 0:
+                    arcpy.AddError("No rasters for selected elevation type {}.".format(imageDir))
+                else:
+                    arcpy.AddMessage("Working on {} rasters for elevation type {}.".format(ras_count, imageDir))            
+                           
+                    count_rasters, md_cellsize = createMosaicDatasetAndAddRasters(raster_v_unit, publish_folder.path, filegdb_name, imagePath, md_name, md_path, SpatRef)
+                    
+                    importMosaicDatasetGeometries(md_path, None, lasd_boundary_path)
+                    
+                    count_overviews, count_total = generateOverviews(target_path, md_name, md_path, count_rasters, SpatRef, md_cellsize)
                                     
-                calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path)
-                
-                # Analyze the Mosaic Dataset in preparation for publishing it
-                arcpy.AnalyzeMosaicDataset_management(md_path, where_clause="#", checker_keywords="FOOTPRINT;FUNCTION;RASTER;PATHS;SOURCE_VALIDITY;STALE;PYRAMIDS;STATISTICS;PERFORMANCE;INFORMATION")    
-                Utility.addToolMessages()
-                arcpy.AddMessage("To view detailed results, Add the MD to the map, rt-click --> Data --> View Analysis Results")
-                
-                
-                arcpy.AddMessage("Mosaic dataset has {} rasters {} overviews and {} las files.".format(count_rasters, count_overviews, count_las))
-                doTime(a, "completed building mosaic dataset {}".format(md_path))
+                    count_las = 0
+                    if imageDir == DTM:
+                        count_las, count_total = addLasFilesToMosaicDataset(lasd_path, las_qainfo.las_directory, las_v_name, las_v_unit, isClassified, md_path, count_total)
+                    
+                    importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path)
+                    
+                    updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, SpatRef)
+                                        
+                    calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path)
+                    
+                    # Analyze the Mosaic Dataset in preparation for publishing it
+                    arcpy.AnalyzeMosaicDataset_management(md_path, where_clause="#", checker_keywords="FOOTPRINT;FUNCTION;RASTER;PATHS;SOURCE_VALIDITY;STALE;PYRAMIDS;STATISTICS;PERFORMANCE;INFORMATION")    
+                    Utility.addToolMessages()
+                    arcpy.AddMessage("To view detailed results, Add the MD to the map, rt-click --> Data --> View Analysis Results")
+                    
+                    
+                    arcpy.AddMessage("Mosaic dataset has {} rasters {} overviews and {} las files.".format(count_rasters, count_overviews, count_las))
+                    doTime(a, "completed building mosaic dataset {}".format(md_path))
             
         
 #             # @TODO: Add a spatial reference check
@@ -677,9 +702,9 @@ def CreateProjectMDs(strJobId, dateDeliver=None, dateStart=None, dateEnd=None):
     arcpy.CheckOutExtension("3D")
     arcpy.CheckOutExtension("Spatial")
      
-    ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
+    project_job, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
         
-    processJob(ProjectJob, project, strUID, dateDeliver, dateStart, dateEnd)
+    processJob(project_job, project, strUID, dateDeliver, dateStart, dateEnd)
     
     arcpy.CheckInExtension("3D")
     arcpy.CheckInExtension("Spatial")
@@ -689,43 +714,45 @@ def CreateProjectMDs(strJobId, dateDeliver=None, dateStart=None, dateEnd=None):
 if __name__ == '__main__':
           
     dateStart, dateEnd = None, None
-    strJobId = sys.argv[1]
-    dateDeliver = sys.argv[2]
+    if len(sys.argv) > 1:
+        strJobId = sys.argv[1]
+        dateDeliver = sys.argv[2]
+    
+        if len(sys.argv) >= 4:
+            dateStart = sys.argv[3]
+        if len(sys.argv) >= 5:
+            dateEnd = sys.argv[4]     
+    
+        CreateProjectMDs(strJobId, dateDeliver, dateStart, dateEnd)
+    else:
+        # DEBUG
 
-    if len(sys.argv) >= 4:
-        dateStart = sys.argv[3]
-    if len(sys.argv) >= 5:
-        dateEnd = sys.argv[4]     
-    CreateProjectMDs(strJobId, dateDeliver, dateStart, dateEnd)
-
-
-
-# 	dateDeliver = "04/09/1971"
-#    UID = None  # field_ProjectJob_UID
-#         wmx_job_id = 1
-#         project_Id = "OK_SugarCreek_2008"
-#         alias = "Sugar Creek"
-#         alias_clean = "SugarCreek"
-#         state = "OK"
-#         year = 2008
-#         parent_dir = r"E:\NGCE\RasterDatasets"
-#         archive_dir = r"E:\NGCE\RasterDatasets"
-#         project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
-#         project_AOI = None
-#         ProjectJob = CMDR.ProjectJob()
-#         project = [
-#     UID,  # field_ProjectJob_UID
-#     wmx_job_id,  # field_ProjectJob_WMXJobID,
-#     project_Id,  # field_ProjectJob_ProjID,
-#     alias,  # field_ProjectJob_Alias
-#     alias_clean,  # field_ProjectJob_AliasClean
-#     state ,  # field_ProjectJob_State
-#     year ,  # field_ProjectJob_Year
-#     parent_dir,  # field_ProjectJob_ParentDir
-#     archive_dir,  # field_ProjectJob_ArchDir
-#     project_dir,  # field_ProjectJob_ProjDir
-#     project_AOI  # field_ProjectJob_SHAPE
-#     ]
-#         
-    #     processProject(ProjectJob, project, UID, dateDeliver, dateStart, dateEnd)
-#     
+        dateDeliver = "04/09/1971"
+        strUID = None  # field_ProjectJob_UID
+        wmx_job_id = 1
+        project_Id = "OK_SugarCreek_2008"
+        alias = "Sugar Creek"
+        alias_clean = "SugarCreek"
+        state = "OK"
+        year = 2008
+        parent_dir = r"E:\NGCE\RasterDatasets"
+        archive_dir = r"E:\NGCE\RasterDatasets"
+        project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
+        project_AOI = None
+        project_job = CMDR.ProjectJob()
+        project = [
+            strUID,  # field_ProjectJob_UID
+            wmx_job_id,  # field_ProjectJob_WMXJobID,
+            project_Id,  # field_ProjectJob_ProjID,
+            alias,  # field_ProjectJob_Alias
+            alias_clean,  # field_ProjectJob_AliasClean
+            state ,  # field_ProjectJob_State
+            year ,  # field_ProjectJob_Year
+            parent_dir,  # field_ProjectJob_ParentDir
+            archive_dir,  # field_ProjectJob_ArchDir
+            project_dir,  # field_ProjectJob_ProjDir
+            project_AOI  # field_ProjectJob_SHAPE
+        ]
+         
+        processJob(project_job, project, strUID, dateDeliver, dateStart, dateEnd)
+     

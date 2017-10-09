@@ -9,10 +9,12 @@ import time
 
 import arcpy.cartography as ca
 from ngce import Utility
+from ngce.cmdr.CMDR import ProjectJob
+from ngce.cmdr.CMDRConfig import OCS
 from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, WEB_AUX_SPHERE, \
     CONTOUR_INTERVAL, CONTOUR_UNIT, CONTOUR_SMOOTH_UNIT, \
-    DISTANCE_TO_CLIP_MOSAIC_DATASET, DISTANCE_TO_CLIP_CONTOURS, SKIP_FACTOR,CONTOUR_NAME_OCS,CONTOUR_NAME_WM
+    DISTANCE_TO_CLIP_MOSAIC_DATASET, DISTANCE_TO_CLIP_CONTOURS, SKIP_FACTOR, CONTOUR_NAME_OCS, CONTOUR_NAME_WM
 from ngce.folders import ProjectFolders
 from ngce.folders.FoldersConfig import DTM
 from ngce.pmdm.a import A05_C_ConsolidateRasterInfo
@@ -447,8 +449,8 @@ def createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smoot
 
     if run_again:
         # run again to re-create missing tiles if one or more dropped
-        #@TODO: Figure out why we have to do this!!
-        createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smooth_unit, scratch_path,run_dict, False)
+        # @TODO: Figure out why we have to do this!!
+        createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smooth_unit, scratch_path, run_dict, False)
 
 def processJob(ProjectJob, project, ProjectUID):
     start = time.time()
@@ -473,7 +475,7 @@ def processJob(ProjectJob, project, ProjectUID):
     
 #     published_path = os.path.join(published_folder, DTM) 
     published_filegdb_path = os.path.join(published_folder, publish_filegdb_name)
-    md = os.path.join(published_filegdb_path, DTM)
+    md = os.path.join(published_filegdb_path, "{}{}".format(DTM, OCS))
     
     derived_filegdb_path = os.path.join(derived_folder, ProjectFolder.derived.fgdb_name)
     ref_md = os.path.join(derived_filegdb_path, "ContourPrep")
@@ -539,22 +541,54 @@ def CreateContoursFromMD(strJobId):
                            [strJobId], "C01 CreateContoursFromMD")
     aa = datetime.now()
     
-    ProjectJob, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
+    project_job, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
     
-    processJob(ProjectJob, project, strUID)
+    processJob(project_job, project, strUID)
     
     doTime(aa, "Operation Complete: C01 Create Contours From MD")
 
 if __name__ == '__main__':
     arcpy.env.overwriteOutput = True
-    projId = sys.argv[1]
-
+    
     arcpy.AddMessage("Checking out licenses")
     arcpy.CheckOutExtension("3D")
     arcpy.CheckOutExtension("Spatial")
-    
-    CreateContoursFromMD(projId)
+        
+    if len(sys.argv) > 1:
+        projId = sys.argv[1]
 
+        CreateContoursFromMD(projId)
+    else:
+        # DEBUG
+        UID = None  # field_ProjectJob_UID
+        wmx_job_id = 1
+        project_Id = "OK_SugarCreek_2008"
+        alias = "Sugar Creek"
+        alias_clean = "SugarCreek"
+        state = "OK"
+        year = 2008
+        parent_dir = r"E:\NGCE\RasterDatasets"
+        archive_dir = r"E:\NGCE\RasterDatasets"
+        project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
+        project_AOI = None
+        project_job = ProjectJob()
+        project = [
+                   UID,  # field_ProjectJob_UID
+                   wmx_job_id,  # field_ProjectJob_WMXJobID,
+                   project_Id,  # field_ProjectJob_ProjID,
+                   alias,  # field_ProjectJob_Alias
+                   alias_clean,  # field_ProjectJob_AliasClean
+                   state ,  # field_ProjectJob_State
+                   year ,  # field_ProjectJob_Year
+                   parent_dir,  # field_ProjectJob_ParentDir
+                   archive_dir,  # field_ProjectJob_ArchDir
+                   project_dir,  # field_ProjectJob_ProjDir
+                   project_AOI  # field_ProjectJob_SHAPE
+                   ]
+        
+        processJob(project_job, project, UID)
+
+    
     try:
         arcpy.AddMessage("Checking in licenses")                        
         arcpy.CheckInExtension("3D")
@@ -563,32 +597,5 @@ if __name__ == '__main__':
         pass
 
 
-#    UID = None  # field_ProjectJob_UID
-#    wmx_job_id = 1
-#    project_Id = "OK_SugarCreek_2008"
-#    alias = "Sugar Creek"
-#    alias_clean = "SugarCreek"
-#    state = "OK"
-#    year = 2008
-#    parent_dir = r"E:\NGCE\RasterDatasets"
-#    archive_dir = r"E:\NGCE\RasterDatasets"
-#    project_dir = r"E:\NGCE\RasterDatasets\OK_SugarCreek_2008"
-#    project_AOI = None
-#    ProjectJob = ProjectJob()
-#    project = [
-#               UID,  # field_ProjectJob_UID
-#               wmx_job_id,  # field_ProjectJob_WMXJobID,
-#               project_Id,  # field_ProjectJob_ProjID,
-#               alias,  # field_ProjectJob_Alias
-#               alias_clean,  # field_ProjectJob_AliasClean
-#               state ,  # field_ProjectJob_State
-#               year ,  # field_ProjectJob_Year
-#               parent_dir,  # field_ProjectJob_ParentDir
-#               archive_dir,  # field_ProjectJob_ArchDir
-#               project_dir,  # field_ProjectJob_ProjDir
-#               project_AOI  # field_ProjectJob_SHAPE
-#               ]
-#    
-#    processJob(ProjectJob, project, UID)
     
     
