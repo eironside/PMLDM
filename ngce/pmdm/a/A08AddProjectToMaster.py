@@ -286,7 +286,7 @@ def AddProjectToMaster(strJobId, MasterMDs_parent_path, masterService):
 if __name__ == '__main__':
     jobID = sys.argv[1]
     MasterMDs_parent_path = sys.argv[2]
-    master_md_name = sys.argv[3] 
+    master_md_name = sys.argv[3]
  
     AddProjectToMaster(jobID, MasterMDs_parent_path, master_md_name)
 

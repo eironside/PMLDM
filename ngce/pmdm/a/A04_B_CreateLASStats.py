@@ -12,7 +12,8 @@ from shutil import copyfile
 import sys
 import time
 
-from ngce.Utility import doTime, deleteFileIfExists, setArcpyEnv, getVertCSInfo
+
+from ngce.Utility import addToolMessages, doTime, deleteFileIfExists, setArcpyEnv, getVertCSInfo
 from ngce.folders.FoldersConfig import ELEVATION, FIRST, LAST, lasClassified_dir, \
     lasUnclassified_dir, lasd_dir, ALAST, INT, ALL, STATS_METHODS, DATASET_NAMES, \
     pulse_count_dir, point_count_dir
@@ -488,30 +489,30 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
     vector_R_bound_path = os.path.join(stat_out_folder, "B_{}_R.shp".format(f_name))
     deleteFileIfExists(vector_R_bound_path, useArcpy=True)
     arcpy.ExportMosaicDatasetGeometry_management(md_path, vector_R_bound_path, where_clause="#", geometry_type="BOUNDARY")
-    Utility.addToolMessages()
+    addToolMessages()
     if os.path.exists(gdb_path):
         arcpy.Delete_management(gdb_path)
      
     vector_REB_bound_path = os.path.join(stat_out_folder, "B_{}_REB.shp".format(f_name))
     deleteFileIfExists(vector_REB_bound_path, useArcpy=True)
     arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
-    Utility.addToolMessages()
+    addToolMessages()
     arcpy.Delete_management(in_data=vector_R_bound_path, data_type="ShapeFile")
      
     vector_REBS_bound_path = os.path.join(stat_out_folder, "B_{}_REBS.shp".format(f_name))
     deleteFileIfExists(vector_REBS_bound_path, useArcpy=True)
     arcpy.SimplifyPolygon_cartography(in_features=vector_REB_bound_path, out_feature_class=vector_REBS_bound_path, algorithm="BEND_SIMPLIFY", tolerance="{} Meters".format(FOOTPRINT_BUFFER_DIST / 4), minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
-    Utility.addToolMessages()
+    addToolMessages()
     arcpy.Delete_management(in_data=vector_REB_bound_path, data_type="ShapeFile")
      
     vector_RE_bound_path = os.path.join(stat_out_folder, "B_{}_RE.shp".format(f_name))
     deleteFileIfExists(vector_RE_bound_path, useArcpy=True)    
     arcpy.EliminatePolygonPart_management(in_features=vector_REBS_bound_path, out_feature_class=vector_RE_bound_path, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
-    Utility.addToolMessages()
+    addToolMessages()
     arcpy.Delete_management(in_data=vector_REBS_bound_path, data_type="ShapeFile")
      
     arcpy.Buffer_analysis(in_features=vector_RE_bound_path, out_feature_class=vector_bound_path, buffer_distance_or_field="-{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
-    Utility.addToolMessages()
+    addToolMessages()
     arcpy.Delete_management(in_data=vector_RE_bound_path, data_type="ShapeFile")
      
     footprint_area = 0
@@ -520,23 +521,23 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
         footprint_area = shape.getArea ("PRESERVE_SHAPE", "SQUAREMETERS")
     
     arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[PATH][0], field_alias=FIELD_INFO[PATH][1], field_type=FIELD_INFO[PATH][2], field_length=FIELD_INFO[PATH][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    Utility.addToolMessages()
+    addToolMessages()
     arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[NAME][0], field_alias=FIELD_INFO[NAME][1], field_type=FIELD_INFO[NAME][2], field_length=FIELD_INFO[NAME][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    Utility.addToolMessages()
+    addToolMessages()
     arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[AREA][0], field_alias=FIELD_INFO[AREA][1], field_type=FIELD_INFO[AREA][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
      
     b_f_path = os.path.split(f_path)[0]
     b_f_name = os.path.splitext(f_name)[0]
     arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[PATH][0], expression='"{}"'.format(b_f_path), expression_type="PYTHON_9.3")
-    Utility.addToolMessages()
+    addToolMessages()
     arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[NAME][0], expression='"{}"'.format(b_f_name), expression_type="PYTHON_9.3")
-    Utility.addToolMessages()
+    addToolMessages()
     arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[AREA][0], expression=footprint_area, expression_type="PYTHON_9.3")
-    Utility.addToolMessages()
+    addToolMessages()
     
     try:
         arcpy.DeleteField_management(in_table=vector_bound_path, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
-        Utility.addToolMessages()
+        addToolMessages()
     except:
         pass
      
@@ -1298,7 +1299,7 @@ Outputs:
 if __name__ == '__main__':
     
     # give time for things to wake up
-    time.sleep(2)
+    time.sleep(1)
     
     # time parameters to gauge how much time things are taking
     aaa = datetime.now()
