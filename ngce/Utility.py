@@ -438,7 +438,7 @@ def getString(str_value):
     
 def getSRValues(spatial_ref):
     
-    if str(spatial_ref).endswith(".prj"):
+    if str(spatial_ref).lower().endswith(".prj"):
         spatial_ref= arcpy.SpatialReference(spatial_ref)
         
     horz_cs_name = None
