@@ -442,6 +442,15 @@ def getSRValues(spatial_ref):
     horz_cs_factory_code = None
     vert_cs_name, vert_unit_name = None, None
     
+    name = None
+    try:
+        name = spatial_ref.name
+    except:
+        pass
+    
+    if name is None:
+        spatial_ref= arcpy.SpatialReference().loadFromString(spatial_ref)
+    
     if spatial_ref is not None:
         horz_cs_name = getString(spatial_ref.name)
         horz_cs_unit_name = getString(spatial_ref.linearUnitName)
