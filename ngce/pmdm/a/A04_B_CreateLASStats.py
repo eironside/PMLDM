@@ -12,7 +12,7 @@ from shutil import copyfile
 import sys
 import time
 
-
+from ngce import Utility
 from ngce.Utility import addToolMessages, doTime, deleteFileIfExists, setArcpyEnv, getVertCSInfo
 from ngce.folders.FoldersConfig import ELEVATION, FIRST, LAST, lasClassified_dir, \
     lasUnclassified_dir, lasd_dir, ALAST, INT, ALL, STATS_METHODS, DATASET_NAMES, \
@@ -345,9 +345,9 @@ def createLasDatasetStats(lasd_path, f_path, spatial_reference, stat_file_path):
     deleteFileIfExists(stat_file_path)
                                           # Originally this was skip existing, however some las files were 'outdated'
                                           # Changed to OVERWRITE_EXISTING_STATS, but this will take longer
-                                          # calculation_type="OVERWRITE_EXISTING_STATS",
+                                          # calculation_type="SKIP_EXISTING_STATS",
     arcpy.LasDatasetStatistics_management(in_las_dataset=lasd_path,
-                                          calculation_type="SKIP_EXISTING_STATS",
+                                          calculation_type="OVERWRITE_EXISTING_STATS",
                                           out_file=stat_file_path,
                                           summary_level="LAS_FILES",
                                           delimiter="COMMA",
@@ -404,6 +404,12 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
     a = datetime.now()
     
     deleteFileIfExists(vector_bound_path, useArcpy=True)
+    horz_cs_name, horz_cs_unit_name, horz_cs_factory_code, vert_cs_name, vert_unit_name = Utility.getSRValues(spatial_reference)
+    raster_type = LAS.LAS_raster_type_1_all_bin_mean_idw
+    if not str(horz_cs_unit_name).upper().find("METER"):
+        raster_type = LAS.LAS_raster_type_3_all_bin_mean_idw
+    arcpy.AddMessage("Horizontal units are {}, using raster type {}".format(horz_cs_unit_name, raster_type))
+    
         
     gdb_name = f_name
      
@@ -428,8 +434,7 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
     doTime(a, "\tCreated MD {}".format(md_name))
     a = datetime.now()
     
-    raster_type = LAS.LAS_raster_type_1_all_bin_mean_idw
-    arcpy.AddMessage(raster_type)
+    
     # Add the LAS files to the Mosaic Dataset and don't update the boundary yet.
     # The cell size of the Mosaic Dataset is determined by the art.xml file chosen by the user.
      
@@ -469,7 +474,7 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
                                      skip_derived_images="SKIP_DERIVED_IMAGES",
                                      update_boundary="UPDATE_BOUNDARY",
                                      request_size="2750",
-                                     min_region_size="25",
+                                     min_region_size="250",
                                      simplification_method="NONE",
                                      edge_tolerance="-1",
                                      max_sliver_size="5",

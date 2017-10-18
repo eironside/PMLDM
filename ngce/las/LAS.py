@@ -16,8 +16,9 @@ MAX_VALID_ELEVATION = 8850.0  # Meters
 
 # Used for QA LAS Boundary/footprints
 LAS_raster_type_20_all_bin_mean_idw = os.path.join(os.path.dirname(os.path.realpath(__file__)), LASConfig.LAS_RASTER_TYPE_20_All_Bin_Mean_IDW)
-# Used to add LAS to the project MD
-LAS_raster_type_1_all_bin_mean_idw = os.path.join(os.path.dirname(os.path.realpath(__file__)), LASConfig.LAS_RASTER_TYPE_1_All_Bin_Mean_IDW) 
+# Used to add LAS to the project MD (1 is for meters, 3 is for feet)
+LAS_raster_type_1_all_bin_mean_idw = os.path.join(os.path.dirname(os.path.realpath(__file__)), LASConfig.LAS_RASTER_TYPE_1_All_Bin_Mean_IDW)
+LAS_raster_type_3_all_bin_mean_idw = os.path.join(os.path.dirname(os.path.realpath(__file__)), LASConfig.LAS_RASTER_TYPE_3_All_Bin_Mean_IDW)  
 
 
 def minValidElevation(vertUnits):

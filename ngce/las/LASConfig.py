@@ -18,5 +18,6 @@ LAS_RASTER_TYPE_20_All_Bin_Mean_IDW = "LAS_20_ALL_Binning_Mean_IDW.art.xml"
 
 # Used for adding LAS to project MD 
 LAS_RASTER_TYPE_1_All_Bin_Mean_IDW = "LAS_1_ALL_Binning_Mean_IDW.art.xml"
+LAS_RASTER_TYPE_3_All_Bin_Mean_IDW = "LAS_3_ALL_Binning_Mean_IDW.art.xml"
 
 
