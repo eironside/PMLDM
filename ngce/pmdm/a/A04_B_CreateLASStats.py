@@ -895,34 +895,6 @@ def clipDerivedRaster(out_raster_path, vector_bound_path):
 '''
 
 
-def exportIntesity(target_path, isClassified, f_name, lasd_path):
-    lasd_first = None
-    value_field = "INTENSITY"
-    name = "_FIRST"
-    lasd = lasd_path
-    if not isClassified:
-        # Using a generic name for non-classified data
-        name = ""
-    out_folder = os.path.join(target_path, value_field)
-    if len(name) > 0:
-        out_folder = os.path.join(target_path, value_field, name[1:])
-    if not os.path.exists(out_folder):
-        os.makedirs(out_folder)
-    out_raster = os.path.join(out_folder, "{}{}".format(f_name, name))
-    out_raster_path = "{}.tif".format(out_raster)
-    if not os.path.exists(out_raster_path):
-        a = datetime.now()
-        # do this here to avoid arcpy penalty if they all exist
-        if isClassified:
-            if name == "_FIRST":
-                if lasd_first is None:
-                    lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
-                lasd = lasd_first
-        arcpy.LasDatasetToRaster_conversion(in_las_dataset=lasd, out_raster=out_raster_path, value_field=value_field, interpolation_type="BINNING AVERAGE LINEAR", data_type="FLOAT", sampling_type="CELLSIZE", sampling_value=ELE_CELL_SIZE, z_factor="1")
-        arcpy.BuildPyramidsandStatistics_management(in_workspace=out_raster_path, build_pyramids="BUILD_PYRAMIDS", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="BUILD_ON_SOURCE", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="CUBIC", compression_type="LZ77", compression_quality="75", skip_existing="SKIP_EXISTING")
-        doTime(a, "\tCreated INT {}".format(out_raster))
-    return lasd_first
-
 
 def exportElevation(target_path, isClassified, f_name, lasd_path, createMissingRasters=False):
     lasd_last = None
@@ -1028,16 +1000,17 @@ def exportIntensity(target_path, isClassified, f_name, lasd_path, createMissingR
 
 def getCellSize(spatial_reference, cell_size, createMissingRasters=False):
     result = cell_size
+    
     if createMissingRasters:
         result = 1
     if spatial_reference is not None:
         try:
-            vert_cs_name, vert_unit_name = getVertCSInfo(spatial_reference)  # @UnusedVariable
-            if vert_unit_name is not None:
-                vert_unit_name = str(vert_unit_name).upper()
-                if vert_unit_name.find("FT") > 0 or vert_unit_name.find("FOOT") > 0 or vert_unit_name.find("FEET") > 0:
+            horz_cs_name, horz_cs_unit_name, horz_cs_factory_code, vert_cs_name, vert_unit_name = Utility.getSRValues(spatial_reference)  # @UnusedVariable
+            if horz_cs_unit_name is not None:
+                horz_cs_unit_name = str(horz_cs_unit_name).upper()
+                if horz_cs_unit_name.find("FT") > 0 or horz_cs_unit_name.find("FOOT") > 0 or horz_cs_unit_name.find("FEET") > 0:
                     result = cell_size / (1200 / 3937)
-                    if vert_unit_name.find("INT") > 0:
+                    if horz_cs_unit_name.find("INT") > 0:
                         result = cell_size / 0.3048
         except:
             result = cell_size
