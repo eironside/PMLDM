@@ -406,7 +406,7 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
     deleteFileIfExists(vector_bound_path, useArcpy=True)
     horz_cs_name, horz_cs_unit_name, horz_cs_factory_code, vert_cs_name, vert_unit_name = Utility.getSRValues(spatial_reference)
     raster_type = LAS.LAS_raster_type_1_all_bin_mean_idw
-    if not str(horz_cs_unit_name).upper().find("METER"):
+    if str(horz_cs_unit_name).upper().find("METER") < 0:
         raster_type = LAS.LAS_raster_type_3_all_bin_mean_idw
     arcpy.AddMessage("Horizontal units are {}, using raster type {}".format(horz_cs_unit_name, raster_type))
     
