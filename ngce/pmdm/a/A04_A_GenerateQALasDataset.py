@@ -21,11 +21,11 @@ from ngce.pmdm import RunUtil
 from ngce.pmdm.a import A04_C_ConsolidateLASInfo
 
 
-PROCESS_DELAY = 2
-PROCESS_CHUNKS = 4  # files per thread
-PROCESS_SPARES = 1  # processors to leave as spares
+PROCESS_DELAY = 1
+PROCESS_CHUNKS = 6  # files per thread
+PROCESS_SPARES = -3  # processors to leave as spares
 
-arcpy.env.parallelProcessingFactor = "80%"
+arcpy.env.parallelProcessingFactor = "99%"
 
 arcpy.env.overwriteOutput = True
 

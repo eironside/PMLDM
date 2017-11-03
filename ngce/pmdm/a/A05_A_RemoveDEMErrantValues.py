@@ -483,6 +483,14 @@ def processJob(ProjectJob, project, ProjectUID):
     
     spatialRef_error = {}
     z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, is_classified = getLasdBoundData(lasd_boundary)  # @UnusedVariable
+
+    # Explicitely check if DTM images exist. If not bail
+    start_dir = os.path.join(ProjectFolder.delivered.path, DTM)
+    f_name = getFileProcessList(start_dir, DTM, target_path, publish_path, return_first=True, check_sr=False)
+    if f_name is None:
+        arcpy.AddError("No DTM Files Found in {} folder, cannot proceed.".format(start_dir))
+        raise Exception("No DTM Files Found, cannot proceed.")
+    
     for elev_type in elev_types:
         spatialRef_error[elev_type] = False
         start_dir = os.path.join(ProjectFolder.delivered.path, elev_type)

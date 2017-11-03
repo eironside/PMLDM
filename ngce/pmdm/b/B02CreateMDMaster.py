@@ -45,7 +45,7 @@ def CreateMasterMosaicDatasets(wmxJobID):
             os.makedirs(mdMaster_path)
 #         master_fgdb_path = os.path.join(mdMaster_path, MasterMDName)
         
-        md_list = [FoldersConfig.DTM, FoldersConfig.DSM]
+        md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.DCM, FoldersConfig.INT]
         for md_name in md_list:
             local_fgdb_name = "{}_{}.gdb".format(MasterMDName, md_name)
             arcpy.AddMessage("local_fgdb_name '{}'".format(local_fgdb_name))
@@ -62,9 +62,10 @@ def CreateMasterMosaicDatasets(wmxJobID):
 #             arcpy.MakeFeatureLayer_management(in_features= MDMaster.fclass, out_layer = mdMasterLayer, where_clause=where_clause)
             
             local_fgdb_MDMasterFC = os.path.join(local_fgdb_path, MasterMDName)
-            arcpy.FeatureClassToFeatureClass_conversion (in_features=MDMaster.fclass, out_path=local_fgdb_path, out_name=MasterMDName, where_clause=where_clause)
+            if not arcpy.Exists(local_fgdb_MDMasterFC):
+                arcpy.FeatureClassToFeatureClass_conversion (in_features=MDMaster.fclass, out_path=local_fgdb_path, out_name=MasterMDName, where_clause=where_clause)
             
-            CreateMasterMosaicDataset(local_fgdb_path, md_name, local_fgdb_MDMasterFC, MasterMDCellSize_Meters)
+                CreateMasterMosaicDataset(local_fgdb_path, md_name, local_fgdb_MDMasterFC, MasterMDCellSize_Meters)
     else:
         arcpy.AddError("MD Master parent path doesn't exist '{}'. Cannot continue.".format(parent_path))
         

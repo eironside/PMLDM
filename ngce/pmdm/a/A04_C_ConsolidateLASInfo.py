@@ -451,7 +451,7 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
         except:
             pass
 
-    a = doTime(a, "Found {} boundaries".format(len(b_file_list)))
+    a = doTime(a, "Found {} footprints".format(len(b_file_list)))
 
 
     las_footprint = getLasFootprintPath(fgdb_path)
