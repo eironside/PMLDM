@@ -119,8 +119,8 @@ def PublishMDMasterMosaicDataset(jobID, serverFunctionPath, update=False, runCou
         folderName = MDMaster.getMDServiceFolder(mdMaster_row)
         cellSize_m = MDMaster.getMDCellSize(mdMaster_row)
         Utility.printArguments(["folderName", "serverConnectionFile", "MasterMDName", "mdMaster_path", "cellSize_m"], [folderName, serverConnectionFile, MasterMDName, mdMaster_path, cellSize_m], "PublishMDMasterMosaicDataset")
-        #if not update:
-            #B04PublishContourMaster.publishContourMaster(mdMaster_path, serverConnectionFile, MasterMDName, folderName)
+        if not update:
+            B04PublishContourMaster.publishContourMaster(mdMaster_path, serverConnectionFile, MasterMDName, folderName)
 
 #         ProjectState = MDMaster#ProjectJob.getState(project)
 #         ProjectYear = ProjectJob.getYear(project)
@@ -131,8 +131,7 @@ def PublishMDMasterMosaicDataset(jobID, serverFunctionPath, update=False, runCou
         serviceDescription = "Elevation master service '{}'.".format(MasterMDName)
         serviceTags = ",".join([MasterMDName, "Master", "Elevation", "Mosaic", "Dataset"])
         
-        md_list = [FoldersConfig.DHM]
-        #md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.DCM, FoldersConfig.INT]
+        md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.DCM, FoldersConfig.INT]
         for md_name in md_list:
             serviceName = "{}_{}".format(MasterMDName, md_name)
             local_fgdb_name = "{}.gdb".format(serviceName)

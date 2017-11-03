@@ -98,7 +98,7 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
     ProjectMDs_fgdb_path = ProjectFolder.published.fgdb_path
     arcpy.AddMessage("Project file GDB Path: {}".format(ProjectMDs_fgdb_path))
         
-    md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.INT]
+    md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.INT]
           
     # Ensure the master_md_path exists
     for md_name in md_list:
