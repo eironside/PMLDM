@@ -61,7 +61,7 @@ PROCESS_DELAY = 10
 PROCESS_CHUNKS = 6  # files per thread. Factor of 2 please
 PROCESS_SPARES = 1  # processors to leave as spares, no more than 4!
 
-arcpy.env.parallelProcessingFactor = "80%"
+arcpy.env.parallelProcessingFactor = "8"
 
 Utility.setArcpyEnv(True)
 
@@ -224,6 +224,7 @@ def bufferZValues(z_min, z_max, add_buffer=True):
     return z_min, z_max
 
 def getRasterBoundData(bound_path, elev_type, add_buffer=True):
+    arcpy.AddMessage("Raster Bound Data: \n\tbound_path={}\n\telev_type={}\n\tadd_buffer={}\n\t".format(bound_path, elev_type, add_buffer))
     z_min = None
     z_max = None
     v_name = None
@@ -252,7 +253,14 @@ def getRasterBoundData(bound_path, elev_type, add_buffer=True):
         h_wkid = row[6]
     
     z_min, z_max = bufferZValues(z_min, z_max, add_buffer)
+    arcpy.AddMessage("Raster Bound Data: \n\tz_min={}\n\tz_max={}\n\tv_name={}\n\tv_unit={}\n\th_name={}\n\th_unit={}\n\th_wkid={}\n\t".format(z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid))
+
     
+    if elev_type is not "INTENSITY":
+        if z_min is None or z_max is None or h_name is None or h_unit is None or v_name is None or v_unit is None:
+            arcpy.AddError("Raster Elevation Bound Data is not valid, something is wrong with the BoundaryRaster_{} in the DERIVED file geodatabase".format(elev_type))
+    elif z_min is None or z_max is None or h_name is None or h_unit is None:
+        arcpy.AddError("Raster Intensity Bound Data is not valid, something is wrong with the BoundaryRaster_{} in the DERIVED file geodatabase".format(elev_type))
     return z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid
 
 
@@ -289,7 +297,7 @@ def getLasdBoundData(bound_path, add_buffer=True):
         is_classified = row[7]
     
     z_min, z_max = bufferZValues(z_min, z_max, add_buffer)
-    
+    arcpy.AddMessage("LAS Bound Data: \n\tz_min={} \n\tz_max={} \n\tv_name={} \n\tv_unit={} \n\th_name={} \n\th_unit={} \n\th_wkid={} \n\tis_classified={} \n\t".format(z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, is_classified))
     return z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, is_classified
 
 
@@ -498,7 +506,7 @@ def processJob(ProjectJob, project, ProjectUID):
         if f_name is None:
             arcpy.AddMessage("Trying DERIVED source. No {} rasters found to re-value in {}.".format(elev_type, start_dir))
             if elev_type == DSM:
-                start_dir = os.path.join(ProjectFolder.derived.path, "ELEVATION", "LAST")
+                start_dir = os.path.join(ProjectFolder.derived.path, "ELEVATION", "FIRST")
             elif elev_type == DLM:
                 start_dir = os.path.join(ProjectFolder.derived.path, "ELEVATION", "ALAST")
             elif elev_type == INT:

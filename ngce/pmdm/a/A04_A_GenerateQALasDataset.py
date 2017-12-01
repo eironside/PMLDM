@@ -25,7 +25,7 @@ PROCESS_DELAY = 1
 PROCESS_CHUNKS = 6  # files per thread
 PROCESS_SPARES = -3  # processors to leave as spares
 
-arcpy.env.parallelProcessingFactor = "99%"
+arcpy.env.parallelProcessingFactor = "8"
 
 arcpy.env.overwriteOutput = True
 
@@ -322,7 +322,7 @@ def checkSpatialOnLas(start_dir, target_path, createQARasters, isClassified):
     
     a = datetime.now()
     deleteFileIfExists(lasd_f_path, True)
-    arcpy.AddMessage("Testing spatial reference on .las file: '{}' '{}'".format(las_f_path, lasd_f_path))
+    arcpy.AddMessage("{} Testing spatial reference on .las file: '{}' '{}'".format(datetime.now(),las_f_path, lasd_f_path))
     
 #     arcpy.CreateLasDataset_management(input="E:/NGCE/RasterDatasets/OK_SugarCreek_2008/DELIVERED/LAS_CLASSIFIED/3409805_ne_A.las", out_las_dataset="E:/NGCE/RasterDatasets/OK_SugarCreek_2008/DELIVERED/LAS_CLASSIFIED/c3409805_ne_A_LasDataset.lasd", folder_recursion="NO_RECURSION", in_surface_constraints="", spatial_reference="", compute_stats="COMPUTE_STATS", relative_paths="RELATIVE_PATHS", create_las_prj="NO_FILES")
     
@@ -335,7 +335,7 @@ def checkSpatialOnLas(start_dir, target_path, createQARasters, isClassified):
                                       relative_paths="RELATIVE_PATHS",
                                       create_las_prj="NO_FILES")
     
-    doTime(a, "\tCreated LASD {}".format(lasd_f_path))
+    doTime(a, "\t{} Created LASD {}".format(datetime.now(),lasd_f_path))
     
     desc = arcpy.Describe(lasd_f_path)
     if desc is not None:

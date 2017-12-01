@@ -43,6 +43,7 @@ from ngce.raster.RasterConfig import FIELD_INFO, NAME, IS_CLASSIFIED, V_NAME, \
     FOURTH_RETURNS, SINGLE_RETURNS, FIRST_OF_MANY_RETURNS, LAST_OF_MANY_RETURNS, \
     ALL_RETURNS, POINT_COUNT, POINT_SPACING, STAT_LAS_FOLDER, CANOPY_DENSITY
 
+PARTITION_COUNT = 500
 
 def getLasdBoundaryPath(fgdb_path):
     return os.path.join(fgdb_path, "BoundaryLASDataset")
@@ -194,24 +195,24 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
     aa = a
     lasd_boundary_1 = "{}1".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_1, True)
-    arcpy.AddMessage("\tDissolving with statistics: {}".format(statistics_fields))
+    arcpy.AddMessage("\tBuffering")
+    arcpy.Buffer_analysis(in_features=raster_footprint, out_feature_class=lasd_boundary_1, buffer_distance_or_field="10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="NONE", method="PLANAR")
+    Utility.addToolMessages()
 
-    arcpy.Dissolve_management(in_features=raster_footprint, out_feature_class=lasd_boundary_1, statistics_fields=statistics_fields)
-    a = doTime(a, "\tDissolved to {}".format(lasd_boundary_1))
+    lasd_boundary_2 = "{}2".format(target_raster_boundary)
+    deleteFileIfExists(lasd_boundary_2, True)
+    arcpy.AddMessage("\tDissolving with statistics: {}".format(statistics_fields))
+    arcpy.Dissolve_management(in_features=lasd_boundary_1, out_feature_class=lasd_boundary_2, statistics_fields=statistics_fields)
+    a = doTime(a, "\tDissolved to {}".format(lasd_boundary_2))
 
     if alter_field_infos is not None:
         for alter_field_info in alter_field_infos:
             try:
-                alterField(lasd_boundary_1, alter_field_info[0], alter_field_info[1], alter_field_info[2])
+                alterField(lasd_boundary_2, alter_field_info[0], alter_field_info[1], alter_field_info[2])
             except:
                 pass
 
         a = doTime(a, "\tRenamed summary fields")
-
-    lasd_boundary_2 = "{}2".format(target_raster_boundary)
-    deleteFileIfExists(lasd_boundary_2, True)
-    arcpy.Buffer_analysis(in_features=lasd_boundary_1, out_feature_class=lasd_boundary_2, buffer_distance_or_field="10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
-
 
     lasd_boundary_3 = "{}3".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_3, True)
@@ -309,13 +310,14 @@ def getStatsFields(feature_class=None):
     for class_field_info in class_fields:
         class_field = class_field_info[0]
         field_values = value_fields
-        if class_field.startswith("c"):
+        if class_field.startswith("c") or class_field.startswith("ra"):
             field_values = class_value_fields
         for value_field_record in field_values:
             value_field_info = value_field_record[0]
             value_field_summary = value_field_record[1]
             base_fields.append([["{}_{}".format(class_field_info[0], value_field_info[0]), "{} {}".format(class_field_info[1], value_field_info[1]) , value_field_info[2], value_field_info[3]], value_field_summary])
-
+        
+            
     field_alter = []
     for base_field in base_fields:
         field_name = "{}_{}".format(base_field[1], base_field[0][0])
@@ -465,8 +467,24 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
         deleteFileIfExists(lasd_boundary_B, True)
 
         las_footprint_1 = os.path.join(fgdb_path, "{}1".format(las_footprint))
+        las_footprint_2 = os.path.join(fgdb_path, "{}2".format(las_footprint))
+        las_footprint_CP = os.path.join(fgdb_path, "{}_CP".format(las_footprint))
         deleteFileIfExists(las_footprint_1, True)
-        arcpy.Merge_management(inputs=b_file_list, output=las_footprint_1)
+        deleteFileIfExists(las_footprint_2, True)
+        deleteFileIfExists(las_footprint_CP, True)
+        arcpy.Merge_management(inputs=b_file_list, output=las_footprint_2)
+        arcpy.RepairGeometry_management(in_features=las_footprint_2, delete_null="DELETE_NULL")
+        
+        arcpy.CreateCartographicPartitions_cartography(in_features=las_footprint_2, out_features=las_footprint_CP, feature_count=PARTITION_COUNT)
+        a = doTime(a, "\tCreated carto parts")
+
+        arcpy.env.cartographicPartitions = las_footprint_CP
+        a = doTime(a, "\tSet cartographic partitions to {}".format(las_footprint_CP))
+        
+        arcpy.SimplifyPolygon_cartography(in_features=las_footprint_2, out_feature_class=las_footprint_1, algorithm="BEND_SIMPLIFY", tolerance="0.25 Meters", minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
+        deleteFileIfExists(las_footprint_2, True)
+        arcpy.RepairGeometry_management(in_features=las_footprint_1, delete_null="DELETE_NULL")
+        Utility.addToolMessages()
 
         a = doTime(a, "Merged las footprints {}".format(las_footprint_1))
 
@@ -475,8 +493,15 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
 
         # Merge the other footprints before clipping
         deleteFileIfExists(las_footprint_1, True)
-        arcpy.Merge_management(inputs=c_file_list, output=las_footprint_1)
-
+        deleteFileIfExists(las_footprint_2, True)
+        arcpy.Merge_management(inputs=c_file_list, output=las_footprint_2)
+        arcpy.RepairGeometry_management(in_features=las_footprint_2, delete_null="DELETE_NULL")
+        Utility.addToolMessages()
+        arcpy.SimplifyPolygon_cartography(in_features=las_footprint_2, out_feature_class=las_footprint_1, algorithm="BEND_SIMPLIFY", tolerance="0.25 Meters", minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
+        deleteFileIfExists(las_footprint_2, True)
+        arcpy.RepairGeometry_management(in_features=las_footprint_1, delete_null="DELETE_NULL")
+        Utility.addToolMessages()
+        
         a = doTime(a, "Merged las footprints {}".format(las_footprint_1))
 
         lasd_boundary_C = "{}C".format(lasd_boundary)
@@ -514,6 +539,8 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
         deleteFileIfExists(lasd_boundary_B, True)
 
         deleteFileIfExists(lasd_boundary, True)
+        deleteFileIfExists(las_footprint_CP, True)
+        arcpy.env.cartographicPartitions = None
         a = doTime(a, "Clipped las footprints to dataset boundary {} ".format(las_footprint))
 
     if arcpy.Exists(lasd_boundary):

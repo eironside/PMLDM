@@ -20,7 +20,8 @@ from ngce.raster.RasterConfig import STAT_FOLDER_ORG, STAT_RASTER_FOLDER, FIELD_
     H_UNIT, H_WKID, STAT_FOLDER_DER, STAT_FOLDER_PUB
 
 
-arcpy.env.parallelProcessingFactor = "80%"
+C_SIMPLE_DIST = 0.1 # Meters
+arcpy.env.parallelProcessingFactor = "8"
 
 Utility.setArcpyEnv(True)
 
@@ -140,12 +141,16 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
     
     vector_1_bound_path = os.path.join(stat_out_folder, "B1_{}.shp".format(f_name))
     vector_2_bound_path = os.path.join(stat_out_folder, "B2_{}.shp".format(f_name))
+    vector_3_bound_path = os.path.join(stat_out_folder, "B3_{}.shp".format(f_name))
     deleteFileIfExists(vector_bound_path, useArcpy=True)
     deleteFileIfExists(vector_1_bound_path, useArcpy=True)
     deleteFileIfExists(vector_2_bound_path, useArcpy=True)
+    deleteFileIfExists(vector_3_bound_path, useArcpy=True)
     
-    arcpy.RasterDomain_3d(in_raster=f_path, out_feature_class=vector_2_bound_path, out_geometry_type="POLYGON")
-    arcpy.EliminatePolygonPart_management(in_features=vector_2_bound_path, out_feature_class=vector_1_bound_path, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
+    arcpy.RasterDomain_3d(in_raster=f_path, out_feature_class=vector_3_bound_path, out_geometry_type="POLYGON")
+    arcpy.EliminatePolygonPart_management(in_features=vector_3_bound_path, out_feature_class=vector_2_bound_path, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
+    arcpy.SimplifyPolygon_cartography(in_features=vector_2_bound_path, out_feature_class=vector_1_bound_path, algorithm="BEND_SIMPLIFY", tolerance="{} Meters".format(C_SIMPLE_DIST), minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
+    deleteFileIfExists(vector_3_bound_path, useArcpy=True)
     deleteFileIfExists(vector_2_bound_path, useArcpy=True)
      
     footprint_area = 0

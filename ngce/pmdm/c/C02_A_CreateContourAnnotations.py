@@ -118,11 +118,12 @@ def clearScratchFiles(section_mxd_name, anno_paths, mask_paths, annoLyr_paths):
     arcpy.AddMessage("Cleared scratch directory {}".format(directory))
 
 def isProcessFile(scratch, name):
-    filter_folder = os.path.join(scratch, name)
+    filter_folder_name = "T{}".format(name)
+    filter_folder = os.path.join(scratch, filter_folder_name)
     
-    section_mxd_name = os.path.join(filter_folder, '{}.mxd'.format(name))
-    scratch_db = os.path.join(filter_folder, '{}.gdb'.format(name))
-    target_scheme_polys = os.path.join(filter_folder, '{}_scheme_polys.shp'.format(name))
+    section_mxd_name = os.path.join(filter_folder, '{}.mxd'.format(filter_folder_name))
+    scratch_db = os.path.join(filter_folder, '{}.gdb'.format(filter_folder_name))
+    target_scheme_polys = os.path.join(filter_folder, '{}SP.shp'.format(filter_folder_name))
     
     anno1128 = os.path.join(filter_folder, r"Contours_1128Anno1128.shp")
     anno2257 = os.path.join(filter_folder, r"Contours_2257Anno2256.shp")
@@ -211,13 +212,13 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
     
     arcpy.env.overwriteOutput = True
     
-    filter_folder = os.path.join(scratch, name)
+    filter_folder = os.path.join(scratch, 'T{}'.format(name))
     if not os.path.exists(filter_folder):
         os.makedirs(filter_folder)
-    section_mxd_name = os.path.join(filter_folder, '{}.mxd'.format(name))
-    scratch_db = os.path.join(filter_folder, '{}.gdb'.format(name))
-    target_scheme_polys = os.path.join(filter_folder, '{}_scheme_polys.shp'.format(name))
-    target_scheme_polys_fgdb = os.path.join(scratch_db, '{}_scheme_polys'.format(name))
+    section_mxd_name = os.path.join(filter_folder, 'T{}.mxd'.format(name))
+    scratch_db = os.path.join(filter_folder, 'T{}.gdb'.format(name))
+    target_scheme_polys = os.path.join(filter_folder, 'T{}SP.shp'.format(name))
+    target_scheme_polys_fgdb = os.path.join(scratch_db, 'T{}SP'.format(name))
     
 #     Utility.printArguments(["in_fc", "scheme_poly", "scratch", "name", "db", "fc", "filter_folder", "section_mxd_name", "scratch_db", "target_scheme_polys"],
 #                            [in_fc, scheme_poly, scratch, name, db, fc, filter_folder, section_mxd_name, scratch_db, target_scheme_polys], "C02_B Contour Prep")
@@ -279,8 +280,8 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
             if arcpy.Exists(scratch_db):
                 pass
             else:
-                arcpy.CreateFileGDB_management(filter_folder, '{}.gdb'.format(name))
-                a = Utility.doTime(a, "\t{}: Created '{}.gdb' at {}".format(name, name, filter_folder))
+                arcpy.CreateFileGDB_management(filter_folder, 'T{}.gdb'.format(name))
+                a = Utility.doTime(a, "\t{}: Created 'T{}.gdb' at {}".format(name, name, filter_folder))
             
             
             if arcpy.Exists(target_scheme_polys):
@@ -319,6 +320,7 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
     
             # Reference Annotation FCs created with TiledLabelsToAnnotation
             df = arcpy.mapping.ListDataFrames(mxd, 'Layers')[0]
+            a = Utility.doTime(a, "\t{}: Got data frame '{}'".format(name, df))
             
             # Delete Existing Annotation FCs to Avoid Confusion with TiledLabelsToAnnotation Output
     #         for anno in anno_paths:
@@ -337,7 +339,9 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                             lyr.definitionQuery = "{} and name = '{}'".format(lyr.definitionQuery, name) 
                 except:
                     pass  # some layers don't support labels. If not, just move one
+
             
+            a = Utility.doTime(a, "\t{}: Creating annotation from tiled labels".format(name))
             # Create Annotation with Filtered FC Extent
             arcpy.TiledLabelsToAnnotation_cartography(
                 map_document=mxd.filePath,
@@ -723,8 +727,13 @@ def processJob(project_job, project, strUID):
     a = Utility.doTime(a, "Generated tiling scheme")
 
     # Collect Unique Names from Input Feature Class
+    name_list_len=-1
     name_list = list(set([row[0] for row in arcpy.da.SearchCursor(footprint_path, ['name'])]))  # @UndefinedVariable
-    a = Utility.doTime(a, "Retrieved name list")
+    try:
+        name_list_len  = len(name_list)
+    except:
+        pass
+    a = Utility.doTime(a, "Retrieved name list of size {}".format(name_list_len))
 
     buildAnnotations(scratch_path, in_cont_fc, base_scheme_poly, name_list, footprint_path, False)
     a = Utility.doTime(a, "Built annotations")

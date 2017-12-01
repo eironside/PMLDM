@@ -93,21 +93,24 @@ def createRefDTMMosaic(in_md_path, out_md_path, v_unit):
 
 def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_clip_contours):
     a = datetime.now()
-    print('Create Multiprocessing Iterable')
+    arcpy.AddMessage('Create Multiprocessing Iterable')
 
     ext_dict = {}
     # Go up one directory so we don't have to delete if things go wrong down in scratch
-    scratch_folder = os.path.split(scratch_folder)[0]
-    tmp_buff_name = os.path.join(scratch_folder, "footprints_clip_md.shp")
+    tmp_scratch_folder = os.path.split(scratch_folder)[0]
+    tmp_buff_name = os.path.join(tmp_scratch_folder, "footprints_clip_md.shp")
     if not os.path.exists(tmp_buff_name):
         arcpy.Buffer_analysis(
             prints,
             tmp_buff_name,
             "{} METERS".format(distance_to_clip_md)
         )
+        arcpy.AddMessage("Created new {}".format(tmp_buff_name))
+    else:
+        arcpy.AddMessage("Using existing {}".format(tmp_buff_name))
     
     
-    with arcpy.da.SearchCursor(tmp_buff_name, ["Name", "SHAPE@"]) as cursor:  # @UndefinedVariable
+    with arcpy.da.SearchCursor(tmp_buff_name, ["Name", "SHAPE@", "zran"]) as cursor:  # @UndefinedVariable
 
         for row in cursor:
 
@@ -116,28 +119,33 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
             # Get Values
             rowname = row[0]
             geom = row[1]
-            if isProcessFile(rowname, scratch_folder):
+            zran = row[2]
+            if zran > 0 and isProcessFile(rowname, scratch_folder):
                 box = geom.extent.polygon
     
                 row_info.append(box)
                 ext_dict[rowname] = row_info
         
-    tmp_buff_name2 = os.path.join(scratch_folder, "footprints_clip_cont.shp")
+    tmp_buff_name2 = os.path.join(tmp_scratch_folder, "footprints_clip_cont.shp")
     if not os.path.exists(tmp_buff_name2):
         arcpy.Buffer_analysis(
             prints,
             tmp_buff_name2,
             "{} METERS".format(distance_to_clip_contours)
         )
+        arcpy.AddMessage("Created new {}".format(tmp_buff_name2))
+    else:
+        arcpy.AddMessage("Using existing {}".format(tmp_buff_name2))
     
-    with arcpy.da.SearchCursor(tmp_buff_name, ["Name", "SHAPE@"]) as cursor:  # @UndefinedVariable
+    with arcpy.da.SearchCursor(tmp_buff_name, ["Name", "SHAPE@", "zran"]) as cursor:  # @UndefinedVariable
 
         for row in cursor:
 
             # Get Values
             rowname = row[0]
             geom = row[1]
-            if isProcessFile(rowname, scratch_folder):
+            zran = row[2]
+            if zran > 0 and isProcessFile(rowname, scratch_folder):
                 row_info = ext_dict[rowname]
                 row_info.append(geom)
                 ext_dict[rowname] = row_info
@@ -419,10 +427,21 @@ def handle_results(scratch_dir, contour_dir):
 def isProcessFile(f_name, scratch_dir):
     process_file = False
     if f_name is not None:
-        cont = os.path.join(scratch_dir, 'Scratch', 'O11_ClipCont_' + f_name + '.shp')
+        cont = os.path.join(scratch_dir, 'O11_ClipCont_' + f_name + '.shp')
         if not os.path.exists(cont):
-            arcpy.AddMessage("PROCESS: " + cont)
+            arcpy.AddMessage("PROCESS (Missing): " + cont)
             process_file = True
+        else:
+            try:
+                rows = [row for row in arcpy.da.SearchCursor(cont,"OID@" )]
+                rows = len(rows)
+                if rows <=0:
+                    arcpy.AddMessage("PROCESS (0 Rows): " + cont)
+                    arcpy.Delete_management(cont)
+                    process_file = True
+            except:
+                arcpy.AddMessage("\tFailed to isProcess contour file: " + cont)
+                process_file = True
 
     return process_file
 
@@ -454,6 +473,7 @@ def createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smoot
 
 def processJob(ProjectJob, project, ProjectUID):
     start = time.time()
+    a = start
     # From ContourConfig
     cont_int = CONTOUR_INTERVAL
     cont_unit = CONTOUR_UNIT
@@ -498,6 +518,7 @@ def processJob(ProjectJob, project, ProjectUID):
         raster_vertical_unit = row[0]
         break
     del row
+    arcpy.AddMessage("Got input raster vertical unit: {}".format(raster_vertical_unit))
     
 #     PYTHON_EXE = os.path.join(r'C:\Python27\ArcGISx6410.5', 'pythonw.exe')
 # 
@@ -509,7 +530,7 @@ def processJob(ProjectJob, project, ProjectUID):
         a = datetime.now()
         # Generate Script Workspaces
         contour_gdb, scratch_path = generate_con_workspace(contour_folder)
-        a = doTime(a, "Created Contour Workspace")
+        a = doTime(a, "Created Contour Workspace\n\t{}\n\t{}".format(contour_gdb, scratch_path))
                 
         # Collect Processing Extents
         run_dict = create_iterable(scratch_path, ft_prints, distance_to_clip_md, distance_to_clip_contours)
