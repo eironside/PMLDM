@@ -352,9 +352,9 @@ fields_QC = [field_QC_UID,
              field_QC_ProjID,
              field_QC_SHAPE
              ]
-fields_Publish = [field_QC_UID,
-                  field_QC_ProjID,
-                  field_QC_SHAPE
+fields_Publish = [field_Publish_UID,
+                  field_Publish_ProjID,
+                  field_Publish_SHAPE
                  ]
 
 fields_RasterFileStat = [

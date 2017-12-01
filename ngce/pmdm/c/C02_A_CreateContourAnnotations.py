@@ -6,6 +6,7 @@ from multiprocessing import Pool, cpu_count
 import os
 import shutil
 import sys
+import time
 import traceback
 
 from ngce import Utility
@@ -248,211 +249,230 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
     annoLyr9028 = os.path.join(filter_folder, r"Contours_9028Anno9027.lyr")
     annoLyr_paths = [annoLyr1128, annoLyr2257, annoLyr4514, annoLyr9028]
     
-    try:
+    clearScratch = True    
+    TRIES_ALLOWED = 3
+    
+    if not isProcessFile(scratch, name):
+        arcpy.AddMessage("{}: All artifacts exist".format(name))
+    else:
+        created1 = False
+        tries1 = 0
+        while not created1 and tries1 <= TRIES_ALLOWED:
+            tries1 = tries1 + 1
+            try:
+                # Clear out everything that was created before, we cant trust it
+                if clearScratch:
+                    clearScratch = False
+                    clearScratchFiles(section_mxd_name, anno_paths, mask_paths, annoLyr_paths)
+                    
+        #     try:
+                # Copy Template MXD
+                base_mxd = arcpy.mapping.MapDocument(ContourConfig.MXD_ANNO_TEMPLATE)
+                
+                if not os.path.exists(section_mxd_name):
+                    base_mxd.saveACopy(section_mxd_name)
+                    a = Utility.doTime(a, "\t{}: Saved a copy of the mxd template to '{}'".format(name, section_mxd_name))
         
-        if not isProcessFile(scratch, name):
-            arcpy.AddMessage("{}: All artifacts exist".format(name))
-        else:
-            # Clear out everything that was created before, we cant trust it
-            clearScratchFiles(section_mxd_name, anno_paths, mask_paths, annoLyr_paths)
-    #     try:
-            # Copy Template MXD
-            base_mxd = arcpy.mapping.MapDocument(ContourConfig.MXD_ANNO_TEMPLATE)
-            
-            if not os.path.exists(section_mxd_name):
-                base_mxd.saveACopy(section_mxd_name)
-                a = Utility.doTime(a, "\t{}: Saved a copy of the mxd template to '{}'".format(name, section_mxd_name))
-    
-            # Set MXD For Processing
-            mxd = arcpy.mapping.MapDocument(section_mxd_name)
-    
-            # Set Layers to Reference Input FC
-            broken = arcpy.mapping.ListBrokenDataSources(mxd)
-            
-            for item in broken:
-                if item.name.startswith(r'Contour'):
-                    item.replaceDataSource(db, "FILEGDB_WORKSPACE", fc)
-            
-            mxd.save()
-            a = Utility.doTime(a, "\t{}: Fixed broken paths in '{}'".format(name, section_mxd_name))
-    
-            # Create FGDB For Annotation Storage
-            if arcpy.Exists(scratch_db):
-                pass
-            else:
-                arcpy.CreateFileGDB_management(filter_folder, 'T{}.gdb'.format(name))
-                a = Utility.doTime(a, "\t{}: Created 'T{}.gdb' at {}".format(name, name, filter_folder))
-            
-            
-            if arcpy.Exists(target_scheme_polys):
-                arcpy.AddMessage("\t{}: Scheme Poly exists: {}".format(name, target_scheme_polys))
-            else:
-                # Filter for Section of Input FC
-                feat = arcpy.MakeFeatureLayer_management(
-                    in_features=footprint_path,
-                    out_layer=name,
-                    where_clause="name='{}'".format(name)
-                )
-                a = Utility.doTime(a, "\t{}: Created feature layer '{}'".format(name, feat))
+                # Set MXD For Processing
+                mxd = arcpy.mapping.MapDocument(section_mxd_name)
+        
+                # Set Layers to Reference Input FC
+                broken = arcpy.mapping.ListBrokenDataSources(mxd)
                 
-#                 # Select Subsection of Tiling Scheme
-#                 sel_lyr = arcpy.MakeFeatureLayer_management(scheme_poly, 'scheme_poly')
-#                 arcpy.SelectLayerByLocation_management(
-#                     in_layer=sel_lyr,
-#                     overlap_type="INTERSECT",
-#                     select_features=feat,
-#                     selection_type="NEW_SELECTION",
-#                     invert_spatial_relationship="NOT_INVERT"
-#                 )
-#                 a = Utility.doTime(a, "\t{}: Selected feature layer '{}'".format(name, sel_lyr))
+                for item in broken:
+                    if item.name.startswith(r'Contour'):
+                        item.replaceDataSource(db, "FILEGDB_WORKSPACE", fc)
                 
-#                 # Save Subsection of Tiling Scheme for TiledLabelsToAnnotation
-#                 arcpy.CopyFeatures_management(
-#                     in_features=sel_lyr,
-#                     out_feature_class=target_scheme_polys
-#                 )
-                arcpy.Clip_analysis(in_features=scheme_poly, clip_features=feat, out_feature_class=target_scheme_polys, cluster_tolerance="")
-                if arcpy.Exists(target_scheme_polys_fgdb):
-                    arcpy.Delete_management(target_scheme_polys_fgdb)
-                arcpy.CopyFeatures_management(in_features=target_scheme_polys, out_feature_class=target_scheme_polys_fgdb)
-                
-                a = Utility.doTime(a, "\t{}: Copied target scheme polys '{}'".format(name, target_scheme_polys))
-    
-            # Reference Annotation FCs created with TiledLabelsToAnnotation
-            df = arcpy.mapping.ListDataFrames(mxd, 'Layers')[0]
-            a = Utility.doTime(a, "\t{}: Got data frame '{}'".format(name, df))
-            
-            # Delete Existing Annotation FCs to Avoid Confusion with TiledLabelsToAnnotation Output
-    #         for anno in anno_paths:
-    #             arcpy.Delete_management(in_data=anno, data_type='FeatureClass')
-    #             if arcpy.Exists(anno):
-    #                 arcpy.AddMessage("\t{}: Anno FC exists: {}".format(name, anno))
-    #             else:
-                    # Enable Labels for TiledLabelsToAnnotation tool
-                    
-            for lyr in arcpy.mapping.ListLayers(mxd):
-                try:
-                    lyr.showLabels = False
-                    if lyr.name.upper().startswith("CONTOURS "):
-                        lyr.showLabels = True
-                        if lyr.supports("DEFINITIONQUERY"):
-                            lyr.definitionQuery = "{} and name = '{}'".format(lyr.definitionQuery, name) 
-                except:
-                    pass  # some layers don't support labels. If not, just move one
-
-            
-            a = Utility.doTime(a, "\t{}: Creating annotation from tiled labels".format(name))
-            # Create Annotation with Filtered FC Extent
-            arcpy.TiledLabelsToAnnotation_cartography(
-                map_document=mxd.filePath,
-                data_frame='Layers',
-                polygon_index_layer=target_scheme_polys,
-                out_geodatabase=scratch_db,
-                out_layer='GroupAnno',
-                anno_suffix='Anno',
-                reference_scale_value='9028',
-                reference_scale_field="Tile_Scale",
-                tile_id_field="FID",
-                feature_linked="STANDARD",
-                generate_unplaced_annotation="NOT_GENERATE_UNPLACED_ANNOTATION"
-            )
-            Utility.addToolMessages()
-                    
-#             # Reset the label settings
-#             for lyr in arcpy.mapping.ListLayers(mxd):
-#                 try:
-#                     lyr.showLabels = False
-#                 except:
-#                     pass  # some layers don't support labels. If not, just move one
-                            
-            mxd.save()
-            a = Utility.doTime(a, "\t{}: Exported tiled labels to annotation '{}'".format(name, target_scheme_polys))
-    
-            # Create layer files for each of the Anno feature classes, and add to the map
-            annotation_set = [
-                [anno1128, annoLyr1128, "Cont_1128Anno1128", annoShp1128],
-                [anno2257, annoLyr2257, "Cont_2257Anno2256", annoShp2257],
-                [anno4514, annoLyr4514, "Cont_4514Anno4513", annoShp4514],
-                [anno9028, annoLyr9028, "Cont_9028Anno9027", annoShp9028]
-            ]
-    
-            # Create .lyr Files & Add to MXD
-            df = arcpy.mapping.ListDataFrames(mxd, 'Layers')[0]
-            for anno in annotation_set:
-                lyr_path = anno[1]
-                if not arcpy.Exists(anno[0]):
-                    arcpy.AddWarning("{}: WARNING: Annotation Layer Missing: {}".format(name, anno[0]))
-                else:
-                    if arcpy.Exists(lyr_path):
-                        arcpy.AddMessage("\t{}: Annotation Layer Exists: {}".format(name, lyr_path))
-                    else:
-                        arcpy.MakeFeatureLayer_management(anno[0], anno[2])
-                        arcpy.SaveToLayerFile_management(
-                            in_layer=anno[2],
-                            out_layer=lyr_path,
-                            is_relative_path='ABSOLUTE',
-                            version='CURRENT'
-                        )
-                        arcpy.AddMessage("\t{}: Annotation Layer Exported: {}".format(name, lyr_path))
-                        
-                    shp_path = anno[3]
-                    if os.path.exists(shp_path):
-                        arcpy.AddMessage("\t{}: Annotation shapefile Exported: {}".format(name, shp_path))
-                    else:
-                        arcpy.FeatureToPoint_management(in_features=anno[0], out_feature_class=shp_path, point_location="INSIDE")
-                        arcpy.AddMessage("\t{}: Annotation shapefile Exported: {}".format(name, shp_path))
-                    
-                    addLayer = True
-                    for cur_lyr in arcpy.mapping.ListLayers(mxd):
-                        if cur_lyr.name.upper().startswith(str(anno[2]).upper()):
-                            addLayer = False
-                            break
-                    if addLayer:
-                        add_lyr = arcpy.mapping.Layer(lyr_path)
-                        arcpy.mapping.AddLayer(df, add_lyr, 'BOTTOM')
-            mxd.save()
-            a = Utility.doTime(a, "\t{}: Exported layer files for annotation set {}".format(name, annotation_set))
-    
-            # Create Mask FC to Hide Contour Beneath Annotation
-#             arcpy.env.workspace = filter_folder
-            
-            for lyr_path in annoLyr_paths:  # arcpy.ListFiles('Contours*.lyr_path'):
-                try:
-    #                 lyr_path = os.path.join(filter_folder, lyr_file)
-                    ref_scale = lyr_path[-8:-4]
-                    mask_fc = os.path.join(filter_folder, r'Mask{}.shp'.format(ref_scale))
-                    if arcpy.Exists(mask_fc):
-                        arcpy.AddMessage("\t{}: Mask Layer Exists: {}".format(name, mask_fc))
-                    else:
-                        if os.path.exists(lyr_path):
-                            arcpy.FeatureOutlineMasks_cartography(
-                                input_layer=lyr_path,
-                                output_fc=mask_fc,
-                                reference_scale=ref_scale,
-                                spatial_reference=ContourConfig.WEB_AUX_SPHERE,
-                                margin='0 Points',
-                                method='BOX',
-                                mask_for_non_placed_anno='ALL_FEATURES',
-                                attributes='ALL'
-                            )
-                        else:
-                            arcpy.AddWarning("t{}: WARNING: Can't create masking layer. Layer file missing {}".format(name, lyr_path))
-                except Exception as e:
-                    arcpy.AddError('\t{}: Exception: {}'.format(name, e))
+                mxd.save()
+                a = Utility.doTime(a, "\t{}: Fixed broken paths in '{}'".format(name, section_mxd_name))
+        
+                # Create FGDB For Annotation Storage
+                if arcpy.Exists(scratch_db):
                     pass
-            mxd.save()
-            a = Utility.doTime(a, "\t{}: Created masking polygons".format(name))
-            
-            Utility.doTime(aa, 'Finished: {}'.format(name))
-
-    except Exception as e:
-        arcpy.AddError('Exception: {}'.format(e))
-        tb = sys.exc_info()[2]
-        tbinfo = traceback.format_tb(tb)[0]
-        arcpy.AddError("PYTHON ERRORS:\nTraceback info:\n{}\nError Info:\n{}".format(tbinfo, str(sys.exc_info()[1])))
-        arcpy.AddError("ArcPy ERRORS:\n{}\n".format(arcpy.GetMessages(2)))
-        arcpy.AddError('Dropped: {}'.format(name))
-        raise e
+                else:
+                    arcpy.CreateFileGDB_management(filter_folder, 'T{}.gdb'.format(name))
+                    a = Utility.doTime(a, "\t{}: Created 'T{}.gdb' at {}".format(name, name, filter_folder))
+                
+                
+                if arcpy.Exists(target_scheme_polys):
+                    arcpy.AddMessage("\t{}: Scheme Poly exists: {}".format(name, target_scheme_polys))
+                else:
+                    
+                    # Filter for Section of Input FC
+                    feat = arcpy.MakeFeatureLayer_management(
+                        in_features=footprint_path,
+                        out_layer=name,
+                        where_clause="name='{}'".format(name)
+                    )
+                    a = Utility.doTime(a, "\t{}: Created feature layer '{}'".format(name, feat))
+                            
+                    
+    #                 # Select Subsection of Tiling Scheme
+    #                 sel_lyr = arcpy.MakeFeatureLayer_management(scheme_poly, 'scheme_poly')
+    #                 arcpy.SelectLayerByLocation_management(
+    #                     in_layer=sel_lyr,
+    #                     overlap_type="INTERSECT",
+    #                     select_features=feat,
+    #                     selection_type="NEW_SELECTION",
+    #                     invert_spatial_relationship="NOT_INVERT"
+    #                 )
+    #                 a = Utility.doTime(a, "\t{}: Selected feature layer '{}'".format(name, sel_lyr))
+                    
+    #                 # Save Subsection of Tiling Scheme for TiledLabelsToAnnotation
+    #                 arcpy.CopyFeatures_management(
+    #                     in_features=sel_lyr,
+    #                     out_feature_class=target_scheme_polys
+    #                 )
+                    arcpy.Clip_analysis(in_features=scheme_poly, clip_features=feat, out_feature_class=target_scheme_polys, cluster_tolerance="")
+                    if arcpy.Exists(target_scheme_polys_fgdb):
+                        arcpy.Delete_management(target_scheme_polys_fgdb)
+                    created = False
+                    tries = 0
+                    while not created and tries <= TRIES_ALLOWED:
+                        tries = tries + 1
+                        try:
+                            arcpy.CopyFeatures_management(in_features=target_scheme_polys, out_feature_class=target_scheme_polys_fgdb)
+                            a = Utility.doTime(a, "\t{}: Copied target scheme polys '{}'".format(name, target_scheme_polys))
+                            created = True
+                        except:
+                            time.sleep(1)
+        
+                # Reference Annotation FCs created with TiledLabelsToAnnotation
+                df = arcpy.mapping.ListDataFrames(mxd, 'Layers')[0]
+                a = Utility.doTime(a, "\t{}: Got data frame '{}'".format(name, df))
+                
+                # Delete Existing Annotation FCs to Avoid Confusion with TiledLabelsToAnnotation Output
+        #         for anno in anno_paths:
+        #             arcpy.Delete_management(in_data=anno, data_type='FeatureClass')
+        #             if arcpy.Exists(anno):
+        #                 arcpy.AddMessage("\t{}: Anno FC exists: {}".format(name, anno))
+        #             else:
+                        # Enable Labels for TiledLabelsToAnnotation tool
+                        
+                for lyr in arcpy.mapping.ListLayers(mxd):
+                    try:
+                        lyr.showLabels = False
+                        if lyr.name.upper().startswith("CONTOURS "):
+                            lyr.showLabels = True
+                            if lyr.supports("DEFINITIONQUERY"):
+                                lyr.definitionQuery = "{} and name = '{}'".format(lyr.definitionQuery, name) 
+                    except:
+                        pass  # some layers don't support labels. If not, just move one
+                
+                a = Utility.doTime(a, "\t{}: Creating annotation from tiled labels".format(name))
+                # Create Annotation with Filtered FC Extent
+                arcpy.TiledLabelsToAnnotation_cartography(
+                    map_document=mxd.filePath,
+                    data_frame='Layers',
+                    polygon_index_layer=target_scheme_polys,
+                    out_geodatabase=scratch_db,
+                    out_layer='GroupAnno',
+                    anno_suffix='Anno',
+                    reference_scale_value='9028',
+                    reference_scale_field="Tile_Scale",
+                    tile_id_field="FID",
+                    feature_linked="STANDARD",
+                    generate_unplaced_annotation="NOT_GENERATE_UNPLACED_ANNOTATION"
+                )
+                Utility.addToolMessages()
+                        
+    #             # Reset the label settings
+    #             for lyr in arcpy.mapping.ListLayers(mxd):
+    #                 try:
+    #                     lyr.showLabels = False
+    #                 except:
+    #                     pass  # some layers don't support labels. If not, just move one
+                                
+                mxd.save()
+                a = Utility.doTime(a, "\t{}: Exported tiled labels to annotation '{}'".format(name, target_scheme_polys))
+        
+                # Create layer files for each of the Anno feature classes, and add to the map
+                annotation_set = [
+                    [anno1128, annoLyr1128, "Cont_1128Anno1128", annoShp1128],
+                    [anno2257, annoLyr2257, "Cont_2257Anno2256", annoShp2257],
+                    [anno4514, annoLyr4514, "Cont_4514Anno4513", annoShp4514],
+                    [anno9028, annoLyr9028, "Cont_9028Anno9027", annoShp9028]
+                ]
+        
+                # Create .lyr Files & Add to MXD
+                df = arcpy.mapping.ListDataFrames(mxd, 'Layers')[0]
+                for anno in annotation_set:
+                    lyr_path = anno[1]
+                    if not arcpy.Exists(anno[0]):
+                        arcpy.AddWarning("{}: WARNING: Annotation Layer Missing: {}".format(name, anno[0]))
+                    else:
+                        if arcpy.Exists(lyr_path):
+                            arcpy.AddMessage("\t{}: Annotation Layer Exists: {}".format(name, lyr_path))
+                        else:
+                            arcpy.MakeFeatureLayer_management(anno[0], anno[2])
+                            arcpy.SaveToLayerFile_management(
+                                in_layer=anno[2],
+                                out_layer=lyr_path,
+                                is_relative_path='ABSOLUTE',
+                                version='CURRENT'
+                            )
+                            arcpy.AddMessage("\t{}: Annotation Layer Exported: {}".format(name, lyr_path))
+                            
+                        shp_path = anno[3]
+                        if os.path.exists(shp_path):
+                            arcpy.AddMessage("\t{}: Annotation shapefile Exported: {}".format(name, shp_path))
+                        else:
+                            arcpy.FeatureToPoint_management(in_features=anno[0], out_feature_class=shp_path, point_location="INSIDE")
+                            arcpy.AddMessage("\t{}: Annotation shapefile Exported: {}".format(name, shp_path))
+                        
+                        addLayer = True
+                        for cur_lyr in arcpy.mapping.ListLayers(mxd):
+                            if cur_lyr.name.upper().startswith(str(anno[2]).upper()):
+                                addLayer = False
+                                break
+                        if addLayer:
+                            add_lyr = arcpy.mapping.Layer(lyr_path)
+                            arcpy.mapping.AddLayer(df, add_lyr, 'BOTTOM')
+                mxd.save()
+                a = Utility.doTime(a, "\t{}: Exported layer files for annotation set {}".format(name, annotation_set))
+        
+                # Create Mask FC to Hide Contour Beneath Annotation
+    #             arcpy.env.workspace = filter_folder
+                
+                for lyr_path in annoLyr_paths:  # arcpy.ListFiles('Contours*.lyr_path'):
+                    try:
+        #                 lyr_path = os.path.join(filter_folder, lyr_file)
+                        ref_scale = lyr_path[-8:-4]
+                        mask_fc = os.path.join(filter_folder, r'Mask{}.shp'.format(ref_scale))
+                        if arcpy.Exists(mask_fc):
+                            arcpy.AddMessage("\t{}: Mask Layer Exists: {}".format(name, mask_fc))
+                        else:
+                            if os.path.exists(lyr_path):
+                                arcpy.FeatureOutlineMasks_cartography(
+                                    input_layer=lyr_path,
+                                    output_fc=mask_fc,
+                                    reference_scale=ref_scale,
+                                    spatial_reference=ContourConfig.WEB_AUX_SPHERE,
+                                    margin='0 Points',
+                                    method='BOX',
+                                    mask_for_non_placed_anno='ALL_FEATURES',
+                                    attributes='ALL'
+                                )
+                            else:
+                                arcpy.AddWarning("t{}: WARNING: Can't create masking layer. Layer file missing {}".format(name, lyr_path))
+                    except Exception as e:
+                        arcpy.AddError('\t{}: Exception: {}'.format(name, e))
+                        pass
+                mxd.save()
+                a = Utility.doTime(a, "\t{}: Created masking polygons".format(name))
+                
+                Utility.doTime(aa, 'Finished: {}'.format(name))
+                created1 = True
+                
+            except Exception as e:
+                arcpy.AddError('Exception: {}'.format(e))
+                tb = sys.exc_info()[2]
+                tbinfo = traceback.format_tb(tb)[0]
+                arcpy.AddError("PYTHON ERRORS:\nTraceback info:\n{}\nError Info:\n{}".format(tbinfo, str(sys.exc_info()[1])))
+                arcpy.AddError("ArcPy ERRORS:\n{}\n".format(arcpy.GetMessages(2)))
+                if tries1 > TRIES_ALLOWED:
+                    arcpy.AddError('Dropped: {}'.format(name))
+                    raise e
     
     
 
@@ -727,10 +747,10 @@ def processJob(project_job, project, strUID):
     a = Utility.doTime(a, "Generated tiling scheme")
 
     # Collect Unique Names from Input Feature Class
-    name_list_len=-1
+    name_list_len = -1
     name_list = list(set([row[0] for row in arcpy.da.SearchCursor(footprint_path, ['name'])]))  # @UndefinedVariable
     try:
-        name_list_len  = len(name_list)
+        name_list_len = len(name_list)
     except:
         pass
     a = Utility.doTime(a, "Retrieved name list of size {}".format(name_list_len))

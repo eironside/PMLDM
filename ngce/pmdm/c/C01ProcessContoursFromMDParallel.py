@@ -74,10 +74,11 @@ def createRefDTMMosaic(in_md_path, out_md_path, v_unit):
         
         raster_function_path = Raster.Contour_Meters_function_chain_path
         v_unit = str(v_unit).upper()
-        if v_unit.find("FEET") >= 0:
-            if v_unit.find("INTL") >= 0 or v_unit.find("INTERNATIONAL") >= 0 or v_unit.find("STANDARD") >= 0:
+        if v_unit.find("FEET") >= 0 or v_unit.find("FOOT") >= 0 or  v_unit.find("FT") >= 0:
+            raster_function_path = Raster.Contour_IntlFeet_function_chain_path
+            if v_unit.find("INTL") >= 0 or v_unit.find("INTERNATIONAL") >= 0 or v_unit.find("STANDARD") >= 0 or v_unit.find("STD") >= 0:
                 raster_function_path = Raster.Contour_IntlFeet_function_chain_path
-            else:
+            elif v_unit.find("US") >= 0 or v_unit.find("SURVEY") >= 0:
                 raster_function_path = Raster.Contour_Feet_function_chain_path
         
         arcpy.EditRasterFunction_management(in_mosaic_dataset=out_md_path, edit_mosaic_dataset_item="EDIT_MOSAIC_DATASET", edit_options="REPLACE", function_chain_definition=raster_function_path, location_function_name="")
@@ -162,7 +163,7 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
 
 
 
-def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_path, proc_dict):
+def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_path, proc_dict):
     
     name = proc_dict[0]
     index = str(proc_dict[1][2])
@@ -203,26 +204,53 @@ def generate_contour(md, cont_int, userUnits, vertUnits, smooth_tol, scratch_pat
             if not os.path.exists(divide1_path):
                 arcpy.MakeRasterLayer_management(in_raster=md_layer, out_rasterlayer=divide1_name)
                 # @TODO: Clean up the unit conversion here. output will ALWAYS be US Survey Feet
-                userUnits = userUnits.upper()
-                vertUnits = vertUnits.upper()
-                if (userUnits == "MT" or userUnits == "METERS") and (vertUnits == "MT" or vertUnits == "METER"):
+#                 contUnits = contUnits.upper()
+                contUnits = "FOOT_US"
+                rasterUnits = rasterUnits.upper()
+                
+#                 if contUnits.find("METERS") >= 0 or contUnits.find("MT") >= 0:  
+#                     contUnits = "METER"
+#                 elif contUnits.find("FOOT") >= 0 or contUnits.find("FEET") >= 0 or contUnits.find("FT") >= 0:
+#                     contUnits = "FOOT_INTL"
+#                     if contUnits.find("US") >= 0 or contUnits.find("SURVEY") >= 0:  
+#                         contUnits = "FOOT_US"
+#                 
+                if rasterUnits.find("METERS") >= 0 or rasterUnits.find("MT") >= 0:  
+                    rasterUnits = "METER"
+                elif rasterUnits.find("FOOT") >= 0 or rasterUnits.find("FEET") >= 0 or rasterUnits.find("FT") >= 0:
+                    rasterUnits = "FOOT_INTL"
+                    if rasterUnits.find("US") >= 0 or rasterUnits.find("SURVEY") >= 0:  
+                        rasterUnits = "FOOT_US"
+                    
+#                 if contUnits == "METER":
+#                     if rasterUnits == "METER":
+#                         outDivide1 = Functions.Divide(divide1_name, 1.0)
+#                     elif rasterUnits == "FOOT_US":
+#                         outDivide1 = Functions.Times(divide1_name, 1200.0 / 3937.0)
+#                     elif rasterUnits == "FOOT_INTL":
+#                         outDivide1 = Functions.Times(divide1_name, 0.3048)
+#                 elif contUnits == "FOOT_US":
+                if rasterUnits == "METER":
+                    outDivide1 = Functions.Times(divide1_name, 1.0 / (1200.0 / 3937.0))
+                elif rasterUnits == "FOOT_US":
                     outDivide1 = Functions.Divide(divide1_name, 1.0)
-                elif (userUnits == "MT" or userUnits == "METERS") and (vertUnits == "FOOT_US"):
-                    outDivide1 = Functions.Times(divide1_name, 0.30480061)
-                elif (userUnits == "MT" or userUnits == "METERS") and (vertUnits == "FOOT_INTL"):
-                    outDivide1 = Functions.Times(divide1_name, 0.3048)
-                elif (userUnits == "FT" or userUnits == "FEET") and (vertUnits == "MT" or vertUnits == "METER"):
-                    outDivide1 = Functions.Divide(divide1_name, 0.3048)
-                elif (userUnits == "FT" or userUnits == "FEET") and (vertUnits == "FOOT_US" or vertUnits == "FOOT_INTL"):
-                    outDivide1 = Functions.Divide(divide1_name, 1.0)
+                elif rasterUnits == "FOOT_INTL":
+                    outDivide1 = Functions.Times(divide1_name, 0.3048 / (1200.0 / 3937.0))
+#                 elif contUnits == "FOOT_INTL":
+#                     if rasterUnits == "METER":
+#                         outDivide1 = Functions.Times(divide1_name, 1.0 / (0.3048))
+#                     elif rasterUnits == "FOOT_US":
+#                         outDivide1 = Functions.Times(divide1_name, (1200.0 / 3937.0) / 0.3048)
+#                     elif rasterUnits == "FOOT_INTL":
+#                         outDivide1 = Functions.Divide(divide1_name, 1.0)
                 else:
-                    arcpy.AddMessage("\nuserUnits: {}, vertUnits: {}".format(userUnits, vertUnits))
+                    arcpy.AddMessage("\ncontourUnits: {}, rasterUnits: {}".format(contUnits, rasterUnits))
                     arcpy.AddError('\nUnable to create contours.')
                     raise Exception("Units not valid")
                 
                 outDivide1.save(divide1_path)
                 del outDivide1
-                a = doTime(a, '\t' + name + ' ' + index + ': Converted units ' + divide1_path)
+                a = doTime(a, '\t' + name + ' ' + index + ': Converted raster units ' + rasterUnits + ' to ' + contUnits + ' = ' + divide1_path)
             
             focal1_name = 'O02_Focal1_' + name + '.tif'
             focal1_path = os.path.join(workspace, focal1_name)
@@ -433,9 +461,9 @@ def isProcessFile(f_name, scratch_dir):
             process_file = True
         else:
             try:
-                rows = [row for row in arcpy.da.SearchCursor(cont,"OID@" )]
+                rows = [row for row in arcpy.da.SearchCursor(cont, "OID@")]  # @UndefinedVariable
                 rows = len(rows)
-                if rows <=0:
+                if rows <= 0:
                     arcpy.AddMessage("PROCESS (0 Rows): " + cont)
                     arcpy.Delete_management(cont)
                     process_file = True
