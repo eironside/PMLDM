@@ -97,8 +97,8 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
         
     ProjectMDs_fgdb_path = ProjectFolder.published.fgdb_path
     arcpy.AddMessage("Project file GDB Path: {}".format(ProjectMDs_fgdb_path))
-        
-    md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.INT]
+    # Don't need to do heigh models
+    md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.INT]
           
     # Ensure the master_md_path exists
     for md_name in md_list:
@@ -253,7 +253,7 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
                             
                             cellsizeOVR = 305.74811
                             
-                            DefineBuildOverviews (cellsizeOVR, master_md_path, MasterMD_overview_path, "#")
+                            DefineBuildOverviews(cellsizeOVR, master_md_path, MasterMD_overview_path, "#")
                         else:
                             arcpy.AddWarning("\nProject Mosaic bit depth is not 32-bit Floating Point. Ingoring mosaic dataset.")
                     else:

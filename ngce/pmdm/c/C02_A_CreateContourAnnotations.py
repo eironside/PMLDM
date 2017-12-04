@@ -250,7 +250,7 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
     annoLyr_paths = [annoLyr1128, annoLyr2257, annoLyr4514, annoLyr9028]
     
     clearScratch = True    
-    TRIES_ALLOWED = 3
+    TRIES_ALLOWED = 10
     
     if not isProcessFile(scratch, name):
         arcpy.AddMessage("{}: All artifacts exist".format(name))
