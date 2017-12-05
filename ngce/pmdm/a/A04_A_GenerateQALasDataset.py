@@ -640,13 +640,15 @@ if __name__ == '__main__':
     
     strJobID = sys.argv[1]
     createQARasters = False
-    createMissingRasters = False
+    createMissingRasters = True
     overrideBorderPath = None
 
     if len(sys.argv) > 2:
-        createQARasters = sys.argv[2]
+        arcpy.AddMessage("CreateQARasters argv = '{}'".format(sys.argv[2]))
+        createQARasters = (str(sys.argv[2]).upper() == "TRUE")
     if len(sys.argv) > 3:
-        createMissingRasters = sys.argv[3]
+        arcpy.AddMessage("createMissingRasters argv = '{}'".format(sys.argv[3]))
+        createMissingRasters = (str(sys.argv[3]).upper() == "TRUE")
     if len(sys.argv) > 4:
         overrideBorderPath = str(sys.argv[4])
     Utility.printArguments(["WMXJobID", "createQARasters", "createMissingRasters", "overrideBorderPath"],

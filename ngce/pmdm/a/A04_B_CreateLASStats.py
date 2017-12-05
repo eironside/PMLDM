@@ -39,6 +39,7 @@ FOOTPRINT_BUFFER_DIST = 25  # Meters
 B_SIMPLE_DIST = 1 # Meters
 C_SIMPLE_DIST = 0.1 # Meters
 
+MAX_TRIES = 10
 
 KEY_LIST = [MAX, MEAN, MIN, RANGE, STAND_DEV, XMIN, YMIN, XMAX, YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID]
 
@@ -531,21 +532,40 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
     for row in arcpy.da.SearchCursor(vector_bound_path, ["SHAPE@"]):  # @UndefinedVariable
         shape = row[0]
         footprint_area = shape.getArea ("PRESERVE_SHAPE", "SQUAREMETERS")
-    
-    arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[PATH][0], field_alias=FIELD_INFO[PATH][1], field_type=FIELD_INFO[PATH][2], field_length=FIELD_INFO[PATH][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    #addToolMessages()
-    arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[NAME][0], field_alias=FIELD_INFO[NAME][1], field_type=FIELD_INFO[NAME][2], field_length=FIELD_INFO[NAME][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    #addToolMessages()
-    arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[AREA][0], field_alias=FIELD_INFO[AREA][1], field_type=FIELD_INFO[AREA][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-     
+
     b_f_path = os.path.split(f_path)[0]
     b_f_name = os.path.splitext(f_name)[0]
-    arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[PATH][0], expression='"{}"'.format(b_f_path), expression_type="PYTHON_9.3")
-    #addToolMessages()
-    arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[NAME][0], expression='"{}"'.format(b_f_name), expression_type="PYTHON_9.3")
-    #addToolMessages()
-    arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[AREA][0], expression=footprint_area, expression_type="PYTHON_9.3")
-    #addToolMessages()
+
+    
+    tries = 0
+    success = False
+
+    while not success and tries < MAX_TRIES:
+        tries = tries + 1
+        try:
+
+            if not fieldExists(vector_bound_path, FIELD_INFO[PATH][0]):
+                arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[PATH][0], field_alias=FIELD_INFO[PATH][1], field_type=FIELD_INFO[PATH][2], field_length=FIELD_INFO[PATH][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+            arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[PATH][0], expression='"{}"'.format(b_f_path), expression_type="PYTHON_9.3")
+
+            if not fieldExists(vector_bound_path, FIELD_INFO[NAME][0]):
+                arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[NAME][0], field_alias=FIELD_INFO[NAME][1], field_type=FIELD_INFO[NAME][2], field_length=FIELD_INFO[NAME][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+            arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[NAME][0], expression='"{}"'.format(b_f_name), expression_type="PYTHON_9.3")
+
+            if not fieldExists(vector_bound_path, FIELD_INFO[AREA][0]):
+                arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[AREA][0], field_alias=FIELD_INFO[AREA][1], field_type=FIELD_INFO[AREA][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+            arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[AREA][0], expression=footprint_area, expression_type="PYTHON_9.3")
+            success = True
+        except:
+            if tries >= MAX_TRIES:
+                error_vector_bound_path = os.path.join(stat_out_folder, "ERROR_B_{}.shp".format(f_name))
+                deleteFileIfExists(error_vector_bound_path, useArcpy=True) 
+                arcpy.AddError("\tERROR: Failed to modify fields, giving up and renaming to {}".format(error_vector_bound_path))
+                arcpy.Rename_management(vector_bound_path, error_vector_bound_path)
+                deleteFileIfExists(vector_bound_path, useArcpy=True) 
+            else:
+                arcpy.AddWarning("\tWARNING: Failed to modify fields, trying again")
+                pass
     
     try:
         arcpy.DeleteField_management(in_table=vector_bound_path, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
@@ -556,6 +576,14 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
     doTime(a, "\tCreated BOUND {}".format(vector_bound_path))
 
 
+def fieldExists(fc, target_name):
+    field_list = arcpy.ListFields(fc)
+    found = False
+    for field in field_list:
+        if field.name == target_name:
+            found = True
+            break
+    return found
 '''
 --------------------------------------------------------------------------------
 Adds the exported point file info I_<name>.shp point spacing value to the bound feature class
@@ -823,9 +851,23 @@ def createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spati
     
     arcpy.PointFileInformation_3d(input=f_path, out_feature_class=point_file_path, in_file_type="LAS", input_coordinate_system=spatial_reference, folder_recursion="NO_RECURSION", extrude_geometry="NO_EXTRUSION", decimal_separator="DECIMAL_POINT", summarize_by_class_code="NO_SUMMARIZE", improve_las_point_spacing="LAS_SPACING")
     addToolMessages()
-    arcpy.AddField_management(in_table=point_file_path, field_name="Class", field_type="LONG")
-    arcpy.CalculateField_management(in_table=point_file_path, field="Class", expression=-1, expression_type="PYTHON_9.3")
-    
+
+    tries = 0
+    success = False
+    while not success and tries < MAX_TRIES:
+        tries = tries + 1
+        try:
+            if not fieldExists(point_file_path, "Class"): 
+                arcpy.AddField_management(in_table=point_file_path, field_name="Class", field_type="LONG")
+            arcpy.CalculateField_management(in_table=point_file_path, field="Class", expression=-1, expression_type="PYTHON_9.3")
+            success = True
+            
+        except Exception e:
+            if tries >= MAX_TRIES:
+                raise e
+            else:
+                pass
+            
     # Create the rows for the other classes with -1 (null) values
     blank_rows = {}
     info_fields = ["SHAPE@", "FileName", "Class", "Pt_Count", "Pt_Spacing", "Z_Min", "Z_Max"]
@@ -838,6 +880,7 @@ def createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spati
                 clazz_row = copy.deepcopy(blank_row)
                 clazz_row[2] = clazz
                 blank_rows[clazz] = clazz_row
+        
     
     arcpy.PointFileInformation_3d(input=f_path, out_feature_class=point_file_path1, in_file_type="LAS", input_coordinate_system=spatial_reference, folder_recursion="NO_RECURSION", extrude_geometry="NO_EXTRUSION", decimal_separator="DECIMAL_POINT", summarize_by_class_code="SUMMARIZE", improve_las_point_spacing="NO_LAS_SPACING")
     arcpy.Append_management(inputs=point_file_path1, target=point_file_path, schema_type="TEST")
@@ -1039,12 +1082,12 @@ def getCellSize(spatial_reference, cell_size, createMissingRasters=False):
             pass
     arcpy.AddMessage("\t\tCell Size = {}".format(result))
     return result
-
+#   processFile(f_path, target_path, spatial_reference, isClassified, createQARasters,       createMissingRasters,       overrideBorderPath)
 def processFile(f_path, target_path, spatial_reference, isClassified, createQARasters=False, createMissingRasters=False, overrideBorderPath=None):
     if not isinstance(createQARasters, bool):
         createQARasters = (str(createQARasters) in ['True', 'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh'])
         arcpy.AddMessage("Converted createQARaters to bool {}".format(createQARasters))
-    arcpy.AddMessage("A04_B Process File: f_path={}\n\ttarget_path, spatial_reference={}\n\tisClassified={}\n\tcreateQARasters={}\n\tcreateMissingRasters={}\n\toverrideBorderPath={}".format(f_path, target_path, spatial_reference, isClassified, createQARasters, createMissingRasters, overrideBorderPath))
+    arcpy.AddMessage("A04_B Process File: f_path={}\n\ttarget_path{}, spatial_reference={}\n\tisClassified={}\n\tcreateQARasters={}\n\tcreateMissingRasters={}\n\toverrideBorderPath={}".format(f_path, target_path, spatial_reference, isClassified, createQARasters, createMissingRasters, overrideBorderPath))
     aa = datetime.now()
 
     f_name = os.path.split(os.path.splitext(f_path)[0])[1]
@@ -1340,31 +1383,34 @@ if __name__ == '__main__':
     checkedOut = False
     overrideBorderPath = None
     
-    if len(sys.argv) >= 2:
+    if len(sys.argv) > 1:
         f_paths = sys.argv[1]
     
-    if len(sys.argv) >= 3:
+    if len(sys.argv) > 2:
         target_path = sys.argv[2]
         
-    if len(sys.argv) >= 4:
+    if len(sys.argv) > 3:
         spatial_reference = sys.argv[3]
     
-    if len(sys.argv) >= 5:
-        isClassified = sys.argv[4]
+    if len(sys.argv) > 4:
+        arcpy.AddMessage("isClassified argv = '{}'".format(sys.argv[4]))
+        isClassified = (str(sys.argv[4]).upper() == "TRUE")
     
-    if len(sys.argv) >= 6:
-        createQARasters = sys.argv[5]
+    if len(sys.argv) > 5:
+        arcpy.AddMessage("createQARasters argv = '{}'".format(sys.argv[5]))
+        createQARasters = (str(sys.argv[5]).upper() == "TRUE")
         if not isinstance(createQARasters, bool):
             createQARasters = (str(createQARasters) in ['True', 'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh'])
             arcpy.AddMessage("Converted createQARaters to bool {}".format(createQARasters))
     
-    if len(sys.argv) >= 7:
-        createMissingRasters = sys.argv[6]
+    if len(sys.argv) > 6:
+        arcpy.AddMessage("createMissingRasters argv = '{}'".format(sys.argv[6]))
+        createMissingRasters =  (str(sys.argv[6]).upper() == "TRUE")
 
-    if len(sys.argv) >= 8:
+    if len(sys.argv) > 7:
         overrideBorderPath = sys.argv[7]    
     
-    arcpy.AddMessage("\n\tf_paths='{}',\n\ttarget_path='{}',\n\tspatial_reference='{}',\n\tisClassified='{}',\n\tcreateQARasters='{}',\n\toverrideBorderPath='{}'".format(f_paths, target_path, spatial_reference, isClassified, createQARasters, overrideBorderPath))
+    arcpy.AddMessage("\n\tf_paths='{}',\n\ttarget_path='{}',\n\tspatial_reference='{}',\n\tisClassified='{}',\n\tcreateQARasters='{}',\n\tcreateMissingRasters='{}',\n\toverrideBorderPath='{}'".format(f_paths, target_path, spatial_reference, isClassified, createQARasters, createMissingRasters, overrideBorderPath))
     
     f_paths = str(f_paths).split(",")
      
