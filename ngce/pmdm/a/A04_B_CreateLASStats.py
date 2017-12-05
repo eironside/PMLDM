@@ -862,7 +862,7 @@ def createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spati
             arcpy.CalculateField_management(in_table=point_file_path, field="Class", expression=-1, expression_type="PYTHON_9.3")
             success = True
             
-        except Exception e:
+        except Exception as e:
             if tries >= MAX_TRIES:
                 raise e
             else:
