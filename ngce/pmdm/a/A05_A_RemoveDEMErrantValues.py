@@ -590,7 +590,13 @@ def processJob(ProjectJob, project, ProjectUID):
         if spatialRef_error[elev_type]:
             arcpy.AddError("Failed to process {} correctly".format(elev_type))
             errorMsg.append(elev_type)
-            
+
+    try:
+        if fgdb_path is not None and os.path.exists(fgdb_path):
+            arcpy.Compact_management(in_workspace=fgdb_path)
+    except:
+        pass
+    
     return errorMsg
         
     

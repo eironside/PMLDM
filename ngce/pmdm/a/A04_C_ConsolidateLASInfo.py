@@ -466,47 +466,73 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
         lasd_boundary_B = "{}B".format(lasd_boundary)
         deleteFileIfExists(lasd_boundary_B, True)
 
-        las_footprint_1 = os.path.join(fgdb_path, "{}1".format(las_footprint))
-        las_footprint_2 = os.path.join(fgdb_path, "{}2".format(las_footprint))
-        las_footprint_CP = os.path.join(fgdb_path, "{}_CP".format(las_footprint))
+        las_footprint_1 = os.path.join(fgdb_path, "{}B1".format(las_footprint))
+        las_footprint_2 = os.path.join(fgdb_path, "{}B2".format(las_footprint))
+        las_footprint_CP = os.path.join(fgdb_path, "{}B_CP".format(las_footprint))
+        a = doTime(a, "\tMerging B footprints to {}".format(las_footprint_2))
         deleteFileIfExists(las_footprint_1, True)
         deleteFileIfExists(las_footprint_2, True)
         deleteFileIfExists(las_footprint_CP, True)
         arcpy.Merge_management(inputs=b_file_list, output=las_footprint_2)
-        arcpy.RepairGeometry_management(in_features=las_footprint_2, delete_null="DELETE_NULL")
-        
-        arcpy.CreateCartographicPartitions_cartography(in_features=las_footprint_2, out_features=las_footprint_CP, feature_count=PARTITION_COUNT)
-        a = doTime(a, "\tCreated carto parts")
-
-        arcpy.env.cartographicPartitions = las_footprint_CP
-        a = doTime(a, "\tSet cartographic partitions to {}".format(las_footprint_CP))
-        
-        arcpy.SimplifyPolygon_cartography(in_features=las_footprint_2, out_feature_class=las_footprint_1, algorithm="BEND_SIMPLIFY", tolerance="0.25 Meters", minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
-        deleteFileIfExists(las_footprint_2, True)
-        arcpy.RepairGeometry_management(in_features=las_footprint_1, delete_null="DELETE_NULL")
         Utility.addToolMessages()
+        arcpy.RepairGeometry_management(in_features=las_footprint_2, delete_null="DELETE_NULL")
+        Utility.addToolMessages()
+        a = doTime(a, "\tMerged B and repaired footprints to {}".format(las_footprint_2))
+        
+        #arcpy.CreateCartographicPartitions_cartography(in_features=las_footprint_2, out_features=las_footprint_CP, feature_count=PARTITION_COUNT)
+        #a = doTime(a, "\tCreated B carto parts")
 
-        a = doTime(a, "Merged las footprints {}".format(las_footprint_1))
+        #arcpy.env.cartographicPartitions = las_footprint_CP
+        #a = doTime(a, "\tSet B cartographic partitions to {}".format(las_footprint_CP))
+        
+        #arcpy.SimplifyPolygon_cartography(in_features=las_footprint_2, out_feature_class=las_footprint_1, algorithm="POINT_REMOVE", tolerance="0.5 Meters", minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
+        #Utility.addToolMessages()
+        #arcpy.env.cartographicPartitions = None
+        #a = doTime(a, "\tSimplified B las footprints to {}".format(las_footprint_1))
+        #deleteFileIfExists(las_footprint_2, True)
+        #arcpy.RepairGeometry_management(in_features=las_footprint_1, delete_null="DELETE_NULL")
+        #Utility.addToolMessages()
 
-        createBoundaryFeatureClass(las_footprint_1, lasd_boundary_B)
+        #a = doTime(a, "Merged B las footprints {}".format(las_footprint_1))
+
+        createBoundaryFeatureClass(las_footprint_2, lasd_boundary_B)
+        deleteFileIfExists(las_footprint_2, True)
         a = datetime.datetime.now()
+        
 
         # Merge the other footprints before clipping
+        las_footprint_1 = os.path.join(fgdb_path, "{}C1".format(las_footprint))
+        las_footprint_2 = os.path.join(fgdb_path, "{}C2".format(las_footprint))
+        las_footprint_CP = os.path.join(fgdb_path, "{}C_CP".format(las_footprint))
         deleteFileIfExists(las_footprint_1, True)
         deleteFileIfExists(las_footprint_2, True)
+        deleteFileIfExists(las_footprint_CP, True)
+        a = doTime(a, "\tMerging C las footprints to {}".format(las_footprint_2))
         arcpy.Merge_management(inputs=c_file_list, output=las_footprint_2)
+        Utility.addToolMessages()
         arcpy.RepairGeometry_management(in_features=las_footprint_2, delete_null="DELETE_NULL")
         Utility.addToolMessages()
-        arcpy.SimplifyPolygon_cartography(in_features=las_footprint_2, out_feature_class=las_footprint_1, algorithm="BEND_SIMPLIFY", tolerance="0.25 Meters", minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
-        deleteFileIfExists(las_footprint_2, True)
-        arcpy.RepairGeometry_management(in_features=las_footprint_1, delete_null="DELETE_NULL")
-        Utility.addToolMessages()
+        a = doTime(a, "\tMerged C las footprints to {}".format(las_footprint_2))
+
+        #arcpy.CreateCartographicPartitions_cartography(in_features=las_footprint_2, out_features=las_footprint_CP, feature_count=PARTITION_COUNT)
+        #a = doTime(a, "\tCreated C carto parts")
+
+        #arcpy.env.cartographicPartitions = las_footprint_CP
+        #a = doTime(a, "\tSet C cartographic partitions to {}".format(las_footprint_CP))
         
-        a = doTime(a, "Merged las footprints {}".format(las_footprint_1))
+        #arcpy.SimplifyPolygon_cartography(in_features=las_footprint_2, out_feature_class=las_footprint_1, algorithm="POINT_REMOVE", tolerance="0.5 Meters", minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
+        #Utility.addToolMessages()
+        #arcpy.env.cartographicPartitions = None
+        #a = doTime(a, "\tSimplified C las footprints to {}".format(las_footprint_1))
+        #deleteFileIfExists(las_footprint_2, True)
+        #arcpy.RepairGeometry_management(in_features=las_footprint_1, delete_null="DELETE_NULL")
+        #Utility.addToolMessages()
+        
+        #a = doTime(a, "Merged C las footprints {}".format(las_footprint_1))
 
         lasd_boundary_C = "{}C".format(lasd_boundary)
         deleteFileIfExists(lasd_boundary_C, True)
-        createBoundaryFeatureClass(las_footprint_1, lasd_boundary_C)
+        createBoundaryFeatureClass(las_footprint_2, lasd_boundary_C)
 
         lasd_boundary_SD = "{}_SD".format(lasd_boundary)
         lasd_boundary_SD1 = "{}_SD1".format(lasd_boundary)
@@ -530,17 +556,19 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
 
         a = doTime(a, "Created symetrical difference in boundaries {}".format(lasd_boundary_SD))
 
-        checkNullFields(las_footprint_1)
+        checkNullFields(las_footprint_2)
         a = datetime.datetime.now()
 
         deleteFileIfExists(las_footprint, True)
-        arcpy.Clip_analysis(in_features=las_footprint_1, clip_features=lasd_boundary_B, out_feature_class=las_footprint, cluster_tolerance="")
-        deleteFileIfExists(las_footprint_1, True)
+        arcpy.Clip_analysis(in_features=las_footprint_2, clip_features=lasd_boundary_B, out_feature_class=las_footprint, cluster_tolerance="")
+        #deleteFileIfExists(las_footprint_1, True)
         deleteFileIfExists(lasd_boundary_B, True)
 
-        deleteFileIfExists(lasd_boundary, True)
-        deleteFileIfExists(las_footprint_CP, True)
-        arcpy.env.cartographicPartitions = None
+        #deleteFileIfExists(lasd_boundary, True)
+        #deleteFileIfExists(las_footprint_CP, True)
+        #arcpy.env.cartographicPartitions = None
+
+        deleteFileIfExists(las_footprint_2, True)
         a = doTime(a, "Clipped las footprints to dataset boundary {} ".format(las_footprint))
 
     if arcpy.Exists(lasd_boundary):
