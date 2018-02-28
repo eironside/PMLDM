@@ -67,10 +67,10 @@ def deleteFields(in_table):
     for field in fields:
         existing_fields.append(field.name)
         
-    arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
+    #arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
     drop_fields=["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id",
                  "MINSIMPTOL", "MAXSIMPTOL", "ORIG_FID", "INPOLY_FID", "SIMPGNFLAG", "ID",
-                 "minsimptol", "maxsimptol", "orig_fid", "inpoly_fid", "simpgnflag", "id"]
+                 "minsimptol", "maxsimptol", "orig_fid", "inpoly_fid", "simpgnflag", "id", "BUFF_DIST"]
     for drop_field in drop_fields:
         #arcpy.AddMessage("\t\tTrying to drop field '{}' from '{}'".format(drop_field, in_table))
         if drop_field in existing_fields:
@@ -226,17 +226,22 @@ Optionally summarizes statistics
 def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statistics_fields="", alter_field_infos=None):
     a = datetime.datetime.now()
     aa = a
+    deleteFields(raster_footprint)
     lasd_boundary_1 = "{}1".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_1, True)
     arcpy.AddMessage("\tBuffering")
     arcpy.Buffer_analysis(in_features=raster_footprint, out_feature_class=lasd_boundary_1, buffer_distance_or_field="10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="NONE", method="PLANAR")
     Utility.addToolMessages()
+    deleteFields(lasd_boundary_1)
 
     lasd_boundary_2 = "{}2".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_2, True)
     arcpy.AddMessage("\tDissolving with statistics: {}".format(statistics_fields))
     arcpy.Dissolve_management(in_features=lasd_boundary_1, out_feature_class=lasd_boundary_2, statistics_fields=statistics_fields)
+    Utility.addToolMessages()
+    deleteFields(lasd_boundary_2)
     a = doTime(a, "\tDissolved to {}".format(lasd_boundary_2))
+    
 
     if alter_field_infos is not None:
         for alter_field_info in alter_field_infos:
@@ -250,8 +255,8 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
     lasd_boundary_3 = "{}3".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_3, True)
     arcpy.EliminatePolygonPart_management(in_features=lasd_boundary_2, out_feature_class=lasd_boundary_3, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
-    deleteFileIfExists(lasd_boundary_2, True)
-
+    deleteFileIfExists(lasd_boundary_1, True)
+    deleteFields(lasd_boundary_3)
     lasd_boundary_4 = "{}4".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_4, True)
     arcpy.SimplifyPolygon_cartography(in_features=lasd_boundary_3, out_feature_class=lasd_boundary_4, algorithm="BEND_SIMPLIFY", tolerance="20 Meters", minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
@@ -264,14 +269,15 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
 
     deleteFileIfExists(target_raster_boundary, True)
     arcpy.Buffer_analysis(in_features=lasd_boundary_4, out_feature_class=target_raster_boundary, buffer_distance_or_field="-10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
+    deleteFields(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_4, True)
 
     if alter_field_infos is not None and len(alter_field_infos) > 0:
         fields = ";".join([field[1] for field in alter_field_infos])
-        arcpy.JoinField_management(in_data=target_raster_boundary, in_field="OBJECTID", join_table=lasd_boundary_1, join_field="OBJECTID", fields=fields)
-        # Utility.addToolMessages()
-
-    deleteFileIfExists(lasd_boundary_1, True)
+        arcpy.JoinField_management(in_data=target_raster_boundary, in_field="OBJECTID", join_table=lasd_boundary_2, join_field="OBJECTID", fields=fields)
+        Utility.addToolMessages()
+    
+    deleteFileIfExists(lasd_boundary_2, True)
 
     a = doTime(aa, "Dissolved las footprints to dataset boundary {} ".format(target_raster_boundary))
 
