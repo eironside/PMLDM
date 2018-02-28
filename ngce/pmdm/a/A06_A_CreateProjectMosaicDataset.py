@@ -659,6 +659,10 @@ def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd
                                             algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters",
                                             error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
     Utility.addToolMessages()
+    try:
+        arcpy.DeleteField_management(in_table=temp_smpl_las_path1, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
+    except:
+        pass
     las_footprint_path = temp_smpl_las_path1
     arcpy.RepairGeometry_management(in_features=las_footprint_path, delete_null="DELETE_NULL")
     Utility.addToolMessages()
@@ -671,6 +675,10 @@ def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd
                                             algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters",
                                             error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
     Utility.addToolMessages()
+    try:
+        arcpy.DeleteField_management(in_table=raster_boundary_md, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
+    except:
+        pass
     arcpy.RepairGeometry_management(in_features=raster_boundary_md, delete_null="DELETE_NULL")
     Utility.addToolMessages()
     a = doTime(a, "\tRepaired geometry {}".format(raster_boundary_md))
@@ -713,6 +721,10 @@ def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd
                                             algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters",
                                             error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
                     Utility.addToolMessages()
+                    try:
+                        arcpy.DeleteField_management(in_table=temp_smpl_ras_path1, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
+                    except:
+                        pass
                     raster_footprint_path = temp_smpl_ras_path1
                     arcpy.RepairGeometry_management(in_features=raster_footprint_path, delete_null="DELETE_NULL")
                     Utility.addToolMessages()

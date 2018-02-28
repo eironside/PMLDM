@@ -75,6 +75,10 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
     raster_boundary_4 = "{}4".format(target_raster_boundary)
     deleteFileIfExists(raster_boundary_4, True)
     arcpy.SimplifyPolygon_cartography(in_features=raster_boundary_3, out_feature_class=raster_boundary_4, algorithm="BEND_SIMPLIFY", tolerance="20 Meters", minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
+    try:
+        arcpy.DeleteField_management(in_table=raster_boundary_4, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
+    except:
+        pass
     deleteFileIfExists(raster_boundary_3, True)
     
     deleteFileIfExists(target_raster_boundary, True)

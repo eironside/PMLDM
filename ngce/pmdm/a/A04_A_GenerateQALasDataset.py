@@ -340,15 +340,33 @@ def checkSpatialOnLas(start_dir, target_path, createQARasters, isClassified):
     desc = arcpy.Describe(lasd_f_path)
     if desc is not None:
         las_spatial_ref = desc.SpatialReference
+        if las_spatial_ref is not None:
+            try:
+                arcpy.AddMessage("\tFound spatial reference in LAS: {}".format(las_spatial_ref.exportToString()))
+            except:
+                pass
 
     prj_Count, prj_File = Utility.fileCounter(start_dir, '.prj')
+    arcpy.AddMessage("\tFound {} PRJ files, the first is: {}".format(prj_Count,prj_File))
     if prj_Count > 0 and prj_File is not None and len(str(prj_File)) > 0:
-        prj_spatial_ref = os.path.join(start_dir, prj_File)
+        prj_Path = os.path.join(start_dir, prj_File)
+        arcpy.AddMessage("\tReading spatial reference from PRJ file: {}".format(prj_Path))
+        
+        prj_spatial_ref = arcpy.SpatialReference(prj_Path)
+        arcpy.AddMessage("\tGot from PRJ file spatial reference: {}".format(prj_spatial_ref))
+        if prj_spatial_ref is not None:
+            try:
+                arcpy.AddMessage("\tFound spatial reference in PRJ: {}".format(prj_spatial_ref.exportToString()))
+            except:
+                pass
 
-        prj_spatial_ref = arcpy.SpatialReference(prj_spatial_ref)
-
+    arcpy.AddMessage("Decoding LAS File Spatial Reference")
     las_horz_cs_name, las_horz_cs_unit_name, las_horz_cs_factory_code, las_vert_cs_name, las_vert_cs_unit_name = Utility.getSRValues(las_spatial_ref)
-    prj_horz_cs_name, prj_horz_cs_unit_name, prj_horz_cs_factory_code, prj_vert_cs_name, prj_vert_cs_unit_name = Utility.getSRValues(prj_spatial_ref)
+
+    prj_horz_cs_name, prj_horz_cs_unit_name, prj_horz_cs_factory_code, prj_vert_cs_name, prj_vert_cs_unit_name = None, None, None, None, None
+    if prj_spatial_ref is not None:
+        arcpy.AddMessage("Decoding PRJ File Spatial Reference")
+        prj_horz_cs_name, prj_horz_cs_unit_name, prj_horz_cs_factory_code, prj_vert_cs_name, prj_vert_cs_unit_name = Utility.getSRValues(prj_spatial_ref)
 
     arcpy.AddMessage("LAS File Spatial Reference:\n\tH_Name: '{}'\n\tH_Unit: '{}'\n\tH_WKID: '{}'\n\tV_Name: '{}'\n\tV_Unit: '{}'".format(las_horz_cs_name, las_horz_cs_unit_name, las_horz_cs_factory_code, las_vert_cs_name, las_vert_cs_unit_name))
     arcpy.AddMessage("PRJ File Spatial Reference:\n\tH_Name: '{}'\n\tH_Unit: '{}'\n\tH_WKID: '{}'\n\tV_Name: '{}'\n\tV_Unit: '{}'".format(prj_horz_cs_name, prj_horz_cs_unit_name, prj_horz_cs_factory_code, prj_vert_cs_name, prj_vert_cs_unit_name))
@@ -500,14 +518,22 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
 
         elif not las_qainfo.isValidSpatialReference():
             las_qainfo.lasd_spatial_ref = None
-            arcpy.AddError("ERROR: Spatial Reference for the las files is not standard: '{}'".format(Utility.getSpatialReferenceInfo(las_qainfo.lasd_spatial_ref)))
+            arcpy.AddError("ERROR: Spatial Reference for the las files is not standard (see above)")
             arcpy.AddError("ERROR: Please create a projection file (.prj) in the LAS folder using the '3D Analyst Tools/Conversion/From File/Point File Information' tool.")
+            try:
+                arcpy.AddError("ERROR: '{}'".format(Utility.getSpatialReferenceInfo(las_qainfo.lasd_spatial_ref)))
+            except:
+                pass
 
         elif las_qainfo.isUnknownSpatialReference():
             las_qainfo.lasd_spatial_ref = None
-            arcpy.AddError("ERROR: Spatial Reference for the las files is not standard: '{}'".format(Utility.getSpatialReferenceInfo(las_qainfo.lasd_spatial_ref)))
             arcpy.AddError("ERROR: Please provide a projection file (.prj) that provides a valid transformation in the LAS directory.")
             arcpy.AddError("ERROR:   Please create a projection file (.prj) in the LAS folder using the '3D Analyst Tools/Conversion/From File/Point File Information' tool.")
+            arcpy.AddError("ERROR: Spatial Reference for the las files is not standard")
+            try:
+                arcpy.AddError("ERROR: '{}'".format(Utility.getSpatialReferenceInfo(las_qainfo.lasd_spatial_ref)))
+            except:
+                pass
 
         if las_qainfo.lasd_spatial_ref is None:
             raise Exception("Error: Spatial Reference is invalid, unknown, or not specified.")

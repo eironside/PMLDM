@@ -126,6 +126,32 @@ def createMosaicDataset(gdb_path, md_name, spatial_reference):
     return md_path
 
 
+
+
+def deleteField(in_table, drop_field):
+    arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
+    try:    
+        arcpy.DeleteField_management(in_table=in_table, drop_field=drop_field)
+    except:
+        arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
+        pass
+
+def deleteFields(in_table):
+    fields = arcpy.ListFields(in_table)
+    existing_fields = []
+    for field in fields:
+        existing_fields.append(field.name)
+        
+    arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
+    drop_fields=["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id",
+                 "MINSIMPTOL", "MAXSIMPTOL", "ORIG_FID", "INPOLY_FID", "SIMPGNFLAG", "ID",
+                 "minsimptol", "maxsimptol", "orig_fid", "inpoly_fid", "simpgnflag", "id"]
+    for drop_field in drop_fields:
+        #arcpy.AddMessage("\t\tTrying to drop field '{}' from '{}'".format(drop_field, in_table))
+        if drop_field in existing_fields:
+           deleteField(in_table, drop_field)
+        
+        
     
 
 '''
@@ -138,6 +164,7 @@ It performs 10x faster than the other 'B' method
 '''
 def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_bound_path, minZ, maxZ, bound_path, elev_type):
     a = datetime.now()
+    arcpy.AddMessage("\tCreating {} bound for '{}' using min z '{}' and max z'{}'".format(elev_type, f_path, minZ, maxZ))
     
     vector_1_bound_path = os.path.join(stat_out_folder, "B1_{}.shp".format(f_name))
     vector_2_bound_path = os.path.join(stat_out_folder, "B2_{}.shp".format(f_name))
@@ -150,6 +177,11 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
     arcpy.RasterDomain_3d(in_raster=f_path, out_feature_class=vector_3_bound_path, out_geometry_type="POLYGON")
     arcpy.EliminatePolygonPart_management(in_features=vector_3_bound_path, out_feature_class=vector_2_bound_path, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
     arcpy.SimplifyPolygon_cartography(in_features=vector_2_bound_path, out_feature_class=vector_1_bound_path, algorithm="BEND_SIMPLIFY", tolerance="{} Meters".format(C_SIMPLE_DIST), minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
+    #try:
+    #    arcpy.DeleteField_management(in_table=vector_1_bound_path, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
+    #except:
+    #    pass
+    deleteFields(vector_1_bound_path)
     deleteFileIfExists(vector_3_bound_path, useArcpy=True)
     deleteFileIfExists(vector_2_bound_path, useArcpy=True)
      
@@ -163,11 +195,11 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[AREA][0], field_alias=FIELD_INFO[AREA][1], field_type=FIELD_INFO[AREA][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[ELEV_TYPE][0], field_alias=FIELD_INFO[ELEV_TYPE][1], field_type=FIELD_INFO[ELEV_TYPE][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[RANGE][0], field_alias=FIELD_INFO[RANGE][1], field_type=FIELD_INFO[RANGE][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    
-    try:
-        arcpy.DeleteField_management(in_table=vector_1_bound_path, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
-    except:
-        pass
+    deleteFields(vector_1_bound_path)
+    #try:
+    #    arcpy.DeleteField_management(in_table=vector_1_bound_path, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
+    #except:
+    #    pass
      
     arcpy.AddMessage(raster_props)
     for field_name in KEY_LIST:
@@ -201,18 +233,21 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
     deleteFileIfExists(vector_bound_path, True)
     arcpy.Clip_analysis(in_features=vector_1_bound_path, clip_features=bound_path, out_feature_class=vector_bound_path, cluster_tolerance="")
     arcpy.Delete_management(in_data=vector_1_bound_path, data_type="ShapeFile")
-     
+    deleteFields(vector_bound_path)
+    
     doTime(a, "\tCreated BOUND {}".format(vector_bound_path))
         
                 
 
 def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, minZ, maxZ, bound_path, spatial_ref=None):
+    arcpy.AddMessage("RevalueRaster {} {}: ZRange({},{})".format(elev_type, f_path,minZ,maxZ))
     Utility.setArcpyEnv(is_overwrite_output=True)
     a = datetime.now()
     nodata = RasterConfig.NODATA_DEFAULT
     isInt = (elev_type == INT)
     if isInt:
         minZ, maxZ = 0, 255
+        arcpy.AddMessage("RevalueRaster type {} is intensity {}: ZRange({},{})".format(elev_type, f_path,minZ,maxZ))
     
     f_name, target_f_path, publish_f_path, stat_out_folder, stat_file_path, bound_out_folder, vector_bound_path = getFilePaths(f_path, elev_type, target_path, publish_path)  # @UnusedVariable
     

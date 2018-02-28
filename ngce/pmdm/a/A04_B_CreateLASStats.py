@@ -399,6 +399,31 @@ def createLasDatasetStats(lasd_path, f_path, spatial_reference, stat_file_path):
 #     doTime(a, "\tCreated BOUND {}".format(vector_bound_path))
 
 
+def deleteField(in_table, drop_field):
+    arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
+    try:    
+        arcpy.DeleteField_management(in_table=in_table, drop_field=drop_field)
+    except:
+        arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
+        pass
+
+def deleteFields(in_table):
+    fields = arcpy.ListFields(in_table)
+    existing_fields = []
+    for field in fields:
+        existing_fields.append(field.name)
+        
+    arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
+    drop_fields=["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id",
+                 "MINSIMPTOL", "MAXSIMPTOL", "ORIG_FID", "INPOLY_FID", "SIMPGNFLAG", "ID",
+                 "minsimptol", "maxsimptol", "orig_fid", "inpoly_fid", "simpgnflag", "id"]
+    for drop_field in drop_fields:
+        #arcpy.AddMessage("\t\tTrying to drop field '{}' from '{}'".format(drop_field, in_table))
+        if drop_field in existing_fields:
+           deleteField(in_table, drop_field)
+        
+        
+    
 '''
 --------------------------------------------------------------------------------
 Calculates a boundary around the LAS dataset using a mosaic dataset.
@@ -515,6 +540,8 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
     deleteFileIfExists(vector_REBS_bound_path, useArcpy=True)
     arcpy.SimplifyPolygon_cartography(in_features=vector_REB_bound_path, out_feature_class=vector_REBS_bound_path, algorithm="POINT_REMOVE", tolerance="{} Meters".format(B_SIMPLE_DIST), minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
     #addToolMessages()
+    deleteFields(vector_REBS_bound_path)
+    
     arcpy.Delete_management(in_data=vector_REB_bound_path, data_type="ShapeFile")
      
     vector_RE_bound_path = os.path.join(stat_out_folder, "B_{}_RE.shp".format(f_name))
@@ -560,6 +587,7 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
                 arcpy.AddField_management(in_table=vector_bound_path, field_name="el_type", field_alias="Elevation Type", field_type="TEXT", field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
             arcpy.CalculateField_management(in_table=vector_bound_path, field="el_type", expression='"LAS"', expression_type="PYTHON_9.3")
             success = True
+            
         except:
             if tries >= MAX_TRIES:
                 error_vector_bound_path = os.path.join(stat_out_folder, "ERROR_B_{}.shp".format(f_name))
@@ -571,12 +599,9 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
                 arcpy.AddWarning("\tWARNING: Failed to modify fields, trying again")
                 pass
     
-    try:
-        arcpy.DeleteField_management(in_table=vector_bound_path, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
-        #addToolMessages()
-    except:
-        pass
-     
+    deleteFields(vector_bound_path)
+    
+
     doTime(a, "\tCreated BOUND {}".format(vector_bound_path))
 
 
@@ -624,8 +649,8 @@ def addInfoFileFieldsToBound(vector_bound_path, info_file_path):
                 if field_value is not None:
                     arcpy.CalculateField_management(in_table=vector_bound_path, field=field_shpname, expression=field_value, expression_type="PYTHON_9.3")
     except:
-        arcpy.AddWarning("WARNING: Failed to add Point Spacing info {} to boundary {}".format(info_file_path, vector_bound_path))
-    
+        arcpy.AddWarning("ERROR: Failed to add Point Spacing info {} to boundary {}".format(info_file_path, vector_bound_path))
+        raise
 
 '''
 --------------------------------------------------------------------------------
@@ -735,8 +760,8 @@ def addStatFileFieldsToBound(vector_bound_path, stat_file_path):
                 if field_value is not None:
                     arcpy.CalculateField_management(in_table=vector_bound_path, field=field_shpname, expression=field_value, expression_type="PYTHON_9.3")
     except:
-        arcpy.AddWarning("\tWARNING: Failed to add Stat file info {} to boundary {}".format(stat_file_path, vector_bound_path))
-    
+        arcpy.AddWarning("\tERROR: Failed to add Stat file info {} to boundary {}".format(stat_file_path, vector_bound_path))
+        raise
     
 '''
 --------------------------------------------------------------------------------
@@ -760,7 +785,8 @@ def addKeyFieldValues(vector_bound_path, stat_props):
             if field_value is not None:
                 arcpy.CalculateField_management(in_table=vector_bound_path, field=field_shpname, expression=field_value, expression_type="PYTHON_9.3")
     except:
-        arcpy.AddWarning("\tWARNING: Failed to add raster statistics key value info to boundary {}: values = {}".format(vector_bound_path, stat_props))
+        arcpy.AddWarning("\tERROR: Failed to add raster statistics key value info to boundary {}: values = {}".format(vector_bound_path, stat_props))
+        raise
 
 '''
 --------------------------------------------------------------------------------
@@ -774,77 +800,104 @@ It performs 10x faster than the other 'B' method
 def createVectorBoundaryC(f_path, vector_bound_path, isClassified, stat_props=None):
     a = datetime.now()
     aa = a
+    
     # arcpy.AddMessage("\tBoundary '{}'".format(vector_bound_path))
+    try:
      
-    vector_bound_left, vector_bound_right = os.path.splitext(vector_bound_path)
-    vector_bound_1_path = "{}1{}".format(vector_bound_left, vector_bound_right) 
-    vector_bound_2_path = "{}2{}".format(vector_bound_left, vector_bound_right) 
-    deleteFileIfExists(vector_bound_path, useArcpy=True)
-    deleteFileIfExists(vector_bound_1_path, useArcpy=True)
-    deleteFileIfExists(vector_bound_2_path, useArcpy=True)
-     
-     
-    arcpy.RasterDomain_3d(in_raster=f_path, out_feature_class=vector_bound_1_path, out_geometry_type="POLYGON")
-    aa = doTime(aa, "\t\tC RasterDomain_3D {}".format(vector_bound_1_path))
-    arcpy.EliminatePolygonPart_management(in_features=vector_bound_1_path, out_feature_class=vector_bound_2_path, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
-    aa = doTime(aa, "\t\tC ElinatePolygonPart {}".format(vector_bound_2_path))
-    arcpy.SimplifyPolygon_cartography(in_features=vector_bound_2_path, out_feature_class=vector_bound_path, algorithm="POINT_REMOVE", tolerance="{} Meters".format(C_SIMPLE_DIST), minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
-    aa = doTime(aa, "\t\tC SimplifyPolygon {}".format(vector_bound_path))
-    arcpy.RepairGeometry_management(in_features=vector_bound_path, delete_null="DELETE_NULL")
-    aa = doTime(aa, "\t\tC RepairGeometry {}".format(vector_bound_path))
-    deleteFileIfExists(vector_bound_1_path, useArcpy=True)
-    deleteFileIfExists(vector_bound_2_path, useArcpy=True)
-      
-    footprint_area = 0
-    for row in arcpy.da.SearchCursor(vector_bound_path, ["SHAPE@"]):  # @UndefinedVariable
-        shape = row[0]
-        footprint_area = shape.getArea ("PRESERVE_SHAPE", "SQUAREMETERS")
-        aa = doTime(aa, "\t\tC FootprintArea = {}".format(footprint_area))
-    
-    arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[PATH][0], field_alias=FIELD_INFO[PATH][1], field_type=FIELD_INFO[PATH][2], field_length=FIELD_INFO[PATH][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[NAME][0], field_alias=FIELD_INFO[NAME][1], field_type=FIELD_INFO[NAME][2], field_length=FIELD_INFO[NAME][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[IS_CLASSIFIED][0], field_alias=FIELD_INFO[IS_CLASSIFIED][1], field_type=FIELD_INFO[IS_CLASSIFIED][2], field_length=FIELD_INFO[IS_CLASSIFIED][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[AREA][0], field_alias=FIELD_INFO[AREA][1], field_type=FIELD_INFO[AREA][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-#     arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[RANGE][0], field_alias=FIELD_INFO[RANGE][1], field_type=FIELD_INFO[RANGE][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    
-      
-    b_f_path, vector_f_name = os.path.split(f_path)
-    f_name = os.path.splitext(vector_f_name)[0]
-    if str(f_name).startswith("C_"):
-        f_name = f_name[2:]
-    if str(f_name).endswith("_LAST"):
-        f_name = f_name[:-5]
-    elif str(f_name).endswith("_FIRST"):
-        f_name = f_name[:-6]
-    arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[PATH][0], expression='"{}"'.format(b_f_path), expression_type="PYTHON_9.3")
-    arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[NAME][0], expression='"{}"'.format(f_name), expression_type="PYTHON_9.3")
-    arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[IS_CLASSIFIED][0], expression='"{}"'.format(isClassified), expression_type="PYTHON_9.3")
-    arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[AREA][0], expression=footprint_area, expression_type="PYTHON_9.3")
-#     try:
-#         # try to calculate a z range
-#         arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[RANGE][0], expression="!{}! - !{}!".format(FIELD_INFO[MAX][0], FIELD_INFO[MIN][0]), expression_type="PYTHON_9.3")
-#     except:
-#         pass
-
-    if stat_props is not None: 
-        addKeyFieldValues(vector_bound_path, stat_props)
-    else:
-        arcpy.AddWarning("  WARNING: Failed to find raster props {}".format(stat_props))
+        vector_bound_left, vector_bound_right = os.path.splitext(vector_bound_path)
+        vector_bound_1_path = "{}1{}".format(vector_bound_left, vector_bound_right) 
+        vector_bound_2_path = "{}2{}".format(vector_bound_left, vector_bound_right) 
+        deleteFileIfExists(vector_bound_path, useArcpy=True)
+        deleteFileIfExists(vector_bound_1_path, useArcpy=True)
+        deleteFileIfExists(vector_bound_2_path, useArcpy=True)
+         
+         
+        arcpy.RasterDomain_3d(in_raster=f_path, out_feature_class=vector_bound_1_path, out_geometry_type="POLYGON")
+        aa = doTime(aa, "\t\tC RasterDomain_3D {}".format(vector_bound_1_path))
+        arcpy.EliminatePolygonPart_management(in_features=vector_bound_1_path, out_feature_class=vector_bound_2_path, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
+        aa = doTime(aa, "\t\tC ElinatePolygonPart {}".format(vector_bound_2_path))
+        arcpy.SimplifyPolygon_cartography(in_features=vector_bound_2_path, out_feature_class=vector_bound_path, algorithm="POINT_REMOVE", tolerance="{} Meters".format(C_SIMPLE_DIST), minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
+        aa = doTime(aa, "\t\tC SimplifyPolygon {}".format(vector_bound_path))
+        deleteFields(vector_bound_path)
         
-    parent_path = os.path.split(vector_bound_path)[0]
-    stat_file_path = os.path.join(parent_path, "S_{}.txt".format(f_name))
-    if os.path.exists(stat_file_path): 
-        addStatFileFieldsToBound(vector_bound_path, stat_file_path)
-    else:
-        arcpy.AddWarning("  WARNING: Failed to find stat file {}".format(stat_file_path))
+        
+        arcpy.RepairGeometry_management(in_features=vector_bound_path, delete_null="DELETE_NULL")
+        aa = doTime(aa, "\t\tC RepairGeometry {}".format(vector_bound_path))
+        deleteFileIfExists(vector_bound_1_path, useArcpy=True)
+        deleteFileIfExists(vector_bound_2_path, useArcpy=True)
+        deleteFields(vector_bound_path)
+          
+        footprint_area = 0
+        for row in arcpy.da.SearchCursor(vector_bound_path, ["SHAPE@"]):  # @UndefinedVariable
+            shape = row[0]
+            footprint_area = shape.getArea ("PRESERVE_SHAPE", "SQUAREMETERS")
+            aa = doTime(aa, "\t\tC FootprintArea = {}".format(footprint_area))
+
+        deleteFields(vector_bound_path)
+        arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[PATH][0], field_alias=FIELD_INFO[PATH][1], field_type=FIELD_INFO[PATH][2], field_length=FIELD_INFO[PATH][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+        arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[NAME][0], field_alias=FIELD_INFO[NAME][1], field_type=FIELD_INFO[NAME][2], field_length=FIELD_INFO[NAME][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+        arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[IS_CLASSIFIED][0], field_alias=FIELD_INFO[IS_CLASSIFIED][1], field_type=FIELD_INFO[IS_CLASSIFIED][2], field_length=FIELD_INFO[IS_CLASSIFIED][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+        arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[AREA][0], field_alias=FIELD_INFO[AREA][1], field_type=FIELD_INFO[AREA][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+    #     arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[RANGE][0], field_alias=FIELD_INFO[RANGE][1], field_type=FIELD_INFO[RANGE][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+        
+          
+        b_f_path, vector_f_name = os.path.split(f_path)
+        f_name = os.path.splitext(vector_f_name)[0]
+        if str(f_name).startswith("C_"):
+            f_name = f_name[2:]
+        if str(f_name).endswith("_LAST"):
+            f_name = f_name[:-5]
+        elif str(f_name).endswith("_FIRST"):
+            f_name = f_name[:-6]
+        arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[PATH][0], expression='"{}"'.format(b_f_path), expression_type="PYTHON_9.3")
+        arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[NAME][0], expression='"{}"'.format(f_name), expression_type="PYTHON_9.3")
+        arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[IS_CLASSIFIED][0], expression='"{}"'.format(isClassified), expression_type="PYTHON_9.3")
+        arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[AREA][0], expression=footprint_area, expression_type="PYTHON_9.3")
+    #     try:
+    #         # try to calculate a z range
+    #         arcpy.CalculateField_management(in_table=vector_bound_path, field=FIELD_INFO[RANGE][0], expression="!{}! - !{}!".format(FIELD_INFO[MAX][0], FIELD_INFO[MIN][0]), expression_type="PYTHON_9.3")
+    #     except:
+    #         pass
+
+        if stat_props is not None: 
+            addKeyFieldValues(vector_bound_path, stat_props)
+        else:
+            arcpy.AddWarning("  WARNING: Failed to find raster props {}".format(stat_props))
+            raise Exception("  WARNING: Failed to find raster props {}".format(stat_props))
             
-    info_file_path = os.path.join(parent_path, "I_{}.shp".format(f_name))
-    if os.path.exists(info_file_path): 
-        addInfoFileFieldsToBound(vector_bound_path, info_file_path)
-    else:
-        arcpy.AddWarning("  WARNING: Failed to find info file {}".format(info_file_path))
-      
-    doTime(a, "\tCreated BOUND {}".format(vector_bound_path))
+        parent_path = os.path.split(vector_bound_path)[0]
+        stat_file_path = os.path.join(parent_path, "S_{}.txt".format(f_name))
+        if os.path.exists(stat_file_path): 
+            addStatFileFieldsToBound(vector_bound_path, stat_file_path)
+        else:
+            arcpy.AddWarning("  WARNING: Failed to find stat file {}".format(stat_file_path))
+            raise Exception("  WARNING: Failed to find stat file {}".format(stat_file_path))
+                
+        info_file_path = os.path.join(parent_path, "I_{}.shp".format(f_name))
+        if os.path.exists(info_file_path): 
+            addInfoFileFieldsToBound(vector_bound_path, info_file_path)
+        else:
+            arcpy.AddWarning("  WARNING: Failed to find info file {}".format(info_file_path))
+            raise Exception("  WARNING: Failed to find info file {}".format(info_file_path))
+
+        deleteFields(vector_bound_path)
+    except Exception as inst:
+        doTime(a, "\tERROR CREATING BOUND {}".format(ermsg, vector_bound_path))
+        deleteFileIfExists(vector_bound_path, useArcpy=True)
+        deleteFileIfExists(vector_bound_1_path, useArcpy=True)
+        deleteFileIfExists(vector_bound_2_path, useArcpy=True)
+        arcpy.AddError("  ERROR: Failed to create C_ boundary file for {}".format(vector_bound_path))
+        try:
+            arcpy.AddError("  ERROR: {}".format(inst))
+            arcpy.AddError("  ERROR: {}".format(inst.args))
+        except:
+            pass
+        raise
+    
+    if os.path.exists(vector_bound_path):
+        deleteFields(vector_bound_path)
+        
+    doTime(a, "\tCREATED BOUND {}".format(vector_bound_path))
         
 '''
 --------------------------------------------------------------------------------
@@ -1235,14 +1288,29 @@ def processFile(f_path, target_path, spatial_reference, isClassified, createQARa
                         createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_B_path)
                     except:
                         arcpy.AddWarning("Failed to build boundary B, but point count is small. Ignoring error for {}.".format(f_name))
-            
+
+            success = False
+            tries = 0
             if not os.path.exists(vector_bound_C_path):
                 if point_count > SMALL_POINT_COUNT:
-                    createVectorBoundaryC(out_raster_path, vector_bound_C_path, isClassified, stat_props)
+                    while not success and tries < MAX_TRIES:
+                        tries = tries + 1
+                        try:
+                            createVectorBoundaryC(out_raster_path, vector_bound_C_path, isClassified, stat_props)
+                            success = True
+                        except:
+                            if tries >= MAX_TRIES:
+                                deleteFileIfExists(vector_bound_C_path, useArcpy=True) 
+                                arcpy.AddError("\tERROR: Failed to create C_ footprint shape file {}, giving up.".format(vector_bound_C_path))
+                                raise Exception("\tERROR: Failed to create C_ footprint shape file {}, giving up.".format(vector_bound_C_path))
+                            else:
+                                arcpy.AddWarning("\tWARNING: Failed to create C_ footprint shape file {}, trying again".format(vector_bound_C_path))
+                                pass
                 else:
                     try:
                         createVectorBoundaryC(out_raster_path, vector_bound_C_path, isClassified, stat_props)
                     except:
+                        deleteFileIfExists(vector_bound_C_path, useArcpy=True)
                         arcpy.AddWarning("Failed to build boundary C, but point count is small. Ignoring error for {}.".format(f_name))
             
                 
