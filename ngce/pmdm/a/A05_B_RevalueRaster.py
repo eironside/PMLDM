@@ -132,6 +132,7 @@ def deleteField(in_table, drop_field):
     arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
     try:    
         arcpy.DeleteField_management(in_table=in_table, drop_field=drop_field)
+        time.sleep(0.25)
     except:
         arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
         pass
@@ -191,10 +192,20 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
         footprint_area = shape.getArea ("PRESERVE_SHAPE", "SQUAREMETERS")
      
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[PATH][0], field_alias=FIELD_INFO[PATH][1], field_type=FIELD_INFO[PATH][2], field_length=FIELD_INFO[PATH][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+    time.sleep(0.25)
+
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[NAME][0], field_alias=FIELD_INFO[NAME][1], field_type=FIELD_INFO[NAME][2], field_length=FIELD_INFO[NAME][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+    time.sleep(0.25)
+
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[AREA][0], field_alias=FIELD_INFO[AREA][1], field_type=FIELD_INFO[AREA][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+    time.sleep(0.25)
+
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[ELEV_TYPE][0], field_alias=FIELD_INFO[ELEV_TYPE][1], field_type=FIELD_INFO[ELEV_TYPE][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+    time.sleep(0.25)
+
     arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[RANGE][0], field_alias=FIELD_INFO[RANGE][1], field_type=FIELD_INFO[RANGE][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+    time.sleep(0.25)
+
     deleteFields(vector_1_bound_path)
     #try:
     #    arcpy.DeleteField_management(in_table=vector_1_bound_path, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
@@ -203,6 +214,7 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
      
     arcpy.AddMessage(raster_props)
     for field_name in KEY_LIST:
+        time.sleep(0.25)
         field_shpname = FIELD_INFO[field_name][0]
         field_alias = FIELD_INFO[field_name][1]
         field_type = FIELD_INFO[field_name][2]
@@ -215,8 +227,10 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
             
         # arcpy.AddMessage("Adding field: {} {} {} {} {}".format(field_shpname, field_alias, field_type, field_length, field_value))
         arcpy.AddField_management(in_table=vector_1_bound_path, field_name=field_shpname, field_alias=field_alias, field_type=field_type, field_length=field_length, field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
+        time.sleep(0.25)
         if field_value is not None:
             arcpy.CalculateField_management(in_table=vector_1_bound_path, field=field_shpname, expression=field_value, expression_type="PYTHON_9.3")
+            time.sleep(0.25)
     
     b_f_path, b_f_name = os.path.split(f_path)
     b_f_name = os.path.splitext(b_f_name)[0]
