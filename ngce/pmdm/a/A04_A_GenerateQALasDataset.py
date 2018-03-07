@@ -205,31 +205,7 @@ def getLasFileProcessList(start_dir, target_path, createQARasters, isClassified,
                 if A04_B_CreateLASStats.isProcessFile(f_path, target_path, createQARasters, isClassified):
                     fileList.append(f_path)
 
-#     theFile = os.path.join(target_path, "filelist.txt")
-#     try:
-#         os.remove(theFile)
-#     except:
-#         pass
-#     theFile = open(theFile, 'w')
-#     for item in fileList:
-#         theFile.write("%s\n" % item)
-#     theFile.close()
-
     return fileList
-
-# def getLasFileProcessListFile(target_path):
-#
-#     theFile = os.path.join(target_path, "filelist.txt")
-#     theFile = open(theFile, 'rb')
-#     fileList = [line.rstrip('\n') for line in file]
-#     theFile.close()
-#
-#     try:
-#         os.remove(theFile)
-#     except:
-#         pass
-#
-#     return fileList
 
 '''
 -------------------------------------------------------------------------
@@ -324,8 +300,6 @@ def checkSpatialOnLas(start_dir, target_path, createQARasters, isClassified):
     deleteFileIfExists(lasd_f_path, True)
     arcpy.AddMessage("{} Testing spatial reference on .las file: '{}' '{}'".format(datetime.now(),las_f_path, lasd_f_path))
 
-#     arcpy.CreateLasDataset_management(input="E:/NGCE/RasterDatasets/OK_SugarCreek_2008/DELIVERED/LAS_CLASSIFIED/3409805_ne_A.las", out_las_dataset="E:/NGCE/RasterDatasets/OK_SugarCreek_2008/DELIVERED/LAS_CLASSIFIED/c3409805_ne_A_LasDataset.lasd", folder_recursion="NO_RECURSION", in_surface_constraints="", spatial_reference="", compute_stats="COMPUTE_STATS", relative_paths="RELATIVE_PATHS", create_las_prj="NO_FILES")
-
     arcpy.CreateLasDataset_management(input=las_f_path,
                                       spatial_reference=None,
                                       out_las_dataset=lasd_f_path,
@@ -353,7 +327,7 @@ def checkSpatialOnLas(start_dir, target_path, createQARasters, isClassified):
         arcpy.AddMessage("\tReading spatial reference from PRJ file: {}".format(prj_Path))
         
         prj_spatial_ref = arcpy.SpatialReference(prj_Path)
-        arcpy.AddMessage("\tGot from PRJ file spatial reference: {}".format(prj_spatial_ref))
+        arcpy.AddMessage("\tGot from PRJ file spatial reference: {}".format(prj_spatial_ref.name))
         if prj_spatial_ref is not None:
             try:
                 arcpy.AddMessage("\tFound spatial reference in PRJ: {}".format(prj_spatial_ref.exportToString()))

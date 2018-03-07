@@ -253,6 +253,24 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
             createBoundaryFeatureClass(raster_footprint, raster_boundary,    summary_string, field_alter)
             
             addProjectInfo(raster_footprint, raster_boundary, project_ID, project_path, project_UID)
+
+        # Buffer Footprint @ 1 Meter & Clip to Avoid Gaps in Output Mosaic
+        one_meter_buffer = arcpy.Buffer_analysis(
+            raster_footprint,
+            os.path.join(fgdb_path, '{}_1m'.format(os.path.split(raster_footprint)[1])),
+            '1 METER'
+            )
+        arcpy.Clip_analysis(one_meter_buffer, raster_boundary, raster_footprint)
+        arcpy.Delete_management(one_meter_buffer)
+
+        # Buffer Footprint @ 1 Meter & Clip to Avoid Gaps in Output Mosaic
+        one_meter_buffer = arcpy.Buffer_analysis(
+            raster_footprint,
+            os.path.join(fgdb_path, '{}_1m'.format(os.path.split(raster_footprint)[1])),
+            '1 METER'
+            )
+        arcpy.Clip_analysis(one_meter_buffer, raster_boundary, raster_footprint)
+        arcpy.Delete_management(one_meter_buffer)
             
     return raster_footprint, raster_boundary
             

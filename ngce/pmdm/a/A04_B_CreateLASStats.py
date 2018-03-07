@@ -882,7 +882,7 @@ def createVectorBoundaryC(f_path, vector_bound_path, isClassified, stat_props=No
 
         deleteFields(vector_bound_path)
     except Exception as inst:
-        doTime(a, "\tERROR CREATING BOUND {}".format(ermsg, vector_bound_path))
+        doTime(a, "\tERROR CREATING BOUND {}:{}".format(inst, vector_bound_path))
         deleteFileIfExists(vector_bound_path, useArcpy=True)
         deleteFileIfExists(vector_bound_1_path, useArcpy=True)
         deleteFileIfExists(vector_bound_2_path, useArcpy=True)

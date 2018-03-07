@@ -420,11 +420,8 @@ def getVertCSInfo(spatialReference):
                 if ptype.upper() == "UNIT":
                     vert_unit_name = parameter[1][0]
 
-##    # 3/1 - A04 ASCII Encoding Error
-##    if vert_cs_name is not None:
-##        vert_cs_name = str(vert_cs_name).strip().replace("'", "")
-##    if vert_unit_name is not None:
-##        vert_unit_name = str(vert_unit_name).strip().replace("'", "")
+    # 3/1 - A04
+    # vert_cs_name.encode('utf-8') vs. str(vert_cs_name)
 
     if vert_cs_name is not None:
         vert_cs_name = vert_cs_name.encode('utf-8').strip().replace("'", "")

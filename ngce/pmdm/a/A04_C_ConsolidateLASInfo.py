@@ -37,7 +37,7 @@ from ngce.Utility import deleteFileIfExists, doTime
 from ngce.cmdr import CMDRConfig
 from ngce.folders.FoldersConfig import STATS_METHODS, DATASET_NAMES
 from ngce.raster import RasterConfig, Raster
-from ngce.raster.RasterConfig import FIELD_INFO, NAME, IS_CLASSIFIED, V_NAME, \
+from ngce.raster.RasterConfig import FIELD_INFO, PATH, NAME, IS_CLASSIFIED, V_NAME, \
     V_UNIT, H_NAME, H_UNIT, H_WKID, AREA, MAX, MEAN, MIN, RANGE, STAND_DEV, XMIN, \
     YMIN, XMAX, YMAX, FIRST_RETURNS, SECOND_RETURNS, THIRD_RETURNS, \
     FOURTH_RETURNS, SINGLE_RETURNS, FIRST_OF_MANY_RETURNS, LAST_OF_MANY_RETURNS, \
@@ -306,6 +306,7 @@ def getStatsFields(feature_class=None):
     a = datetime.datetime.now()
     base_fields = [
                    [FIELD_INFO[NAME], "COUNT"],
+                   [FIELD_INFO[PATH], "FIRST"],
                    [FIELD_INFO[IS_CLASSIFIED], "FIRST"],
                    [FIELD_INFO[V_NAME], "FIRST"],
                    [FIELD_INFO[V_UNIT], "FIRST"],
