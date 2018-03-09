@@ -12,6 +12,8 @@ from shutil import copyfile
 import sys
 import time
 
+import traceback
+
 from ngce import Utility
 from ngce.Utility import addToolMessages, doTime, deleteFileIfExists, setArcpyEnv, getVertCSInfo
 from ngce.folders.FoldersConfig import ELEVATION, FIRST, LAST, lasClassified_dir, \
@@ -527,13 +529,34 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
     deleteFileIfExists(vector_R_bound_path, useArcpy=True)
     arcpy.ExportMosaicDatasetGeometry_management(md_path, vector_R_bound_path, where_clause="#", geometry_type="BOUNDARY")
     addToolMessages()
+    arcpy.RepairGeometry_management(in_features=vector_R_bound_path, delete_null="DELETE_NULL")
     if os.path.exists(gdb_path):
         arcpy.Delete_management(gdb_path)
      
-    vector_REB_bound_path = os.path.join(stat_out_folder, "B_{}_REB.shp".format(f_name))
-    deleteFileIfExists(vector_REB_bound_path, useArcpy=True)
-    arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
-    addToolMessages()
+    vector_REB_bound_path = os.path.join(stat_out_folder, "B_{}1.shp".format(f_name))
+    
+    success = False
+    tries = 0
+    MAX_TRIES = 5
+    while not success and tries < MAX_TRIES:
+        try:
+            tries = tries + 1
+            #del vector_R_bound_path,vector_REB_bound_path
+            deleteFileIfExists(vector_REB_bound_path, useArcpy=True)
+            arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
+            addToolMessages()
+            success = True
+        except Exception as e:
+            tb = sys.exc_info()[2]
+            tbinfo = traceback.format_tb(tb)[0]
+            if tries >=MAX_TRIES:
+                raise
+            else:
+                
+                arcpy.AddWarning("Failed to buffer. Error was {}\n{}".format(e,tbinfo))
+                arcpy.AddWarning("Failed to buffer {}. trying again...".format(vector_R_bound_path))
+                time.sleep(1)
+            
     arcpy.Delete_management(in_data=vector_R_bound_path, data_type="ShapeFile")
      
     vector_REBS_bound_path = os.path.join(stat_out_folder, "B_{}_REBS.shp".format(f_name))
