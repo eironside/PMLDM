@@ -534,6 +534,7 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
         arcpy.Delete_management(gdb_path)
      
     vector_REB_bound_path = os.path.join(stat_out_folder, "B_{}1.shp".format(f_name))
+    vector_REB_bound_path_1 = os.path.join(stat_out_folder, "B_{}2.shp".format(f_name))
     
     success = False
     tries = 0
@@ -541,10 +542,12 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
     while not success and tries < MAX_TRIES:
         try:
             tries = tries + 1
-            #del vector_R_bound_path,vector_REB_bound_path
             deleteFileIfExists(vector_REB_bound_path, useArcpy=True)
-            arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
+            arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path_1, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", method="PLANAR")#, dissolve_option="ALL")
             addToolMessages()
+            arcpy.Dissolve_management(in_features=vector_REB_bound_path_1, out_feature_class=vector_REB_bound_path, multi_part="MULTI_PART")
+            addToolMessages()
+            deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
             success = True
         except Exception as e:
             tb = sys.exc_info()[2]
