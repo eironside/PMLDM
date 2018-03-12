@@ -436,6 +436,7 @@ But it performs 10x faster than the A method and is more accurate than C
 '''
 def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_path):
     a = datetime.now()
+    aa = a
     
     deleteFileIfExists(vector_bound_path, useArcpy=True)
     horz_cs_name, horz_cs_unit_name, horz_cs_factory_code, vert_cs_name, vert_unit_name = Utility.getSRValues(spatial_reference)
@@ -532,41 +533,58 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
     arcpy.RepairGeometry_management(in_features=vector_R_bound_path, delete_null="DELETE_NULL")
     if os.path.exists(gdb_path):
         arcpy.Delete_management(gdb_path)
+    a = doTime(a, "\t\tCompleted footprint export {}".format(md_name))
      
     vector_REB_bound_path = os.path.join(stat_out_folder, "B_{}1.shp".format(f_name))
     vector_REB_bound_path_1 = os.path.join(stat_out_folder, "B_{}2.shp".format(f_name))
-    
-    success = False
-    tries = 0
-    MAX_TRIES = 5
-    while not success and tries < MAX_TRIES:
+
+    # All of this because we sometimes get a failure on the buffer with an integrated dissolve.
+    # Splitting the operation seems to fix the issue
+    try:
+        deleteFileIfExists(vector_REB_bound_path, useArcpy=True)
+        deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
+        arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", method="PLANAR", dissolve_option="ALL")
+        addToolMessages()
+        a = doTime(a, "\t\tCompleted footprint buffer & dissolve {}".format(vector_REB_bound_path))
+    except:
+        time.sleep(1)
         try:
-            tries = tries + 1
+            a = doTime(a, "\t\tWARNING: Failed footprint buffer {}.  Trying again ...".format(vector_REB_bound_path))
             deleteFileIfExists(vector_REB_bound_path, useArcpy=True)
+            deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
             arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path_1, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", method="PLANAR")#, dissolve_option="ALL")
             addToolMessages()
+            a = doTime(a, "\t\tCompleted footprint buffer {}".format(vector_REB_bound_path_1))
             arcpy.Dissolve_management(in_features=vector_REB_bound_path_1, out_feature_class=vector_REB_bound_path, multi_part="MULTI_PART")
             addToolMessages()
             deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
-            success = True
-        except Exception as e:
-            tb = sys.exc_info()[2]
-            tbinfo = traceback.format_tb(tb)[0]
-            if tries >=MAX_TRIES:
+            a = doTime(a, "\t\tCompleted footprint dissolve {}".format(vector_REB_bound_path))
+        except:
+            time.sleep(1)
+            try:
+                a = doTime(a, "\t\tWARNING: Failed 2nd footprint buffer {}.  Trying one more time ...".format(vector_REB_bound_path))
+                deleteFileIfExists(vector_REB_bound_path, useArcpy=True)
+                deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
+                arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path_1, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="FLAT", method="PLANAR")#, dissolve_option="ALL")
+                addToolMessages()
+                a = doTime(a, "\t\tCompleted footprint buffer {}".format(vector_REB_bound_path_1))
+                arcpy.Dissolve_management(in_features=vector_REB_bound_path_1, out_feature_class=vector_REB_bound_path, multi_part="MULTI_PART")
+                addToolMessages()
+                a = doTime(a, "\t\tCompleted footprint dissolve (flat) {}".format(vector_REB_bound_path))
+                deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
+            except:
                 raise
-            else:
-                
-                arcpy.AddWarning("Failed to buffer. Error was {}\n{}".format(e,tbinfo))
-                arcpy.AddWarning("Failed to buffer {}. trying again...".format(vector_R_bound_path))
-                time.sleep(1)
-            
-    arcpy.Delete_management(in_data=vector_R_bound_path, data_type="ShapeFile")
+
+    arcpy.RepairGeometry_management(in_features=vector_REB_bound_path, delete_null="DELETE_NULL")
+    deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
+    deleteFileIfExists(vector_R_bound_path, useArcpy=True)
      
     vector_REBS_bound_path = os.path.join(stat_out_folder, "B_{}_REBS.shp".format(f_name))
     deleteFileIfExists(vector_REBS_bound_path, useArcpy=True)
     arcpy.SimplifyPolygon_cartography(in_features=vector_REB_bound_path, out_feature_class=vector_REBS_bound_path, algorithm="POINT_REMOVE", tolerance="{} Meters".format(B_SIMPLE_DIST), minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
     #addToolMessages()
     deleteFields(vector_REBS_bound_path)
+    arcpy.RepairGeometry_management(in_features=vector_REBS_bound_path, delete_null="DELETE_NULL")
     
     arcpy.Delete_management(in_data=vector_REB_bound_path, data_type="ShapeFile")
      
