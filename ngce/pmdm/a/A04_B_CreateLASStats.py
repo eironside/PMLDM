@@ -100,6 +100,8 @@ def isProcessFile(f_path, target_path, createQARasters=False, isClassified=True,
         vector_bound_path = os.path.join(stat_out_folder, "C_{}.shp".format(f_name))
         if not os.path.exists(vector_bound_path):
             process_file = True
+        else:
+            deleteFields(vector_bound_path)
         
         
         value_field = ELEVATION
@@ -402,11 +404,11 @@ def createLasDatasetStats(lasd_path, f_path, spatial_reference, stat_file_path):
 
 
 def deleteField(in_table, drop_field):
-    arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
+    #arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
     try:    
         arcpy.DeleteField_management(in_table=in_table, drop_field=drop_field)
     except:
-        arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
+        #arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
         pass
 
 def deleteFields(in_table):
@@ -415,10 +417,10 @@ def deleteFields(in_table):
     for field in fields:
         existing_fields.append(field.name)
         
-    arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
-    drop_fields=["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id",
-                 "MINSIMPTOL", "MAXSIMPTOL", "ORIG_FID", "INPOLY_FID", "SIMPGNFLAG", "ID",
-                 "minsimptol", "maxsimptol", "orig_fid", "inpoly_fid", "simpgnflag", "id"]
+    #arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
+    drop_fields=["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id", "Buff_Dist",
+                 "MINSIMPTOL", "MAXSIMPTOL", "ORIG_FID", "INPOLY_FID", "SIMPGNFLAG", "ID", "BUFF_DIST",
+                 "minsimptol", "maxsimptol", "orig_fid", "inpoly_fid", "simpgnflag", "id", "buff_dist"]
     for drop_field in drop_fields:
         #arcpy.AddMessage("\t\tTrying to drop field '{}' from '{}'".format(drop_field, in_table))
         if drop_field in existing_fields:
