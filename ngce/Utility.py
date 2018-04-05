@@ -56,7 +56,12 @@ def printArguments(argNameList, argList, argSource=None):
         if argSource is not None:
             arcpy.AddMessage("{}".format(argSource))
         for i, item in enumerate(argNameList):
-            arcpy.AddMessage("{}. {} = '{}'".format(i, item, argList[i]))
+            argvalue = None
+            if argList[i] is not None:
+                argvalue = str(argList[i])
+                if len(argvalue)> 100:
+                    argvalue = argvalue[0:100]
+            arcpy.AddMessage("{}. {} = '{}'".format(i, item, argvalue))
     except:
         pass
 

@@ -14,6 +14,7 @@ import time
 
 import traceback
 
+from ngce.pmdm import RunUtil
 from ngce import Utility
 from ngce.Utility import addToolMessages, doTime, deleteFileIfExists, setArcpyEnv, getVertCSInfo
 from ngce.folders.FoldersConfig import ELEVATION, FIRST, LAST, lasClassified_dir, \
@@ -436,7 +437,7 @@ Note this is not perfect, as small slivers can be formed along the edges of the 
 But it performs 10x faster than the A method and is more accurate than C
 --------------------------------------------------------------------------------
 '''
-def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_path):
+def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_path, log_path):
     a = datetime.now()
     aa = a
     
@@ -539,13 +540,21 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
      
     vector_REB_bound_path = os.path.join(stat_out_folder, "B_{}1.shp".format(f_name))
     vector_REB_bound_path_1 = os.path.join(stat_out_folder, "B_{}2.shp".format(f_name))
+    vector_REB_bound_path_3 = os.path.join(stat_out_folder, "B_{}3.shp".format(f_name))
 
     # All of this because we sometimes get a failure on the buffer with an integrated dissolve.
     # Splitting the operation seems to fix the issue
     try:
         deleteFileIfExists(vector_REB_bound_path, useArcpy=True)
         deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
-        arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", method="PLANAR", dissolve_option="ALL")
+        deleteFileIfExists(vector_REB_bound_path_3, useArcpy=True)
+
+        # NOTE: this multipart to single part seems to fix the buffer issues seen before, the try/catch logic below is probably not needed anymore...
+        arcpy.MultipartToSinglepart_management(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path_3)
+        addToolMessages()
+        arcpy.RepairGeometry_management(in_features=vector_REB_bound_path_3, delete_null="DELETE_NULL")
+        
+        arcpy.Buffer_analysis(in_features=vector_REB_bound_path_3, out_feature_class=vector_REB_bound_path, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", method="PLANAR", dissolve_option="ALL")
         addToolMessages()
         a = doTime(a, "\t\tCompleted footprint buffer & dissolve {}".format(vector_REB_bound_path))
     except:
@@ -575,10 +584,14 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
                 a = doTime(a, "\t\tCompleted footprint dissolve (flat) {}".format(vector_REB_bound_path))
                 deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
             except:
-                raise
+                RunUtil.runTool(r'ngce\pmdm\a\A04_B1_BufferDissolveFootprint.py', [vector_R_bound_path,vector_REB_bound_path,vector_REB_bound_path_1,FOOTPRINT_BUFFER_DIST], bit32=False, log_path=log_path)
+                if not os.path.exists(vector_REB_bound_path):
+                    raise Exception("Failed to buffer and dissolve tile {}".format(f_name))
 
+    
     arcpy.RepairGeometry_management(in_features=vector_REB_bound_path, delete_null="DELETE_NULL")
     deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
+    deleteFileIfExists(vector_REB_bound_path_3, useArcpy=True)
     deleteFileIfExists(vector_R_bound_path, useArcpy=True)
      
     vector_REBS_bound_path = os.path.join(stat_out_folder, "B_{}_REBS.shp".format(f_name))
@@ -1108,10 +1121,38 @@ def exportElevation(target_path, isClassified, f_name, lasd_path, createMissingR
                     lasd = lasd_first
             
             cell_size = getCellSize(spatial_reference, ELE_CELL_SIZE, createMissingRasters)
-            
-            arcpy.LasDatasetToRaster_conversion(in_las_dataset=lasd, out_raster=out_raster_path, value_field=value_field, interpolation_type="BINNING AVERAGE LINEAR", data_type="FLOAT", sampling_type="CELLSIZE", sampling_value=cell_size, z_factor="1")
-            arcpy.BuildPyramidsandStatistics_management(in_workspace=out_raster_path, build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="BUILD_ON_SOURCE", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="BILINEAR", compression_type="NONE", compression_quality="75", skip_existing="SKIP_EXISTING")
-            doTime(a, "\tCreated ELE {}".format(out_raster))
+
+            # JWS - 3/22/18 - Try/Except Added to Handle arcgisscripting.ExecuteError 000210 "The operation was attempted on an empty geometry"
+            try:
+                arcpy.LasDatasetToRaster_conversion(
+                    in_las_dataset=lasd,
+                    out_raster=out_raster_path,
+                    value_field=value_field,
+                    interpolation_type="BINNING AVERAGE LINEAR",
+                    data_type="FLOAT",
+                    sampling_type="CELLSIZE",
+                    sampling_value=cell_size,
+                    z_factor="1"
+                    )
+                
+                arcpy.BuildPyramidsandStatistics_management(
+                    in_workspace=out_raster_path,
+                    build_pyramids="NONE",
+                    calculate_statistics="CALCULATE_STATISTICS",
+                    BUILD_ON_SOURCE="BUILD_ON_SOURCE",
+                    pyramid_level="-1",
+                    SKIP_FIRST="NONE",
+                    resample_technique="BILINEAR",
+                    compression_type="NONE",
+                    compression_quality="75",
+                    skip_existing="SKIP_EXISTING"
+                    )
+                
+                doTime(a, "\tCreated ELE {}".format(out_raster))
+                
+            except Exception as e:
+                arcpy.AddMessage('Exception While Converting LAS to Raster')
+                arcpy.AddMessage(e)
     
     return lasd_last, lasd_first
 
@@ -1157,9 +1198,39 @@ def exportIntensity(target_path, isClassified, f_name, lasd_path, createMissingR
                     lasd = lasd_first
             
             cell_size = getCellSize(spatial_reference, ELE_CELL_SIZE, createMissingRasters)
-            arcpy.LasDatasetToRaster_conversion(in_las_dataset=lasd, out_raster=out_raster_path, value_field=value_field, interpolation_type="BINNING AVERAGE LINEAR", data_type="FLOAT", sampling_type="CELLSIZE", sampling_value=cell_size, z_factor="1")
-            arcpy.BuildPyramidsandStatistics_management(in_workspace=out_raster_path, build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="BUILD_ON_SOURCE", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="BILINEAR", compression_type="NONE", compression_quality="75", skip_existing="SKIP_EXISTING")
-            doTime(a, "\tCreated INT {}".format(out_raster))
+
+            # JWS - 3/22/18 - Try/Except Added to Handle arcgisscripting.ExecuteError 000210 "The operation was attempted on an empty geometry"
+            try:
+                arcpy.LasDatasetToRaster_conversion(
+                    in_las_dataset=lasd,
+                    out_raster=out_raster_path,
+                    value_field=value_field,
+                    interpolation_type="BINNING AVERAGE LINEAR",
+                    data_type="FLOAT",
+                    sampling_type="CELLSIZE",
+                    sampling_value=cell_size,
+                    z_factor="1"
+                    )
+
+                arcpy.BuildPyramidsandStatistics_management(
+                    in_workspace=out_raster_path,
+                    build_pyramids="NONE",
+                    calculate_statistics="CALCULATE_STATISTICS",
+                    BUILD_ON_SOURCE="BUILD_ON_SOURCE",
+                    pyramid_level="-1",
+                    SKIP_FIRST="NONE",
+                    resample_technique="BILINEAR",
+                    compression_type="NONE",
+                    compression_quality="75",
+                    skip_existing="SKIP_EXISTING"
+                    )
+                
+                doTime(a, "\tCreated INT {}".format(out_raster))
+
+            except Exception as e:
+                arcpy.AddMessage('Exception While Converting LAS to Raster')
+                arcpy.AddMessage(e)
+                
     
     return lasd_first
 
@@ -1246,11 +1317,7 @@ def processFile(f_path, target_path, spatial_reference, isClassified, createQARa
         else:
             createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spatial_reference)
             
-            
-        
-        
         # Create the derived files
-        
         lasd_all = None
         
         lasd_last, lasd_first = exportElevation(target_path, isClassified, f_name, out_lasd_path, createMissingRasters)
@@ -1328,10 +1395,10 @@ def processFile(f_path, target_path, spatial_reference, isClassified, createQARa
             
             if not os.path.exists(vector_bound_B_path):
                 if point_count > SMALL_POINT_COUNT:
-                    createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_B_path)
+                    createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_B_path, target_path)
                 else:
                     try:
-                        createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_B_path)
+                        createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_B_path, target_path)
                     except:
                         arcpy.AddWarning("Failed to build boundary B, but point count is small. Ignoring error for {}.".format(f_name))
 
@@ -1553,8 +1620,13 @@ if __name__ == '__main__':
                 arcpy.CheckOutExtension("3D")
                 arcpy.CheckOutExtension("Spatial")
                 checkedOut = True
-            
-            processFile(f_path, target_path, spatial_reference, isClassified, createQARasters, createMissingRasters, overrideBorderPath)
+
+            try:
+                processFile(f_path, target_path, spatial_reference, isClassified, createQARasters, createMissingRasters, overrideBorderPath)
+                
+            except Exception as e:
+                arcpy.AddMessage('Error While Executing processFile')
+                arcpy.AddMessage(e)
 
     if checkedOut:
         arcpy.CheckInExtension("3D")

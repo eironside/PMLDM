@@ -54,11 +54,11 @@ def getLasFootprintPath(fgdb_path):
 
 
 def deleteField(in_table, drop_field):
-    arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
+    #arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
     try:    
         arcpy.DeleteField_management(in_table=in_table, drop_field=drop_field)
     except:
-        arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
+        #arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
         pass
 
 def deleteFields(in_table):
@@ -68,8 +68,8 @@ def deleteFields(in_table):
         existing_fields.append(field.name)
         
     #arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
-    drop_fields=["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id",
-                 "MINSIMPTOL", "MAXSIMPTOL", "ORIG_FID", "INPOLY_FID", "SIMPGNFLAG", "ID",
+    drop_fields=["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id", "buff_dist",
+                 "MINSIMPTOL", "MAXSIMPTOL", "ORIG_FID", "INPOLY_FID", "SIMPGNFLAG", "ID", "Buff_Dist",
                  "minsimptol", "maxsimptol", "orig_fid", "inpoly_fid", "simpgnflag", "id", "BUFF_DIST"]
     for drop_field in drop_fields:
         #arcpy.AddMessage("\t\tTrying to drop field '{}' from '{}'".format(drop_field, in_table))
@@ -134,8 +134,8 @@ def clipRastersToBoundary(start_dir, boundary_path):
 
 
 def createQARasterMosaicDataset(md_name, gdb_path, spatial_reference, input_folder, mxd, footprint_path=None, lasd_boundary_path=None):
-    Utility.printArguments(["md_name", "gdb_path", "spatial_reference", "input_folder", "mxd", "footprint_path", "lasd_boundary_path"],
-                           [md_name, gdb_path, spatial_reference, input_folder, mxd, footprint_path, lasd_boundary_path], "A04_C CreateQARasterMosaicDatasets")
+    #Utility.printArguments(["md_name", "gdb_path", "spatial_reference", "input_folder", "mxd", "footprint_path", "lasd_boundary_path"],
+    #                       [md_name, gdb_path, spatial_reference, input_folder, mxd, footprint_path, lasd_boundary_path], "A04_C CreateQARasterMosaicDatasets")
 
     md_path = os.path.join(gdb_path, md_name)
 
@@ -146,16 +146,16 @@ def createQARasterMosaicDataset(md_name, gdb_path, spatial_reference, input_fold
     else:
         try:
             raster_count = 0
-            arcpy.AddMessage("\tLooking for rasters to add to {} in folder {}".format(md_path, input_folder))
+            #arcpy.AddMessage("\t\tLooking for rasters to add to {} in folder {}".format(md_path, input_folder))
             for root, dirs, files in os.walk(input_folder):  # @UnusedVariable
                 for f in files:
                     if f.upper().endswith(".TIF"):
                         raster_count = raster_count+1
 
             if raster_count <=0:
-                arcpy.AddMessage("\tNo rasters to add to {} in folder {}".format(md_path, input_folder))
+                arcpy.AddMessage("\t\tNo rasters to add to {} in folder {}".format(md_path, input_folder))
             else:
-
+                arcpy.AddMessage("\t\tLooking for rasters to add to {} in folder {}".format(md_path, input_folder))
                 # Create a MD in same SR as LAS Dataset
                 arcpy.CreateMosaicDataset_management(in_workspace=gdb_path,
                                                      in_mosaicdataset_name=md_name,
@@ -166,7 +166,7 @@ def createQARasterMosaicDataset(md_name, gdb_path, spatial_reference, input_fold
                                                      product_band_definitions="")
 
                 arcpy.SetMosaicDatasetProperties_management(in_mosaic_dataset=md_path, rows_maximum_imagesize="4100", columns_maximum_imagesize="15000", allowed_compressions="None;JPEG;LZ77;LERC", default_compression_type="LERC", JPEG_quality="75", LERC_Tolerance="0.01", resampling_type="CUBIC", clip_to_footprints="NOT_CLIP", footprints_may_contain_nodata="FOOTPRINTS_DO_NOT_CONTAIN_NODATA", clip_to_boundary="CLIP", color_correction="NOT_APPLY", allowed_mensuration_capabilities="Basic", default_mensuration_capabilities="Basic", allowed_mosaic_methods="NorthWest;Center;LockRaster;ByAttribute;Nadir;Viewpoint;Seamline;None", default_mosaic_method="NorthWest", order_field="", order_base="", sorting_order="ASCENDING", mosaic_operator="FIRST", blend_width="10", view_point_x="600", view_point_y="300", max_num_per_mosaic="2000", cell_size_tolerance="0.8", cell_size="10 10", metadata_level="BASIC", transmission_fields="Name;MinPS;MaxPS;LowPS;HighPS;Tag;GroupName;ProductName;CenterX;CenterY;ZOrder;Shape_Length;Shape_Area;Thumbnail", use_time="DISABLED", start_time_field="", end_time_field="", time_format="", geographic_transform="", max_num_of_download_items="20", max_num_of_records_returned="1000", data_source_type="GENERIC", minimum_pixel_contribution="1", processing_templates="None", default_processing_template="None", time_interval="", time_interval_units="")
-                a = doTime(a, "\tCreated MD {}".format(md_name))
+                a = doTime(a, "\t\tCreated MD {}".format(md_name))
 
                 arcpy.AddRastersToMosaicDataset_management(in_mosaic_dataset=md_path,
                                                            raster_type="Raster Dataset",
@@ -237,7 +237,11 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
     lasd_boundary_2 = "{}2".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_2, True)
     arcpy.AddMessage("\tDissolving with statistics: {}".format(statistics_fields))
-    arcpy.Dissolve_management(in_features=lasd_boundary_1, out_feature_class=lasd_boundary_2, statistics_fields=statistics_fields)
+    arcpy.Dissolve_management(
+        in_features=lasd_boundary_1,
+        out_feature_class=lasd_boundary_2,
+        statistics_fields=statistics_fields
+        )
     Utility.addToolMessages()
     deleteFields(lasd_boundary_2)
     a = doTime(a, "\tDissolved to {}".format(lasd_boundary_2))
@@ -383,7 +387,7 @@ def getStatsFields(feature_class=None):
     for base_field in base_fields:
         base_field_info = base_field[0]
         if existing_fieldnames is not None and (False if base_field_info[0] in existing_fieldnames else True):
-            arcpy.AddMessage("Adding field {} to {}".format(base_field_info, feature_class))
+            #arcpy.AddMessage("Adding field {} to {}".format(base_field_info, feature_class))
             addFieldIfMissing(feature_class, existing_fieldnames, base_field_info)
 
         base_field_op = base_field[1]
@@ -393,8 +397,8 @@ def getStatsFields(feature_class=None):
 
     summary_string = ";".join(summary_fields)
 
-    arcpy.AddMessage("Summary String = '{}'".format(summary_string))
-    a = doTime(a, "Summary String")
+    #arcpy.AddMessage("Summary String = '{}'".format(summary_string))
+    a = doTime(a, "Created Summary String")
     return summary_string, field_alter
 
 
@@ -521,10 +525,10 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
         deleteFileIfExists(las_footprint_2, True)
         deleteFileIfExists(las_footprint_CP, True)
         arcpy.Merge_management(inputs=b_file_list, output=las_footprint_2)
-        Utility.addToolMessages()
+        #Utility.addToolMessages()
         deleteFields(las_footprint_2)
         arcpy.RepairGeometry_management(in_features=las_footprint_2, delete_null="DELETE_NULL")
-        Utility.addToolMessages()
+        #Utility.addToolMessages()
         a = doTime(a, "\tMerged B and repaired footprints to {}".format(las_footprint_2))
         
         #arcpy.CreateCartographicPartitions_cartography(in_features=las_footprint_2, out_features=las_footprint_CP, feature_count=PARTITION_COUNT)
@@ -557,10 +561,10 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
         deleteFileIfExists(las_footprint_CP, True)
         a = doTime(a, "\tMerging C las footprints to {}".format(las_footprint_2))
         arcpy.Merge_management(inputs=c_file_list, output=las_footprint_2)
-        Utility.addToolMessages()
+        #Utility.addToolMessages()
         deleteFields(las_footprint_2)
         arcpy.RepairGeometry_management(in_features=las_footprint_2, delete_null="DELETE_NULL")
-        Utility.addToolMessages()
+        #Utility.addToolMessages()
         a = doTime(a, "\tMerged C las footprints to {}".format(las_footprint_2))
 
         #arcpy.CreateCartographicPartitions_cartography(in_features=las_footprint_2, out_features=las_footprint_CP, feature_count=PARTITION_COUNT)

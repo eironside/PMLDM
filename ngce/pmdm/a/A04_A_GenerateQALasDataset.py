@@ -23,7 +23,7 @@ from ngce.pmdm.a import A04_C_ConsolidateLASInfo
 
 PROCESS_DELAY = 1
 PROCESS_CHUNKS = 6  # files per thread
-PROCESS_SPARES = -3  # processors to leave as spares
+PROCESS_SPARES = -5  # processors to leave as spares
 
 arcpy.env.parallelProcessingFactor = "8"
 
@@ -65,7 +65,8 @@ def createLasStatistics(fileList, target_path, spatial_reference=None, isClassif
             f_path = ",".join(f_paths)
             indx = indx + len(f_paths)
 
-            arcpy.AddMessage('\t Working on {}/{}: {}'.format(indx, total, f_path))
+            #arcpy.AddMessage('\t Working on {}/{}: {}'.format(indx, total, f_path))
+            arcpy.AddMessage('\t Working on {}/{}'.format(indx, total))
             args = [f_path, target_path, spatial_reference, "{}".format(isClassified), "{}".format(createQARasters), "{}".format(createMissingRasters), overrideBorderPath]
 
             try:

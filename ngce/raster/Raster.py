@@ -186,13 +186,30 @@ def createRasterDatasetStats(f_path, stat_file_path=None):
     
     try:
         # this no data value doesn't apply to all rasters, but easier to just try and move on
-        arcpy.SetRasterProperties_management(f_path, data_type="#", statistics="#", stats_file="#", nodata="1 {}".format(RasterConfig.NODATA_DEFAULT))
+        arcpy.SetRasterProperties_management(
+            f_path, data_type="#",
+            statistics="#",
+            stats_file="#",
+            nodata="1 {}".format(RasterConfig.NODATA_DEFAULT)
+            )
     except:
         pass
-    arcpy.CalculateStatistics_management(in_raster_dataset=f_path, x_skip_factor="1", y_skip_factor="1", ignore_values="", skip_existing="OVERWRITE", area_of_interest="Feature Set")
-    
-#     doTime(a, "\tCalculated STATS {}".format(stat_file_path))
-#     a = datetime.now()
+
+
+    try:
+        arcpy.CalculateStatistics_management(
+            in_raster_dataset=f_path,
+            x_skip_factor="1",
+            y_skip_factor="1",
+            ignore_values="",
+            skip_existing="OVERWRITE",
+            area_of_interest="Feature Set"
+            )
+        
+    except Exception as e:
+        arcpy.AddMessage('Could Not Calculate Statistics')
+        arcpy.AddMessage(e)
+        
     
     raster_properties = {}
     

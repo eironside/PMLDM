@@ -155,8 +155,51 @@ def deleteFields(in_table):
            deleteField(in_table, drop_field)
         
         
-    
+# ArcPY fails when adding fields sometimes with 9999 error. No way to get around.
+# Use this method to add a field and try several times before giving up.
+def addField(in_table, field_name, field_alias, field_type, field_length, expression=None, field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED"):
+    tries = 0
+    MAX_TRIES = 5
+    isAdded = False
+    while not isAdded and tries <= MAX_TRIES:
+        tries = tries + 1
+        try:    
+            # arcpy.AddMessage("Adding field: {} {} {} {} {}".format(field_shpname, field_alias, field_type, field_length, field_value))
+            arcpy.AddField_management(in_table=in_table, field_name=field_name, field_alias=field_alias, field_type=field_type, field_length=field_length, field_is_nullable=field_is_nullable, field_is_required=field_is_required)
+            time.sleep(0.25)
+            if expression is not None:
+                arcpy.CalculateField_management(in_table=in_table, field=field_name, expression=expression, expression_type="PYTHON_9.3")
+                time.sleep(0.25)
+            isAdded = True
+        except:
+            if tries >= MAX_TRIES:
+                raise
+            else:
+                time.sleep(1)
+                arcpy.AddMessage("\tWARNING: Failed adding field (trying again): {} {} {} {} {}".format(field_name, field_alias, field_type, field_length, expression))
+        
 
+def checkRecordCount(in_path):
+    record_count = 0
+    try:
+        arcpy.RepairGeometry_management(in_features=in_path, delete_null="DELETE_NULL")
+        Utility.addToolMessages()
+    except:
+        Utility.addToolMessages()
+        arcpy.AddWarning("\tWARNING: Failed to repair geometry of {}".format(in_path))
+
+    try:
+        record_count = arcpy.GetCount_management(in_path)[0]
+        arcpy.AddMessage("\t{} has {} records".format(in_path, record_count))
+    except:
+        Utility.addToolMessages()
+        arcpy.AddWarning("\tWARNING: Failed to count records in {}".format(in_path))
+        
+    if record_count <= 0:
+        arcpy.AddWarning("\tWARNING: NO RECORDS IN {}".format(in_path))
+        
+    return record_count
+    
 '''
 --------------------------------------------------------------------------------
 Calculates a boundary around the dataset using a raster domain.
@@ -172,47 +215,52 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
     vector_1_bound_path = os.path.join(stat_out_folder, "B1_{}.shp".format(f_name))
     vector_2_bound_path = os.path.join(stat_out_folder, "B2_{}.shp".format(f_name))
     vector_3_bound_path = os.path.join(stat_out_folder, "B3_{}.shp".format(f_name))
+    vector_4_bound_path = os.path.join(stat_out_folder, "B4_{}.shp".format(f_name))
+    vector_5_bound_path = os.path.join(stat_out_folder, "B5_{}.shp".format(f_name))
     deleteFileIfExists(vector_bound_path, useArcpy=True)
     deleteFileIfExists(vector_1_bound_path, useArcpy=True)
     deleteFileIfExists(vector_2_bound_path, useArcpy=True)
     deleteFileIfExists(vector_3_bound_path, useArcpy=True)
+    deleteFileIfExists(vector_4_bound_path, useArcpy=True)
+    deleteFileIfExists(vector_5_bound_path, useArcpy=True)
     
-    arcpy.RasterDomain_3d(in_raster=f_path, out_feature_class=vector_3_bound_path, out_geometry_type="POLYGON")
-    arcpy.EliminatePolygonPart_management(in_features=vector_3_bound_path, out_feature_class=vector_2_bound_path, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
-    arcpy.SimplifyPolygon_cartography(in_features=vector_2_bound_path, out_feature_class=vector_1_bound_path, algorithm="BEND_SIMPLIFY", tolerance="{} Meters".format(C_SIMPLE_DIST), minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
-    #try:
-    #    arcpy.DeleteField_management(in_table=vector_1_bound_path, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
-    #except:
-    #    pass
+    arcpy.RasterDomain_3d(in_raster=f_path, out_feature_class=vector_5_bound_path, out_geometry_type="POLYGON")
+    Utility.addToolMessages()
+
+    arcpy.MultipartToSinglepart_management(in_features=vector_5_bound_path, out_feature_class=vector_4_bound_path)
+    Utility.addToolMessages()
+    checkRecordCount(vector_4_bound_path)
+        
+    arcpy.EliminatePolygonPart_management(in_features=vector_4_bound_path, out_feature_class=vector_3_bound_path, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
+    Utility.addToolMessages()
+    checkRecordCount(vector_3_bound_path)
+    
+    arcpy.SimplifyPolygon_cartography(in_features=vector_3_bound_path, out_feature_class=vector_2_bound_path, algorithm="POINT_REMOVE", tolerance="{} Meters".format(C_SIMPLE_DIST), minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
+    Utility.addToolMessages()
+    checkRecordCount(vector_2_bound_path)
+
+    arcpy.Dissolve_management(in_features=vector_2_bound_path, out_feature_class=vector_1_bound_path, dissolve_field="", statistics_fields="", multi_part="MULTI_PART", unsplit_lines="DISSOLVE_LINES")
+    Utility.addToolMessages()
+    checkRecordCount(vector_1_bound_path)
+    
     deleteFields(vector_1_bound_path)
-    deleteFileIfExists(vector_3_bound_path, useArcpy=True)
-    deleteFileIfExists(vector_2_bound_path, useArcpy=True)
-     
+
+    record_count = checkRecordCount(vector_1_bound_path)
     footprint_area = 0
     for row in arcpy.da.SearchCursor(vector_1_bound_path, ["SHAPE@"]):  # @UndefinedVariable
         shape = row[0]
         footprint_area = shape.getArea ("PRESERVE_SHAPE", "SQUAREMETERS")
-     
-    arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[PATH][0], field_alias=FIELD_INFO[PATH][1], field_type=FIELD_INFO[PATH][2], field_length=FIELD_INFO[PATH][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    time.sleep(0.25)
 
-    arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[NAME][0], field_alias=FIELD_INFO[NAME][1], field_type=FIELD_INFO[NAME][2], field_length=FIELD_INFO[NAME][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    time.sleep(0.25)
-
-    arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[AREA][0], field_alias=FIELD_INFO[AREA][1], field_type=FIELD_INFO[AREA][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    time.sleep(0.25)
-
-    arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[ELEV_TYPE][0], field_alias=FIELD_INFO[ELEV_TYPE][1], field_type=FIELD_INFO[ELEV_TYPE][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    time.sleep(0.25)
-
-    arcpy.AddField_management(in_table=vector_1_bound_path, field_name=FIELD_INFO[RANGE][0], field_alias=FIELD_INFO[RANGE][1], field_type=FIELD_INFO[RANGE][2], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-    time.sleep(0.25)
+    if footprint_area <= 0:
+        arcpy.AddMessage("\tWARNGING: Area is 0 in {} '{}' bound '{}'".format(elev_type, f_path, vector_bound_path))
+        
+    addField(in_table=vector_1_bound_path, field_name=FIELD_INFO[PATH][0], field_alias=FIELD_INFO[PATH][1], field_type=FIELD_INFO[PATH][2], field_length=FIELD_INFO[PATH][3])
+    addField(in_table=vector_1_bound_path, field_name=FIELD_INFO[NAME][0], field_alias=FIELD_INFO[NAME][1], field_type=FIELD_INFO[NAME][2], field_length=FIELD_INFO[NAME][3])
+    addField(in_table=vector_1_bound_path, field_name=FIELD_INFO[AREA][0], field_alias=FIELD_INFO[AREA][1], field_type=FIELD_INFO[AREA][2], field_length=FIELD_INFO[AREA][3])
+    addField(in_table=vector_1_bound_path, field_name=FIELD_INFO[ELEV_TYPE][0], field_alias=FIELD_INFO[ELEV_TYPE][1], field_type=FIELD_INFO[ELEV_TYPE][2], field_length=FIELD_INFO[ELEV_TYPE][3])
+    addField(in_table=vector_1_bound_path, field_name=FIELD_INFO[RANGE][0], field_alias=FIELD_INFO[RANGE][1], field_type=FIELD_INFO[RANGE][2], field_length=FIELD_INFO[RANGE][3])
 
     deleteFields(vector_1_bound_path)
-    #try:
-    #    arcpy.DeleteField_management(in_table=vector_1_bound_path, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
-    #except:
-    #    pass
      
     arcpy.AddMessage(raster_props)
     for field_name in KEY_LIST:
@@ -226,13 +274,9 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
             if str(field_value).endswith('\\'):
                 field_value = str(field_value)[0:-1]
             field_value = r'"{}"'.format(field_value)
+
+        addField(in_table=vector_1_bound_path, field_name=field_shpname, field_alias=field_alias, field_type=field_type, field_length=field_length, expression=field_value)
             
-        # arcpy.AddMessage("Adding field: {} {} {} {} {}".format(field_shpname, field_alias, field_type, field_length, field_value))
-        arcpy.AddField_management(in_table=vector_1_bound_path, field_name=field_shpname, field_alias=field_alias, field_type=field_type, field_length=field_length, field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
-        time.sleep(0.25)
-        if field_value is not None:
-            arcpy.CalculateField_management(in_table=vector_1_bound_path, field=field_shpname, expression=field_value, expression_type="PYTHON_9.3")
-            time.sleep(0.25)
     
     b_f_path, b_f_name = os.path.split(f_path)
     b_f_name = os.path.splitext(b_f_name)[0]
@@ -248,9 +292,25 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
     
     deleteFileIfExists(vector_bound_path, True)
     arcpy.Clip_analysis(in_features=vector_1_bound_path, clip_features=bound_path, out_feature_class=vector_bound_path, cluster_tolerance="")
-    arcpy.Delete_management(in_data=vector_1_bound_path, data_type="ShapeFile")
-    deleteFields(vector_bound_path)
+    Utility.addToolMessages()
+    checkRecordCount(vector_bound_path)
     
+    deleteFields(vector_bound_path)
+
+    #debug = False
+    #try:
+    #    debug = (str(f_path).find("alamazoo") >= 0)
+    #except:
+    #    debug = False
+    #if not debug:            
+    deleteFileIfExists(vector_1_bound_path, useArcpy=True)
+    deleteFileIfExists(vector_2_bound_path, useArcpy=True)
+    deleteFileIfExists(vector_3_bound_path, useArcpy=True)
+    deleteFileIfExists(vector_4_bound_path, useArcpy=True)
+    deleteFileIfExists(vector_5_bound_path, useArcpy=True)
+    #else:
+    #    arcpy.AddMessage("\tleaving artifacts for {} '{}'".format(elev_type, vector_bound_path))
+
     doTime(a, "\tCreated BOUND {}".format(vector_bound_path))
         
                 
@@ -305,7 +365,14 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                         arcpy.AddMessage("Applying projection to raster '{}' {}".format(target_f_path, spatial_ref))
                         if str(spatial_ref).lower().endswith(".prj"):
                             spatial_ref = arcpy.SpatialReference(spatial_ref)
-                        arcpy.AddMessage("Applying projection to raster '{}' {}".format(target_f_path, spatial_ref.exportToString()))
+
+                        # 3/22/18 - Handle UTF-8 Encoding - 'u\u2013' From MI Delta
+                        try:
+                            arcpy.AddMessage(
+                                "Applying projection to raster '{}' {}".format(target_f_path, spatial_ref.exportToString().encode('utf-8'))
+                                )
+                        except Exception as e:
+                            arcpy.AddMessage('Error: {}'.format(e))
                         arcpy.DefineProjection_management(in_dataset=target_f_path, coor_system=spatial_ref)
                     
                     # Set the no data default value on the input raster
@@ -481,6 +548,7 @@ Outputs:
 --------------------------------------------------------------------------------
 '''
 if __name__ == '__main__':
+    
     # give time for things to wake up
     time.sleep(6)
     
@@ -534,7 +602,12 @@ if __name__ == '__main__':
     if len(sys.argv) >= 14:
         spatial_ref = sys.argv[13]
     
-    arcpy.AddMessage("\tf_paths='{}',elev_type='{}',target_path='{}',publish_path='{}',bound_path='{}',z_min='{}', z_max='{}', v_name='{}', v_unit='{}', h_name='{}', h_unit='{}', h_wkid='{}', sr='{}'".format(f_paths, elev_type, target_path, publish_path, bound_path, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref))
+    arcpy.AddMessage(
+        "\tf_paths='{}',elev_type='{}',target_path='{}',publish_path='{}',bound_path='{}',z_min='{}', z_max='{}', v_name='{}', v_unit='{}', h_name='{}', h_unit='{}', h_wkid='{}', sr='{}'"
+        .format(
+            f_paths, elev_type, target_path, publish_path, bound_path, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref
+            )
+        )
     
     f_paths = str(f_paths).split(",")
     

@@ -59,7 +59,7 @@ from ngce.raster.RasterConfig import FIELD_INFO, MIN, MAX, V_NAME, V_UNIT, \
 
 PROCESS_DELAY = 10
 PROCESS_CHUNKS = 6  # files per thread. Factor of 2 please
-PROCESS_SPARES = 1  # processors to leave as spares, no more than 4!
+PROCESS_SPARES = -3  # processors to leave as spares, no more than 4!
 
 arcpy.env.parallelProcessingFactor = "8"
 
@@ -285,7 +285,8 @@ def getLasdBoundData(bound_path, add_buffer=True):
                      FIELD_INFO[H_WKID][0],
                      FIELD_INFO[IS_CLASSIFIED][0]
                      ]
-    
+
+    arcpy.AddMessage(bound_path)
     for row in arcpy.da.SearchCursor(bound_path, bound_fields):  # @UndefinedVariable
         z_min = row[0]
         z_max = row[1]
@@ -297,7 +298,28 @@ def getLasdBoundData(bound_path, add_buffer=True):
         is_classified = row[7]
     
     z_min, z_max = bufferZValues(z_min, z_max, add_buffer)
-    arcpy.AddMessage("LAS Bound Data: \n\tz_min={} \n\tz_max={} \n\tv_name={} \n\tv_unit={} \n\th_name={} \n\th_unit={} \n\th_wkid={} \n\tis_classified={} \n\t".format(z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, is_classified))
+
+    arcpy.AddMessage("LAS Boundary Parameters")
+    console_checks = [
+        ('z_min', z_min),
+        ('z_max', z_max),
+        ('v_name', v_name),
+        ('v_unit', v_unit),
+        ('h_name', h_name),
+        ('h_unit', h_unit),
+        ('h_wkid', h_wkid),
+        ('is_classified', is_classified)
+        ]
+    
+    for check in console_checks:
+        try:
+            arcpy.AddMessage('{} \t {}'.format(check[0], check[1]))     
+        except UnicodeEncodeError as e:
+            try:
+                arcpy.AddMessage('{} \t {}'.format(check[0], check[1].encode('utf-8')))
+            except Exception as e:
+                arcpy.AddMessage('Encoding Failed: {}'.format(e))
+            
     return z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, is_classified
 
 
@@ -331,7 +353,8 @@ def processRastersInFolder(fileList, target_path, publish_path, elev_type, bound
             f_path = ",".join(f_paths)
             indx = indx + len(f_paths)
             
-            arcpy.AddMessage('       processRastersInFolder: Working on {}/{}: {}'.format(indx, total, f_path))
+            #arcpy.AddMessage('       processRastersInFolder: Working on {}/{}: {}'.format(indx, total, f_path))
+            arcpy.AddMessage('       processRastersInFolder: Working on {}/{}'.format(indx, total))
             args = [f_path, elev_type, target_path, publish_path, bound_path, str(z_min), str(z_max), v_name, v_unit, h_name, h_unit, str(h_wkid), spatial_ref]
             
             try:
@@ -491,6 +514,8 @@ def processJob(ProjectJob, project, ProjectUID):
     
     spatialRef_error = {}
     z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, is_classified = getLasdBoundData(lasd_boundary)  # @UnusedVariable
+    arcpy.AddMessage('TRACKING')
+    arcpy.AddMessage(v_name)
 
     # Explicitely check if DTM images exist. If not bail
     start_dir = os.path.join(ProjectFolder.delivered.path, DTM)

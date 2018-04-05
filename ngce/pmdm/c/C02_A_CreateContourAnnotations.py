@@ -8,6 +8,7 @@ import shutil
 import sys
 import time
 import traceback
+import random
 
 from ngce import Utility
 from ngce.Utility import doTime
@@ -64,6 +65,9 @@ def gen_base_tiling_scheme(base_fc, scratch):
             levels="9027.977411;4513.988705;2256.994353;1128.497176"
         )
         Utility.doTime(a, "Generated base tiling scheme {}".format(base_tiling_scheme))
+
+        # JWS - 3/29
+        del base_mxd
 
     return base_tiling_scheme
 
@@ -265,14 +269,45 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                     clearScratch = False
                     clearScratchFiles(section_mxd_name, anno_paths, mask_paths, annoLyr_paths)
                     
-        #     try:
                 # Copy Template MXD
                 base_mxd = arcpy.mapping.MapDocument(ContourConfig.MXD_ANNO_TEMPLATE)
-                
+
                 if not os.path.exists(section_mxd_name):
-                    base_mxd.saveACopy(section_mxd_name)
-                    a = Utility.doTime(a, "\t{}: Saved a copy of the mxd template to '{}'".format(name, section_mxd_name))
-        
+                    try:
+                        base_mxd.saveACopy(section_mxd_name)
+                        a = Utility.doTime(a, "\t{}: Saved a copy of the mxd template to '{}'".format(name, section_mxd_name))
+                        
+                    except Exception as e:
+
+                        arcpy.AddMessage('TRACKING ERROR: {}'.format(name))
+                          
+                        sanity_count = 0
+                        sanity_found = False
+                        
+                        while not sanity_found and sanity_count <= 5:
+
+                            try:
+                                del base_mxd
+                            except NameError:
+                                pass
+                            
+                            time.sleep(random.randrange(2, 5))
+                            base_mxd = arcpy.mapping.MapDocument(ContourConfig.MXD_ANNO_TEMPLATE)
+
+                            arcpy.AddMessage('### Title: {}'.format(base_mxd.title))
+                            arcpy.AddMessage('### Path: {}'.format(base_mxd.filePath))
+                            arcpy.AddMessage('### Section: {}'.format(section_mxd_name))
+
+                            try:
+                                base_mxd.saveACopy(section_mxd_name)
+                                sanity_found = True
+                                a = Utility.doTime(a, "\t{}: Saved a copy of the mxd template to '{}'".format(name, section_mxd_name))
+                            except:
+                                arcpy.AddMessage('###Copying MXD Template Failed. Trying Again . . .')
+                                sanity_count +=1
+
+                arcpy.AddMessage('###Section MXD Name: {}'.format(section_mxd_name))
+                                
                 # Set MXD For Processing
                 mxd = arcpy.mapping.MapDocument(section_mxd_name)
         
@@ -306,23 +341,6 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                     )
                     a = Utility.doTime(a, "\t{}: Created feature layer '{}'".format(name, feat))
                             
-                    
-    #                 # Select Subsection of Tiling Scheme
-    #                 sel_lyr = arcpy.MakeFeatureLayer_management(scheme_poly, 'scheme_poly')
-    #                 arcpy.SelectLayerByLocation_management(
-    #                     in_layer=sel_lyr,
-    #                     overlap_type="INTERSECT",
-    #                     select_features=feat,
-    #                     selection_type="NEW_SELECTION",
-    #                     invert_spatial_relationship="NOT_INVERT"
-    #                 )
-    #                 a = Utility.doTime(a, "\t{}: Selected feature layer '{}'".format(name, sel_lyr))
-                    
-    #                 # Save Subsection of Tiling Scheme for TiledLabelsToAnnotation
-    #                 arcpy.CopyFeatures_management(
-    #                     in_features=sel_lyr,
-    #                     out_feature_class=target_scheme_polys
-    #                 )
                     arcpy.Clip_analysis(in_features=scheme_poly, clip_features=feat, out_feature_class=target_scheme_polys, cluster_tolerance="")
                     if arcpy.Exists(target_scheme_polys_fgdb):
                         arcpy.Delete_management(target_scheme_polys_fgdb)
@@ -340,14 +358,6 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                 # Reference Annotation FCs created with TiledLabelsToAnnotation
                 df = arcpy.mapping.ListDataFrames(mxd, 'Layers')[0]
                 a = Utility.doTime(a, "\t{}: Got data frame '{}'".format(name, df))
-                
-                # Delete Existing Annotation FCs to Avoid Confusion with TiledLabelsToAnnotation Output
-        #         for anno in anno_paths:
-        #             arcpy.Delete_management(in_data=anno, data_type='FeatureClass')
-        #             if arcpy.Exists(anno):
-        #                 arcpy.AddMessage("\t{}: Anno FC exists: {}".format(name, anno))
-        #             else:
-                        # Enable Labels for TiledLabelsToAnnotation tool
                         
                 for lyr in arcpy.mapping.ListLayers(mxd):
                     try:
@@ -375,13 +385,6 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                     generate_unplaced_annotation="NOT_GENERATE_UNPLACED_ANNOTATION"
                 )
                 Utility.addToolMessages()
-                        
-    #             # Reset the label settings
-    #             for lyr in arcpy.mapping.ListLayers(mxd):
-    #                 try:
-    #                     lyr.showLabels = False
-    #                 except:
-    #                     pass  # some layers don't support labels. If not, just move one
                                 
                 mxd.save()
                 a = Utility.doTime(a, "\t{}: Exported tiled labels to annotation '{}'".format(name, target_scheme_polys))
@@ -430,13 +433,9 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                             arcpy.mapping.AddLayer(df, add_lyr, 'BOTTOM')
                 mxd.save()
                 a = Utility.doTime(a, "\t{}: Exported layer files for annotation set {}".format(name, annotation_set))
-        
-                # Create Mask FC to Hide Contour Beneath Annotation
-    #             arcpy.env.workspace = filter_folder
                 
                 for lyr_path in annoLyr_paths:  # arcpy.ListFiles('Contours*.lyr_path'):
                     try:
-        #                 lyr_path = os.path.join(filter_folder, lyr_file)
                         ref_scale = lyr_path[-8:-4]
                         mask_fc = os.path.join(filter_folder, r'Mask{}.shp'.format(ref_scale))
                         if arcpy.Exists(mask_fc):
@@ -463,6 +462,7 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                 
                 Utility.doTime(aa, 'Finished: {}'.format(name))
                 created1 = True
+                del mxd
                 
             except Exception as e:
                 arcpy.AddError('Exception: {}'.format(e))
@@ -720,6 +720,9 @@ def build_results_mxd(in_fc, final_db, folder):
     
     Utility.doTime(aa, "Finished Annotation Results for {}".format(section_mxd_name))
 
+    # JWS - 3/29
+    del base_mxd
+
 def processJob(project_job, project, strUID):
     a = datetime.datetime.now()
     aa = a
@@ -820,7 +823,7 @@ def setupForDebug():
 
 if __name__ == '__main__':
     exception = None
-#     try:
+
     arcpy.CheckOutExtension("Foundation")
     
     if len(sys.argv) > 1:
@@ -830,11 +833,5 @@ if __name__ == '__main__':
         project_job, project, strUID = setupForDebug()
         processJob(project_job, project, strUID)
     
-#     except Exception as e:
-#         exception = e
-#     finally:
     arcpy.CheckInExtension("Foundation")
-
-#     if exception is not None:
-#         arcpy.AddError('Exception: {}'.format(exception))
         

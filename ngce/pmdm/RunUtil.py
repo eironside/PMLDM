@@ -38,7 +38,7 @@ def getLogFile(log_path, script_name):
         log_path = os.path.join(log_path, os.path.splitext(script_name)[0])
 # #Override to local for testing, didn't make a difference
 # log_path = r"C:\Temp\logs"
-    arcpy.AddMessage("Logs are written to folder: {}".format(str(log_path)))
+    #arcpy.AddMessage("Logs are written to folder: {}".format(str(log_path)))
     if not os.path.exists(log_path):
         os.makedirs(log_path)
     logfile = tempfile.NamedTemporaryFile(
@@ -47,10 +47,10 @@ def getLogFile(log_path, script_name):
         dir=log_path,
         delete=False)
     
-    try:
-        arcpy.AddMessage("Logs are written to file: {}".format(str(logfile.name)))
-    except:
-        pass
+    #try:
+    #    arcpy.AddMessage("Logs are written to file: {}".format(str(logfile.name)))
+    #except:
+    #    pass
     
     return logfile
 
@@ -117,11 +117,14 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
         arcpy.AddMessage("{} Succeeded! Details in log file {}".format(path, logfilepath))
 
     ret = ''
-    with open(logfilepath, 'r') as lf:
-        for line in lf:
-            if len(str(line)) > 2:
-                arcpy.AddMessage("{}".format(str(line).rstrip('\n').rstrip('\r').rstrip('\n')))
-                ret = line
+    try:
+        with open(logfilepath, 'r') as lf:
+            for line in lf:
+                if len(str(line)) > 2:
+                    arcpy.AddMessage("{}".format(str(line).rstrip('\n').rstrip('\r').rstrip('\n')))
+                    ret = line
+    except:
+        arcpy.AddMessage("Failed to open log file. please review it if it existst {}".format(logfilepath))
 
     if out is not None:
         return out
@@ -131,6 +134,7 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
 
 
 def runToolx64_async(path, toolArgs, logpre="", logpath=None):
+
     if logpath is None:
         logpath = WMX_TOOLS
     script_name = os.path.split(path)[1]
@@ -138,10 +142,23 @@ def runToolx64_async(path, toolArgs, logpre="", logpath=None):
     path = r'"{}"'.format(os.path.join(WMX_TOOLS, path))
 
     for index, item in enumerate(toolArgs):
-        if str(item).endswith('\\'):
-            toolArgs[index] = item[0:-1]
+
+        try:
+            i = '"{}"'.format(toolArgs[index])
+
+        except UnicodeEncodeError as e:
+            try:
+                i = '"{}"'.format(toolArgs[index].encode('utf-8'))
+            except Exception as e:
+                arcpy.AddMessage('Encoding Failed: {}'.format(e))
         
-        toolArgs[index] = r'"{}"'.format(toolArgs[index])
+        if i.endswith('\\'):
+            toolArgs[index] = i[0:-1]
+
+        else:
+            toolArgs[index] = i
+
+        #toolArgs[index] = r'"{}"'.format(toolArgs[index])
     
     path_python27 = PATH_PYTHON27_64
     
@@ -202,7 +219,8 @@ def endRun_async(path, proc, logfile):
 
     if retCode != 0:  
         arcpy.AddError("ERROR: '{}' failed with return code {}. Details in log file {} ".format(path, retCode, logfilepath))
-    else: 
-        arcpy.AddMessage("SUCCESS: '{}' succeeded. Details in log file {}".format(path, logfilepath))
+    #else: 
+        #arcpy.AddMessage("\tSUCCESS: '{}' succeeded. Details in log file {}".format(path, logfilepath))
+        #arcpy.AddMessage("\tSUCCESS: '{}' succeeded.".format(path))
         
     return retCode
