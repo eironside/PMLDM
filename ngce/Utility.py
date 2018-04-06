@@ -28,6 +28,41 @@ SDE_CMDR_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'c
 WMX_AOI_FC = "LDM_WMX.DBO.JTX_JOBS_AOI"
 #WMX_AOI_FC = "NGCE_WMX.DBO.JTX_JOBS_AOI"
 
+# A set of standard fields that are not used and should be deleted
+DROP_FIELDS=["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id", "Buff_Dist",
+             "MINSIMPTOL", "MAXSIMPTOL", "ORIG_FID", "INPOLY_FID", "SIMPGNFLAG", "ID", "BUFF_DIST",
+             "minsimptol", "maxsimptol", "orig_fid", "inpoly_fid", "simpgnflag", "id", "buff_dist"]
+
+
+
+def deleteField(in_table, drop_field):
+    #arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
+    try:    
+        arcpy.DeleteField_management(in_table=in_table, drop_field=drop_field)
+    except:
+        #arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
+        pass
+
+def deleteFields(in_table):
+    try:
+        fields = arcpy.ListFields(in_table)
+        existing_fields = []
+        for field in fields:
+            existing_fields.append(field.name)
+            
+        #arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
+        for drop_field in DROP_FIELDS:
+            #arcpy.AddMessage("\t\tTrying to drop field '{}' from '{}'".format(drop_field, in_table))
+            if drop_field in existing_fields:
+               deleteField(in_table, drop_field)
+    except:
+        pass
+        
+
+
+
+
+
 def fileCounter(myPath, ext=None):
     fileCounter = 0
     firstFile = None
