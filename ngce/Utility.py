@@ -29,18 +29,18 @@ WMX_AOI_FC = "LDM_WMX.DBO.JTX_JOBS_AOI"
 #WMX_AOI_FC = "NGCE_WMX.DBO.JTX_JOBS_AOI"
 
 # A set of standard fields that are not used and should be deleted
-DROP_FIELDS=["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id", "Buff_Dist",
+DROP_FIELDS = ["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id", "Buff_Dist",
              "MINSIMPTOL", "MAXSIMPTOL", "ORIG_FID", "INPOLY_FID", "SIMPGNFLAG", "ID", "BUFF_DIST",
              "minsimptol", "maxsimptol", "orig_fid", "inpoly_fid", "simpgnflag", "id", "buff_dist"]
 
 
 
 def deleteField(in_table, drop_field):
-    #arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
+    # arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
     try:    
         arcpy.DeleteField_management(in_table=in_table, drop_field=drop_field)
     except:
-        #arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
+        # arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
         pass
 
 def deleteFields(in_table):
@@ -50,17 +50,13 @@ def deleteFields(in_table):
         for field in fields:
             existing_fields.append(field.name)
             
-        #arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
+        # arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
         for drop_field in DROP_FIELDS:
-            #arcpy.AddMessage("\t\tTrying to drop field '{}' from '{}'".format(drop_field, in_table))
+            # arcpy.AddMessage("\t\tTrying to drop field '{}' from '{}'".format(drop_field, in_table))
             if drop_field in existing_fields:
-               deleteField(in_table, drop_field)
+                deleteField(in_table, drop_field)
     except:
         pass
-        
-
-
-
 
 
 def fileCounter(myPath, ext=None):
@@ -94,7 +90,7 @@ def printArguments(argNameList, argList, argSource=None):
             argvalue = None
             if argList[i] is not None:
                 argvalue = str(argList[i])
-                if len(argvalue)> 100:
+                if len(argvalue) > 100:
                     argvalue = argvalue[0:100]
             arcpy.AddMessage("{}. {} = '{}'".format(i, item, argvalue))
     except:
@@ -483,7 +479,7 @@ def getString(str_value):
 def getSRValues(spatial_ref):
     
     if str(spatial_ref).lower().endswith(".prj"):
-        spatial_ref= arcpy.SpatialReference(spatial_ref)
+        spatial_ref = arcpy.SpatialReference(spatial_ref)
         
     horz_cs_name = None
     horz_cs_unit_name = None
@@ -497,7 +493,7 @@ def getSRValues(spatial_ref):
         pass
     
     if name is None:
-        spatial_ref= arcpy.SpatialReference().loadFromString(spatial_ref)
+        spatial_ref = arcpy.SpatialReference().loadFromString(spatial_ref)
     
     if spatial_ref is not None:
         horz_cs_name = getString(spatial_ref.name)

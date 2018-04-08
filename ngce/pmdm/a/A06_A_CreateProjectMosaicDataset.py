@@ -84,37 +84,64 @@ def addNameSource(footprints, img_type):
     if not success:
         a = doTime(a, "\tFailed to add NameSource field to {} footprints".format(img_type))
 
-def mergeFootprints(las_footprints, raster_footprints, el_type, fgdb_path):
+def mergeFootprints(las_footprints, el_type, fgdb_path):
     a = datetime.now()
     aa = a
-    output_path = os.path.join(fgdb_path, "FootprintRaster_{}_All".format(el_type))
-
-    if not arcpy.Exists(output_path):
-        addNameSource(las_footprints, "LAS")
-        addNameSource(raster_footprints, "RAS")
-
-        arcpy.Merge_management(inputs=";".join([las_footprints, raster_footprints]), output=output_path,
-                           field_mappings='path "path" true true false 254 Text 0 0 ,First,#,{1},path,-1,-1,{0},path,-1,-1;name "name" true true false 100 Text 0 0 ,First,#,{1},name,-1,-1,{0},name,-1,-1;area "area" true true false 8 Double 0 0 ,First,#,{1},area,-1,-1,{0},area,-1,-1;el_type "el_type" true true false 254 Text 0 0 ,First,#,{1},el_type,-1,-1;zran "zran" true true false 8 Double 0 0 ,First,#,{1},zran,-1,-1,{0},zran,-1,-1;zmax "zmax" true true false 8 Double 0 0 ,First,#,{1},zmax,-1,-1,{0},zmax,-1,-1;zmean "zmean" true true false 8 Double 0 0 ,First,#,{1},zmean,-1,-1,{0},zmean,-1,-1;zmin "zmin" true true false 8 Double 0 0 ,First,#,{1},zmin,-1,-1,{0},zmin,-1,-1;zdev "zdev" true true false 8 Double 0 0 ,First,#,{1},zdev,-1,-1,{0},zdev,-1,-1;width "width" true true false 8 Double 0 0 ,First,#,{1},width,-1,-1;height "height" true true false 8 Double 0 0 ,First,#,{1},height,-1,-1;cell_h "cell_h" true true false 8 Double 0 0 ,First,#,{1},cell_h,-1,-1;cell_w "cell_w" true true false 8 Double 0 0 ,First,#,{1},cell_w,-1,-1;comp_type "comp_type" true true false 50 Text 0 0 ,First,#,{1},comp_type,-1,-1;format "format" true true false 50 Text 0 0 ,First,#,{1},format,-1,-1;pixel "pixel" true true false 100 Text 0 0 ,First,#,{1},pixel,-1,-1;unc_size "unc_size" true true false 8 Double 0 0 ,First,#,{1},unc_size,-1,-1;xmin "xmin" true true false 8 Double 0 0 ,First,#,{1},xmin,-1,-1,{0},xmin,-1,-1;ymin "ymin" true true false 8 Double 0 0 ,First,#,{1},ymin,-1,-1,{0},ymin,-1,-1;xmax "xmax" true true false 8 Double 0 0 ,First,#,{1},xmax,-1,-1,{0},xmax,-1,-1;ymax "ymax" true true false 8 Double 0 0 ,First,#,{1},ymax,-1,-1,{0},ymax,-1,-1;v_name "v_name" true true false 100 Text 0 0 ,First,#,{1},v_name,-1,-1,{0},v_name,-1,-1;v_unit "v_unit" true true false 100 Text 0 0 ,First,#,{1},v_unit,-1,-1,{0},v_unit,-1,-1;h_name "h_name" true true false 100 Text 0 0 ,First,#,{1},h_name,-1,-1,{0},h_name,-1,-1;h_unit "h_unit" true true false 100 Text 0 0 ,First,#,{1},h_unit,-1,-1,{0},h_unit,-1,-1;h_wkid "h_wkid" true true false 100 Text 0 0 ,First,#,{1},h_wkid,-1,-1,{0},h_wkid,-1,-1;nodata "nodata" true true false 8 Double 0 0 ,First,#,{1},nodata,-1,-1;Project_ID "Project_ID" true true false 50 Text 0 0 ,First,#,{1},Project_ID,-1,-1,{0},Project_ID,-1,-1;Project_Dir "Project_Dir" true true false 1000 Text 0 0 ,First,#,{1},Project_Dir,-1,-1,{0},Project_Dir,-1,-1;Project_GUID "Project_GUID" true true false 38 Guid 0 0 ,First,#,{1},Project_GUID,-1,-1,{0},Project_GUID,-1,-1;is_class "is_class" true true false 10 Text 0 0 ,First,#,{0},is_class,-1,-1;ra_pt_ct "ra_pt_ct" true true false 8 Double 0 0 ,First,#,{0},ra_pt_ct,-1,-1;ra_pt_sp "ra_pt_sp" true true false 8 Double 0 0 ,First,#,{0},ra_pt_sp,-1,-1;ra_zmin "ra_zmin" true true false 8 Double 0 0 ,First,#,{0},ra_zmin,-1,-1;ra_zmax "ra_zmax" true true false 8 Double 0 0 ,First,#,{0},ra_zmax,-1,-1;ra_zran "ra_zran" true true false 8 Double 0 0 ,First,#,{0},ra_zran,-1,-1;NameSource "Name Source" true true false 100 Text 0 0 ,First,#,{1},NameSource,-1,-1,{0},NameSource,-1,-1'.format(las_footprints, raster_footprints))
+    
+    raster_footprints_original = A05_C_ConsolidateRasterInfo.getRasterFootprintPath(fgdb_path, el_type)
+    
+    # Simplify these footprints even more than original (requirement of the Mosaic Dataset)
+    raster_footprints_sim = "{}_SIM".format(raster_footprints_original)
+    if not arcpy.Exists(raster_footprints_sim):
+        arcpy.SimplifyPolygon_cartography(in_features=raster_footprints_original, out_feature_class=raster_footprints_sim,
+                                algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters",
+                                error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
         Utility.addToolMessages()
-        Utility.deleteFields(output_path)
-        a = doTime(a, "\tMerged geometry")
-
-        arcpy.RepairGeometry_management(in_features=output_path, delete_null="DELETE_NULL")
-        Utility.addToolMessages()
-        Utility.deleteFields(output_path)
-        a = doTime(a, "\tRepaired geometry {}".format(output_path))
-
+        Utility.deleteFields(raster_footprints_sim)
         
-
-        out_layer = arcpy.MakeFeatureLayer_management(in_features=output_path, out_layer="FootprintRaster_DTM_LAS", where_clause="el_type IS NULL")
-        arcpy.CalculateField_management(in_table=out_layer, field="el_type", expression='"LAS"', expression_type="PYTHON_9.3", code_block="")
-        a = doTime(a, "\tCalculated field 'el_type'")
-
-    doTime(aa, "Merged footprints for LAS and Raster into {}".format(output_path))
-    return output_path
-
-
-
+        arcpy.RepairGeometry_management(in_features=raster_footprints_sim, delete_null="DELETE_NULL")
+        Utility.addToolMessages()
+        Utility.deleteFields(raster_footprints_sim)
+        
+        addNameSource(raster_footprints_sim, "RAS")
+        Utility.deleteFields(raster_footprints_sim)
+        
+        # If LAS footprints are None, use this as the source of the footprints
+        merged_raster_footprints = raster_footprints_sim
+        
+        a = doTime(a, "\tSimplified raster footprint geometry to {}".format(raster_footprints_sim))
+    else:
+        merged_raster_footprints = raster_footprints_sim
+        
+    # Combine the raster footprints with the LAS file footprints. 
+    # NameSource differentiates the footprints in the combined feature class.
+    # NameSource is used to join the footprint/fields to the mosaic dataset later on.
+    if las_footprints is not None:
+        # If las_footprints is supplied, merge it with the rasters
+        raster_footprints_all = "{}_ALL".format(raster_footprints_original)
+        if not arcpy.Exists(raster_footprints_all):
+            
+            arcpy.Merge_management(inputs=";".join([las_footprints, raster_footprints_sim]), output=raster_footprints_all,
+                               field_mappings='path "path" true true false 254 Text 0 0 ,First,#,{1},path,-1,-1,{0},path,-1,-1;name "name" true true false 100 Text 0 0 ,First,#,{1},name,-1,-1,{0},name,-1,-1;area "area" true true false 8 Double 0 0 ,First,#,{1},area,-1,-1,{0},area,-1,-1;el_type "el_type" true true false 254 Text 0 0 ,First,#,{1},el_type,-1,-1,{1},el_type,-1,-1;zran "zran" true true false 8 Double 0 0 ,First,#,{1},zran,-1,-1,{0},zran,-1,-1;zmax "zmax" true true false 8 Double 0 0 ,First,#,{1},zmax,-1,-1,{0},zmax,-1,-1;zmean "zmean" true true false 8 Double 0 0 ,First,#,{1},zmean,-1,-1,{0},zmean,-1,-1;zmin "zmin" true true false 8 Double 0 0 ,First,#,{1},zmin,-1,-1,{0},zmin,-1,-1;zdev "zdev" true true false 8 Double 0 0 ,First,#,{1},zdev,-1,-1,{0},zdev,-1,-1;width "width" true true false 8 Double 0 0 ,First,#,{1},width,-1,-1;height "height" true true false 8 Double 0 0 ,First,#,{1},height,-1,-1;cell_h "cell_h" true true false 8 Double 0 0 ,First,#,{1},cell_h,-1,-1;cell_w "cell_w" true true false 8 Double 0 0 ,First,#,{1},cell_w,-1,-1;comp_type "comp_type" true true false 50 Text 0 0 ,First,#,{1},comp_type,-1,-1;format "format" true true false 50 Text 0 0 ,First,#,{1},format,-1,-1;pixel "pixel" true true false 100 Text 0 0 ,First,#,{1},pixel,-1,-1;unc_size "unc_size" true true false 8 Double 0 0 ,First,#,{1},unc_size,-1,-1;xmin "xmin" true true false 8 Double 0 0 ,First,#,{1},xmin,-1,-1,{0},xmin,-1,-1;ymin "ymin" true true false 8 Double 0 0 ,First,#,{1},ymin,-1,-1,{0},ymin,-1,-1;xmax "xmax" true true false 8 Double 0 0 ,First,#,{1},xmax,-1,-1,{0},xmax,-1,-1;ymax "ymax" true true false 8 Double 0 0 ,First,#,{1},ymax,-1,-1,{0},ymax,-1,-1;v_name "v_name" true true false 100 Text 0 0 ,First,#,{1},v_name,-1,-1,{0},v_name,-1,-1;v_unit "v_unit" true true false 100 Text 0 0 ,First,#,{1},v_unit,-1,-1,{0},v_unit,-1,-1;h_name "h_name" true true false 100 Text 0 0 ,First,#,{1},h_name,-1,-1,{0},h_name,-1,-1;h_unit "h_unit" true true false 100 Text 0 0 ,First,#,{1},h_unit,-1,-1,{0},h_unit,-1,-1;h_wkid "h_wkid" true true false 100 Text 0 0 ,First,#,{1},h_wkid,-1,-1,{0},h_wkid,-1,-1;nodata "nodata" true true false 8 Double 0 0 ,First,#,{1},nodata,-1,-1;Project_ID "Project_ID" true true false 50 Text 0 0 ,First,#,{1},Project_ID,-1,-1,{0},Project_ID,-1,-1;Project_Dir "Project_Dir" true true false 1000 Text 0 0 ,First,#,{1},Project_Dir,-1,-1,{0},Project_Dir,-1,-1;Project_GUID "Project_GUID" true true false 38 Guid 0 0 ,First,#,{1},Project_GUID,-1,-1,{0},Project_GUID,-1,-1;is_class "is_class" true true false 10 Text 0 0 ,First,#,{0},is_class,-1,-1;ra_pt_ct "ra_pt_ct" true true false 8 Double 0 0 ,First,#,{0},ra_pt_ct,-1,-1;ra_pt_sp "ra_pt_sp" true true false 8 Double 0 0 ,First,#,{0},ra_pt_sp,-1,-1;ra_zmin "ra_zmin" true true false 8 Double 0 0 ,First,#,{0},ra_zmin,-1,-1;ra_zmax "ra_zmax" true true false 8 Double 0 0 ,First,#,{0},ra_zmax,-1,-1;ra_zran "ra_zran" true true false 8 Double 0 0 ,First,#,{0},ra_zran,-1,-1;NameSource "Name Source" true true false 100 Text 0 0 ,First,#,{1},NameSource,-1,-1,{0},NameSource,-1,-1'.format(las_footprints, raster_footprints_sim))
+            Utility.addToolMessages()
+            Utility.deleteFields(raster_footprints_all)
+            a = doTime(a, "\tMerged las and raster footprints for {}".format(el_type))
+    
+            arcpy.RepairGeometry_management(in_features=raster_footprints_all, delete_null="DELETE_NULL")
+            Utility.addToolMessages()
+            Utility.deleteFields(raster_footprints_all)
+            
+            merged_raster_footprints = raster_footprints_all
+            
+            a = doTime(a, "\tRepaired footprint geometry in {}".format(raster_footprints_all))
+        else:
+            merged_raster_footprints = raster_footprints_all
+            
+    
+    Utility.deleteFields(merged_raster_footprints)
+    doTime(aa, "Merged footprints for LAS and Raster into {}".format(merged_raster_footprints))
+    
+    return merged_raster_footprints
 
 
 def isSpatialRefSameForAll(InputFolder):
@@ -134,36 +161,6 @@ def isSpatialRefSameForAll(InputFolder):
         if SpatRefFirstRaster is None:
             SpatRefFirstRaster = SRef
             firstRaster = raster
-
-##        h_name1=None
-##        h_unit1=None
-##        h_code1=None
-##        v_name1=None
-##        v_unit1=None
-##        vcs1 = None
-##        
-##        h_name2=None
-##        h_unit2=None
-##        h_code2=None
-##        v_name2=None
-##        v_unit2=None
-##        vcs2 = None
-##        
-##        h_name1 = SRef.name
-##        h_unit1 = SRef.linearUnitName
-##        h_code1 = SRef.PCSCode
-##        vcs1 = SRef.VCS
-##        if vcs1 is not None:
-##            v_name1 = vcs1.datumName
-##            v_unit1 = vcs1.linearUnitName
-##
-##        h_name2 = SpatRefFirstRaster.name
-##        h_unit2 = SpatRefFirstRaster.linearUnitName
-##        h_code2 = SpatRefFirstRaster.PCSCode
-##        vcs2 = SpatRefFirstRaster.VCS
-##        if vcs2 is not None:
-##            v_name2 = vcs2.datumName
-##            v_unit2 = vcs2.linearUnitName
 
         if SRef != SpatRefFirstRaster:
             SRMatchFlag = False
@@ -264,7 +261,10 @@ def generateOverviews(target_path, md_name, md_path, count_rasters, spatial_ref,
     overview_layer = arcpy.MakeMosaicLayer_management(in_mosaic_dataset=md_path, out_mosaic_layer="{}_MosaicLayer".format(md_name), where_clause="TypeID = 2")
     arcpy.BuildPyramidsandStatistics_management(overview_layer, include_subdirectories="INCLUDE_SUBDIRECTORIES", build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="NONE", block_field="#", estimate_statistics="NONE", x_skip_factor="1", y_skip_factor="1", ignore_values="#", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="BILINEAR", compression_type="NONE", compression_quality="75", skip_existing="SKIP_EXISTING")
     Utility.addToolMessages()
-#     Utility.addToolMessages()
+    
+    arcpy.CalculateField_management(in_table=overview_layer, field="Project_Source", expression='"OVR"', expression_type="PYTHON_9.3", code_block="")
+    Utility.addToolMessages()
+    del overview_layer
 
     # This tool is re-run because sometimes the clip_to_footprints="NOT_CLIP" gets re-set to "CLIP" for some reason
     setMosaicDatasetProperties(md_path)
@@ -328,17 +328,14 @@ def addLasFilesToMosaicDataset(out_las_dataset, las_folder, las_v_name, las_v_un
     # This tool is re-run because sometimes the clip_to_footprints="NOT_CLIP" gets re-set to "CLIP" for some reason
     setMosaicDatasetProperties(md_path)
 
-    try:
-        arcpy.AlterField_management(in_table=md_path, field="ZMin", new_field_name="LAS_ZMin", new_field_alias="LAS Z Min", field_type="DOUBLE", field_length="8", field_is_nullable="NULLABLE", clear_field_alias="false")
-    except:
-        arcpy.AddMessage("Failed to rename ZMin field")
-
-    try:
-        arcpy.AlterField_management(in_table=md_path, field="ZMax", new_field_name="LAS_ZMax", new_field_alias="LAS Z Max", field_type="DOUBLE", field_length="8", field_is_nullable="NULLABLE", clear_field_alias="false")
-    except:
-        arcpy.AddMessage("Failed to rename ZMax field")
-        
-
+    Utility.alterField(md_path, "ZMin", "LAS_ZMin", "LAS Z Min")
+    Utility.alterField(md_path, "ZMax", "LAS_ZMax", "LAS Z Max")
+    
+    las_layer = arcpy.MakeMosaicLayer_management(in_mosaic_dataset=md_path, out_mosaic_layer="LAS_MosaicLayer", where_clause="TypeID = 3 and Project_Source IS NULL")
+    arcpy.CalculateField_management(in_table=las_layer, field="Project_Source", expression='"LAS"', expression_type="PYTHON_9.3", code_block="")
+    Utility.addToolMessages()
+    del las_layer
+    
     # Get a count to determine how many LAS tiles were added to the MD
     total_rows_with_las = int(arcpy.GetCount_management(md_path).getOutput(0))
     count_las = total_rows_with_las - total_rows_without_las
@@ -367,7 +364,7 @@ def getDates(dateDeliver, dateStart, dateEnd, project_year):
             dateEnd = dateStart
         else:
             dateEnd = "12/31/{}".format(project_year)
-
+    arcpy.AddMessage("Using dates: \n\tdateDeliver: {}\n\tdateStart: {} \n\tdateEnd: {}".format(dateDeliver, dateStart, dateEnd))
     return dateDeliver, dateStart, dateEnd
 
 
@@ -416,7 +413,7 @@ def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, 
     arcpy.AddMessage("Cell size of Mosaic Dataset:    {} {}".format(md_cellsize, SpatRefMD.linearUnitName))
     # If the Rasters have Z-units of FOOT_INTL or FOOT_US then append the appropriate function to their
     # function chain to convert the elevation values from feet to meters
-    raster_v_unit=raster_v_unit.upper()
+    raster_v_unit = raster_v_unit.upper()
     arcpy.AddMessage("Raster vertical unit is {}.".format(raster_v_unit))
     if fix is not None:
         arcpy.AddMessage("Mosaic dataset is in original coordinate system. Leaving vertical units as {}".format(raster_v_unit))
@@ -436,7 +433,9 @@ def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, 
 
     arcpy.CalculateStatistics_management(md_path, x_skip_factor="1", y_skip_factor="1", ignore_values="#", skip_existing="OVERWRITE", area_of_interest="Feature Set")
     Utility.addToolMessages()
-
+    
+    arcpy.CalculateField_management(in_table=md_path, field="Project_Source", expression='"RAS"', expression_type="PYTHON_9.3", code_block="")
+    
     # This tool is re-run because sometimes the clip_to_footprints="NOT_CLIP" gets re-set to "CLIP" for some reason
     setMosaicDatasetProperties(md_path)
     return count_rasters, md_cellsize
@@ -444,8 +443,8 @@ def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, 
 
 def updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, md_spatial_ref):
     arcpy.JoinField_management(in_data=md_path, in_field="NameSource", join_table=footprint_path, join_field="NameSource", fields="area;el_type;zran;zmax;zmean;zmin;zdev;width;height;cell_h;cell_w;comp_type;format;pixel;unc_size;xmin;ymin;xmax;ymax;v_name;v_unit;h_name;h_unit;h_wkid;nodata;Project_ID;Project_Dir;Project_GUID;is_class;ra_pt_ct;ra_pt_sp;ra_zmin;ra_zmax;ra_zran")
-    # @TODO: Move this to a metadata method & extract all the field names out!
     # @TODO: Add a start and an end date?
+    
     # Calculate the value of certain metadata fields using an update cursor:
     fields = [
               'OBJECTID',  # 0
@@ -465,7 +464,7 @@ def updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, md_spatial_r
         for row in rows:
             # all new rows (primary raster, LAS, and overviews) will have ProjectID and ProjectDate
             row[5] = dateDeliver
-            row[6] = PROJECT_SOURCE_LAS
+            # row[6] = PROJECT_SOURCE_LAS
             category = row[3]
             # spatialReference = (arcpy.Describe(row[7])).spatialReference
             # If MinPS is set (i.e. > 0), the row is a primary raster or an overview
@@ -474,14 +473,14 @@ def updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, md_spatial_r
                 # Set ZORDER = -1 for these raster items. This will ensure that the rasters are given priority over LAS data, if they are added.
                 # This will ensure performance is maintained, in case LAS is also ingested (since LAS data takes longer to render).
                 row[4] = -1
-                if category == 1:
-                    row[6] = RasterConfig.PROJECT_SOURCE_RASTER
-                elif category == 2:
-                    row[6] = RasterConfig.PROJECT_SOURCE_OVERVIEW
+                # if category == 1:
+                    # row[6] = RasterConfig.PROJECT_SOURCE_RASTER
+                if category == 2:
+                    # row[6] = RasterConfig.PROJECT_SOURCE_OVERVIEW
                     try:
                         if md_spatial_ref.VCS is not None:
-                            row[8] = md_spatial_ref.VCS.linearUnitName
-                            row[9] = md_spatial_ref.VCS.datumName
+                            row[8] = md_spatial_ref.VCS.datumName
+                            row[9] = md_spatial_ref.VCS.linearUnitName
                     except:
                         pass
                     row[10] = md_spatial_ref.name
@@ -501,12 +500,13 @@ def updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, md_spatial_r
     del rows
 
 
-def importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path):
+def importMosaicDatasetGeometries(md_path, footprint_path, boundary_path):
     if footprint_path is not None:
+        arcpy.AddMessage("Importing footprints for {} from {}".format(md_path, footprint_path))
         arcpy.ImportMosaicDatasetGeometry_management(md_path, target_featureclass_type="FOOTPRINT", target_join_field="NameSource", input_featureclass=footprint_path, input_join_field="NameSource")
         Utility.addToolMessages()
-    if lasd_boundary_path is not None:
-        arcpy.ImportMosaicDatasetGeometry_management(md_path, target_featureclass_type="BOUNDARY", target_join_field="OBJECTID", input_featureclass=lasd_boundary_path, input_join_field="OBJECTID")
+    if boundary_path is not None:
+        arcpy.ImportMosaicDatasetGeometry_management(md_path, target_featureclass_type="BOUNDARY", target_join_field="OBJECTID", input_featureclass=boundary_path, input_join_field="OBJECTID")
         Utility.addToolMessages()
 
 
@@ -626,132 +626,143 @@ def getOriginalCoordinateSystem(publish_folder):
             pass
     return ocs_spatial_ref
 
+'''
+retrieve the boundary for the specified elevation type (DTM, DSM, etc)
+'''
+def getBoundary(fgdb_path, el_type):
+    a = datetime.now()
+    
+    raster_boundary = A05_C_ConsolidateRasterInfo.getRasterBoundaryPath(fgdb_path, el_type)
+    
+    raster_boundary_md = "{}_SIM".format(raster_boundary)
+    
+    if not arcpy.Exists(raster_boundary_md):
+        arcpy.SimplifyPolygon_cartography(in_features=raster_boundary, out_feature_class=raster_boundary_md, algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
+        Utility.addToolMessages()
+        Utility.deleteFields(raster_boundary_md)
+        
+        arcpy.RepairGeometry_management(in_features=raster_boundary_md, delete_null="DELETE_NULL")
+        Utility.addToolMessages()
+        Utility.deleteFields(raster_boundary_md)
+        
+        a = doTime(a, "\tSimplified boundary {}".format(raster_boundary_md))
+    else:
+        a = doTime(a, "\tFound existing boundary {}".format(raster_boundary_md))
+    
+    return raster_boundary_md
+
 def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd):
     a = datetime.now()
     aa = a
 
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(project_job, project)
 #     ProjectID = ProjectJob.getProjectID(project)
+    
     project_year = project_job.getYear(project)
+    project_id = project_job.getProjectID(project)
     las_qainfo = A04_A_GenerateQALasDataset.getLasQAInfo(ProjectFolder)
 
     publish_folder = ProjectFolder.published
-    fgdb_path = ProjectFolder.derived.fgdb_path
-
-
+    derived_fgdb_path = ProjectFolder.derived.fgdb_path
 
     lasd_path = ProjectFolder.derived.lasd_path
-    lasd_boundary_path = A04_C_ConsolidateLASInfo.getLasdBoundaryPath(fgdb_path)
-    las_footprint_path = A04_C_ConsolidateLASInfo.getLasFootprintPath(fgdb_path)
+    lasd_boundary_path = A04_C_ConsolidateLASInfo.getLasdBoundaryPath(derived_fgdb_path)
+    las_footprint_path = A04_C_ConsolidateLASInfo.getLasFootprintPath(derived_fgdb_path)
     
-    temp_smpl_las_path1 = os.path.join(fgdb_path, "FootprintLASFIle_SIM")
-    arcpy.SimplifyPolygon_cartography(in_features=las_footprint_path, out_feature_class=temp_smpl_las_path1,
-                                            algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters",
-                                            error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
-    Utility.addToolMessages()
-    Utility.deleteFields(temp_smpl_las_path1)
+    las_footprint_path_sim = "{}_SIM".format(las_footprint_path)
+    if not arcpy.Exists(las_footprint_path_sim):
+        arcpy.SimplifyPolygon_cartography(in_features=las_footprint_path, out_feature_class=las_footprint_path_sim,
+                                                algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters",
+                                                error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
+        Utility.addToolMessages()
+        Utility.deleteFields(las_footprint_path_sim)
+        
+        arcpy.RepairGeometry_management(in_features=las_footprint_path_sim, delete_null="DELETE_NULL")
+        Utility.addToolMessages()
+        Utility.deleteFields(las_footprint_path_sim)
+        
+        Utility.addAndCalcFieldText(dataset_path=las_footprint_path_sim, field_name="el_type", field_length=20, field_value='"LAS"', field_alias="Elevation Type", add_index=True)
+        addNameSource(las_footprint_path_sim, "LAS")
+        Utility.deleteFields(las_footprint_path_sim)
+        
+        a = doTime(a, "\tSimplified LAS footprint geometry {}".format(las_footprint_path_sim))
+    else:
+        a = doTime(a, "\tUsing simplified LAS footprint geometry {}".format(las_footprint_path_sim))
     
-    las_footprint_path = temp_smpl_las_path1
-    arcpy.RepairGeometry_management(in_features=las_footprint_path, delete_null="DELETE_NULL")
-    Utility.addToolMessages()
-    a = doTime(a, "\tRepaired geometry {}".format(las_footprint_path))
-    
-    #TODO: This is the wrong boundary, should be el_type specific 
-    raster_boundary = A05_C_ConsolidateRasterInfo.getRasterBoundaryPath(fgdb_path)
-    raster_boundary_md = "{}_SIM".format(raster_boundary)
-    arcpy.SimplifyPolygon_cartography(in_features=raster_boundary, out_feature_class=raster_boundary_md,
-                                            algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters",
-                                            error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
-    Utility.addToolMessages()
-    Utility.deleteFields(raster_boundary_md)
-    
-    arcpy.RepairGeometry_management(in_features=raster_boundary_md, delete_null="DELETE_NULL")
-    Utility.addToolMessages()
-    Utility.deleteFields(raster_boundary_md)
-    a = doTime(a, "\tRepaired geometry {}".format(raster_boundary_md))
-
     las_z_min, las_z_max, las_v_name, las_v_unit, las_h_name, las_h_unit, las_h_wkid, isClassified = A05_A_RemoveDEMErrantValues.getLasdBoundData(lasd_boundary_path)  # @UnusedVariable
     
     SpatRefMD = arcpy.SpatialReference()
     SpatRefMD.loadFromString(RasterConfig.SpatRef_WebMercator)
 
     SpatRefOCS = getOriginalCoordinateSystem(publish_folder)
-#     PCSCodeZeroFlag = 0
 
     dateDeliver, dateStart, dateEnd = getDates(dateDeliver, dateStart, dateEnd, project_year)
 
 
     ImageDirectories = [[DTM, SpatRefOCS, OCS], [DTM, SpatRefMD, None], [DSM, SpatRefMD, None], [DLM, SpatRefMD, None], [INT, SpatRefMD, None]]
     md_paths = {}
-    for imageDir, SpatRef, fix  in ImageDirectories:
+    for el_type, SpatRef, fix  in ImageDirectories:
         if SpatRef is not None:
-            raster_z_min, raster_z_max, raster_v_name, raster_v_unit, raster_h_name, raster_h_unit, raster_h_wkid = A05_A_RemoveDEMErrantValues.getRasterBoundData(raster_boundary_md, imageDir, False)  # @UnusedVariable
-            filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)  # @UnusedVariable
-            filegdb_name = "{}_{}.gdb".format(filegdb_name, imageDir)
-            target_path = os.path.join(publish_folder.path, imageDir)
-            filegdb_path = os.path.join(publish_folder.path, filegdb_name)
-            md_name = imageDir
+            raster_boundary = getBoundary(derived_fgdb_path, el_type)
+            
+            raster_z_min, raster_z_max, raster_v_name, raster_v_unit, raster_h_name, raster_h_unit, raster_h_wkid = A05_A_RemoveDEMErrantValues.getRasterBoundData(raster_boundary, el_type, False)  # @UnusedVariable
+            
+            pub_filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)  # @UnusedVariable
+            pub_filegdb_name = "{}_{}.gdb".format(pub_filegdb_name, el_type)
+            pub_filegdb_path = os.path.join(publish_folder.path, pub_filegdb_name)
+            
+            raster_target_path = os.path.join(publish_folder.path, el_type)
+            
+            md_name = el_type
             if fix is not None:
-                md_name = "{}{}".format(imageDir, fix)
-            md_path = os.path.join(filegdb_path, md_name)
+                # Add the OCS (original coordinate system) postfix if it is requested
+                md_name = "{}{}".format(el_type, fix)
+            md_path = os.path.join(pub_filegdb_path, md_name)
 
-            md_paths[imageDir] = md_path
+            
             if arcpy.Exists(md_path):
+                md_paths[md_name] = md_path
                 arcpy.AddMessage("Mosaic exists: {}".format(md_path))
             else:
-                derived_fgdb_path = os.path.join(ProjectFolder.derived.fgdb_path)
-
-                raster_footprint_path = A05_C_ConsolidateRasterInfo.getRasterFootprintPath(fgdb_path, imageDir)
-                temp_smpl_ras_path1 = os.path.join(fgdb_path, "FootprintRaster_{}_SIM".format(imageDir))
-                if not os.path.exists(temp_smpl_ras_path1):
-                    arcpy.SimplifyPolygon_cartography(in_features=raster_footprint_path, out_feature_class=temp_smpl_ras_path1,
-                                            algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters",
-                                            error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
-                    Utility.addToolMessages()
-                    Utility.deleteFields(temp_smpl_ras_path1)
-                    
-                    arcpy.RepairGeometry_management(in_features=temp_smpl_ras_path1, delete_null="DELETE_NULL")
-                    Utility.addToolMessages()
-                    Utility.deleteFields(temp_smpl_ras_path1)
-                    a = doTime(a, "\tRepaired geometry {}".format(temp_smpl_ras_path1))
-                    raster_footprint_path = temp_smpl_ras_path1
-
-                
-                footprint_path = mergeFootprints(las_footprint_path, temp_smpl_ras_path1, imageDir, derived_fgdb_path)
-
-                imagePath = target_path
-                SRMatchFlag, ras_count = isSpatialRefSameForAll(imagePath)
+                SRMatchFlag, ras_count = isSpatialRefSameForAll(raster_target_path)
                 if not SRMatchFlag:
-                    arcpy.AddError("SR doesn't match for all {} images, aborting.".format(imageDir))
-                    raise Exception("SR doesn't match for all {} images, aborting.".format(imageDir))
+                    arcpy.AddError("SR doesn't match for all {} images, aborting.".format(el_type))
+                    raise Exception("SR doesn't match for all {} images, aborting.".format(el_type))
                     
                 elif ras_count <= 0:
-                    arcpy.AddError("No rasters for selected elevation type {}.".format(imageDir))
+                    arcpy.AddError("No rasters for selected elevation type {}.".format(el_type))
                 else:
-                    arcpy.AddMessage("Working on {} rasters for elevation type {} vertical unit {}.".format(ras_count, imageDir, raster_v_unit))
+                    arcpy.AddMessage("Working on {} rasters for elevation type {} vertical unit {}.".format(ras_count, el_type, raster_v_unit))
 
-                    count_rasters, md_cellsize = createMosaicDatasetAndAddRasters(raster_v_unit, publish_folder.path, filegdb_name, imagePath, md_name, md_path, SpatRef, fix)
-                    count_total = count_rasters
-                    importMosaicDatasetGeometries(md_path, None, lasd_boundary_path)
+                    count_rasters, md_cellsize = createMosaicDatasetAndAddRasters(raster_v_unit, publish_folder.path, pub_filegdb_name, raster_target_path, md_name, md_path, SpatRef, fix)
+                    count_total = count_rasters 
+                    if count_total > 0:
+                        md_paths[md_name] = md_path
+                    
+                    # Import the boundary here for stats calcs
+                    importMosaicDatasetGeometries(md_path, None, raster_boundary)
 
                     count_overviews = 0
-                    if fix is None:
-                        count_overviews, count_total = generateOverviews(target_path, md_name, md_path, count_rasters, SpatRef, md_cellsize)
-
                     count_las = 0
-                    if imageDir == DTM and fix is None:
+                    if fix is None:
+                        count_overviews, count_total = generateOverviews(raster_target_path, md_name, md_path, count_rasters, SpatRef, md_cellsize)
                         count_las, count_total = addLasFilesToMosaicDataset(lasd_path, las_qainfo.las_directory, las_v_name, las_v_unit, isClassified, md_path, count_total)
-
-                    Utility.addAndCalcFieldText(md_path, "NameSource", 50, field_value='!Name! + "_" + !Project_Source!', field_alias="Name Source", code_block="", add_index=True, debug=True)
-
-                    if imageDir == DTM and fix is None:
-                        importMosaicDatasetGeometries(md_path, footprint_path, lasd_boundary_path)
-                        updateMosaicDatasetFields(dateDeliver, md_path, footprint_path, SpatRef)
-                    else:
-                        importMosaicDatasetGeometries(md_path, raster_footprint_path, lasd_boundary_path)
-                        updateMosaicDatasetFields(dateDeliver, md_path, raster_footprint_path, SpatRef)
-
                     
+                    raster_footprint_path = None
+                    if fix is None:
+                        raster_footprint_path = mergeFootprints(las_footprint_path_sim, el_type, derived_fgdb_path)
+                    else:
+                        raster_footprint_path = mergeFootprints(None, el_type, derived_fgdb_path)
+                    arcpy.AddMessage("Using footprints from {}".format(raster_footprint_path))
+                    
+                    all_layer = arcpy.MakeMosaicLayer_management(in_mosaic_dataset=md_path, out_mosaic_layer="AllMosaicLayer", where_clause="1=1")
+                    Utility.addAndCalcFieldText(md_path, "NameSource", 100, field_value='!Name! + "_" + !Project_Source!', field_alias="NameSource", code_block="", add_index=True, debug=True)
+                    del all_layer
+                    
+                    importMosaicDatasetGeometries(md_path, raster_footprint_path, raster_boundary)
+                    updateMosaicDatasetFields(dateDeliver, md_path, raster_footprint_path, SpatRef)
+                    
+                    arcpy.CalculateField_management(in_table=md_path, field="Project_ID", expression='"{}"'.format(project_id), expression_type="PYTHON_9.3", code_block="")
 
                     calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path)
 
@@ -778,39 +789,6 @@ def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd
         createHeightRefMD(DHM, publish_folder, md_paths, SpatRefMD, raster_v_unit)
         # ## DCM is the height above last return (e.g. canopy height)
         createHeightRefMD(DCM, publish_folder, md_paths, SpatRefMD, raster_v_unit)
-
-#         imageDir = DHM
-#         filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)  # @UnusedVariable
-#         filegdb_name = "{}_{}.gdb".format(filegdb_name, imageDir)
-#         target_path = os.path.join(publish_folder.path, imageDir)
-#         filegdb_path = os.path.join(publish_folder.path, filegdb_name)
-#         md_name = imageDir
-#         dhm_md_path = os.path.join(filegdb_path, md_name)
-#
-#         if not os.path.exists(filegdb_path):
-#             arcpy.CreateFileGDB_management(publish_folder.path, filegdb_name)
-#
-#         if arcpy.Exists(dhm_md_path):
-#             arcpy.AddMessage("DHM already exists.")
-#         else:
-#             createReferenceddMosaicDataset(md_paths[DSM], dhm_md_path, SpatRefMD, raster_v_unit)
-#
-#
-#         imageDir = DCM
-#         filegdb_name, filegdb_ext = os.path.splitext(publish_folder.fgdb_name)  # @UnusedVariable
-#         filegdb_name = "{}_{}.gdb".format(filegdb_name, imageDir)
-#         target_path = os.path.join(publish_folder.path, imageDir)
-#         filegdb_path = os.path.join(publish_folder.path, filegdb_name)
-#         md_name = imageDir
-#         dhm_md_path = os.path.join(filegdb_path, md_name)
-#
-#         if not os.path.exists(filegdb_path):
-#             arcpy.CreateFileGDB_management(publish_folder.path, filegdb_name)
-#
-#         if arcpy.Exists(dhm_md_path):
-#             arcpy.AddMessage("DCM already exists.")
-#         else:
-#             createReferenceddMosaicDataset(md_paths[DSM], dhm_md_path, SpatRefMD, raster_v_unit)
 
 
     doTime(aa, "A06 A Operation complete")
