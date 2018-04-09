@@ -89,13 +89,21 @@ def mergeFootprints(las_footprints, el_type, fgdb_path):
     aa = a
     
     raster_footprints_original = A05_C_ConsolidateRasterInfo.getRasterFootprintPath(fgdb_path, el_type)
+
+    arcpy.AddMessage('# Raster Foot Original: {}'.format(raster_footprints_original))
     
     # Simplify these footprints even more than original (requirement of the Mosaic Dataset)
     raster_footprints_sim = "{}_SIM".format(raster_footprints_original)
     if not arcpy.Exists(raster_footprints_sim):
-        arcpy.SimplifyPolygon_cartography(in_features=raster_footprints_original, out_feature_class=raster_footprints_sim,
-                                algorithm="POINT_REMOVE", tolerance=Raster.boundary_interval, minimum_area="0 SquareMeters",
-                                error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP")
+        arcpy.SimplifyPolygon_cartography(
+            in_features=raster_footprints_original,
+            out_feature_class=raster_footprints_sim,
+            algorithm="POINT_REMOVE",
+            tolerance=Raster.boundary_interval,
+            minimum_area="0 SquareMeters",
+            error_option="RESOLVE_ERRORS",
+            collapsed_point_option="NO_KEEP"
+            )
         Utility.addToolMessages()
         Utility.deleteFields(raster_footprints_sim)
         
@@ -512,20 +520,17 @@ def importMosaicDatasetGeometries(md_path, footprint_path, boundary_path):
 
 def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster_v_unit = None):
     if raster_v_unit is not None:
-        # Assumes that anything that passes a unit it will be compared to meters in MD (Web Merc)
-        # So convert the min/max values to meters
         if ("FEET" in raster_v_unit) or ("FOOT" in raster_v_unit) or ("FT" in raster_v_unit):
             if ("US" in raster_v_unit) or ("SURVEY" in raster_v_unit):
-                arcpy.AddMessage("Raster vertical unit is {}, converting min/max z for US Feet.".format(raster_v_unit))
-                # convert us feet to meters
-                raster_z_min = raster_z_min*1200/3937
-                raster_z_max = raster_z_max*1200/3937
+                arcpy.AddMessage("Raster vertical unit is {}, adding conversion function for US Feet.".format(raster_v_unit))
+                raster_z_min = raster_z_min * 1200 / 3937
+                raster_z_max = raster_z_max * 1200 / 3937
             else:
-                arcpy.AddMessage("Raster vertical unit is {}, converting min/max z for International Feet.".format(raster_v_unit))
-                # convert intl feet to meters
-                raster_z_min = raster_z_min*0.3048
-                raster_z_max = raster_z_max*0.3048
-         
+                arcpy.AddMessage("Raster vertical unit is {}, adding conversion function for International Feet.".format(raster_v_unit))
+                raster_z_min = raster_z_min * 0.3048
+                raster_z_max = raster_z_max * 0.3048
+        else:
+            arcpy.AddMessage("Raster vertical unit is not provided, no need for conversion. {}".format(raster_v_unit))
     
     full_calc = False
     minResult = arcpy.GetRasterProperties_management(md_path, property_type="MINIMUM", band_index="Band_1")
@@ -783,7 +788,7 @@ def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd
                     if fix is None:
                         calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path)
                     else:
-                        calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster_h_unit)
+                        calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster_v_unit)
 
                     # Analyze the Mosaic Dataset in preparation for publishing it
                     arcpy.AnalyzeMosaicDataset_management(md_path, where_clause="#", checker_keywords="FOOTPRINT;FUNCTION;RASTER;PATHS;SOURCE_VALIDITY;STALE;PYRAMIDS;STATISTICS;PERFORMANCE;INFORMATION")
