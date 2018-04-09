@@ -268,57 +268,18 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                 if clearScratch:
                     clearScratch = False
                     clearScratchFiles(section_mxd_name, anno_paths, mask_paths, annoLyr_paths)
-                    
-##                # Copy Template MXD
-##                base_mxd = arcpy.mapping.MapDocument(ContourConfig.MXD_ANNO_TEMPLATE)
 
                 if not os.path.exists(section_mxd_name):
                     try:
-                        # Shutil As Another Route
                         arcpy.AddMessage('Section MXD Name: {}'.format(section_mxd_name))
                         shutil.copyfile(ContourConfig.MXD_ANNO_TEMPLATE, section_mxd_name)
                         
-##                        base_mxd.saveACopy(section_mxd_name)
-##                        del base_mxd
                         a = Utility.doTime(a, "\t{}: Saved a copy of the mxd template to '{}'".format(name, section_mxd_name))
                         
                     except Exception as e:
 
                         arcpy.AddMessage('Copying Section MXD Failed: {}'.format(section_mxd_name))
                         arcpy.AddMessage('Error: {}'.format(e))
-
-##                        arcpy.AddMessage('TRACKING ERROR: {},{}'.format(name, str(e)))
-##                          
-##                        sanity_count = 0
-##                        sanity_found = False
-##                        
-##                        while not sanity_found and sanity_count <= 5:
-##
-##                            try:
-##                                del base_mxd
-##                            except NameError:
-##                                pass
-##                            
-##                            time.sleep(random.randrange(2, 7))
-####                            base_mxd = arcpy.mapping.MapDocument(ContourConfig.MXD_ANNO_TEMPLATE)
-####
-####                            arcpy.AddMessage('### Title: {}'.format(base_mxd.title))
-####                            arcpy.AddMessage('### Path: {}'.format(base_mxd.filePath))
-####                            arcpy.AddMessage('### Section: {}'.format(section_mxd_name))
-##
-##                            try:
-####                                arcpy.env.overwriteOutput = True
-####                                base_mxd.saveACopy(section_mxd_name)
-##
-##                                shutil.copyfile(ContourConfig.MXD_ANNO_TEMPLATE, section_mxd_name)
-##                                sanity_found = True
-##                                a = Utility.doTime(a, "\t{}: Saved a copy of the mxd template to '{}'".format(name, section_mxd_name))
-##                            except:
-##                                sanity_count +=1
-##
-##                        if not sanity_found:
-##                            raise Exception('###Could Not Save {} to {}'.format(base_mxd.filePath, section_mxd_name))
-
                                 
                 # Set MXD For Processing
                 mxd = arcpy.mapping.MapDocument(section_mxd_name)

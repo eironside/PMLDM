@@ -510,7 +510,23 @@ def importMosaicDatasetGeometries(md_path, footprint_path, boundary_path):
         Utility.addToolMessages()
 
 
-def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path):
+def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster_v_unit = None):
+    if raster_v_unit is not None:
+        # Assumes that anything that passes a unit it will be compared to meters in MD (Web Merc)
+        # So convert the min/max values to meters
+        if ("FEET" in raster_v_unit) or ("FOOT" in raster_v_unit) or ("FT" in raster_v_unit):
+            if ("US" in raster_v_unit) or ("SURVEY" in raster_v_unit):
+                arcpy.AddMessage("Raster vertical unit is {}, converting min/max z for US Feet.".format(raster_v_unit))
+                # convert us feet to meters
+                raster_z_min = raster_z_min*1200/3937
+                raster_z_max = raster_z_max*1200/3937
+            else:
+                arcpy.AddMessage("Raster vertical unit is {}, converting min/max z for International Feet.".format(raster_v_unit))
+                # convert intl feet to meters
+                raster_z_min = raster_z_min*0.3048
+                raster_z_max = raster_z_max*0.3048
+         
+    
     full_calc = False
     minResult = arcpy.GetRasterProperties_management(md_path, property_type="MINIMUM", band_index="Band_1")
     Utility.addToolMessages()
@@ -764,7 +780,10 @@ def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd
                     
                     arcpy.CalculateField_management(in_table=md_path, field="Project_ID", expression='"{}"'.format(project_id), expression_type="PYTHON_9.3", code_block="")
 
-                    calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path)
+                    if fix is None:
+                        calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path)
+                    else:
+                        calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster_h_unit)
 
                     # Analyze the Mosaic Dataset in preparation for publishing it
                     arcpy.AnalyzeMosaicDataset_management(md_path, where_clause="#", checker_keywords="FOOTPRINT;FUNCTION;RASTER;PATHS;SOURCE_VALIDITY;STALE;PYRAMIDS;STATISTICS;PERFORMANCE;INFORMATION")
