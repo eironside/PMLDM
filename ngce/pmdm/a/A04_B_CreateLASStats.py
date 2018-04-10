@@ -12,15 +12,13 @@ from shutil import copyfile
 import sys
 import time
 
-import traceback
-
-from ngce.pmdm import RunUtil
 from ngce import Utility
-from ngce.Utility import addToolMessages, doTime, deleteFileIfExists, setArcpyEnv, getVertCSInfo
+from ngce.Utility import addToolMessages, doTime, deleteFileIfExists, setArcpyEnv  
 from ngce.folders.FoldersConfig import ELEVATION, FIRST, LAST, lasClassified_dir, \
     lasUnclassified_dir, lasd_dir, ALAST, INT, ALL, STATS_METHODS, DATASET_NAMES, \
     pulse_count_dir, point_count_dir
 from ngce.las import LAS
+from ngce.pmdm import RunUtil
 from ngce.raster import RasterConfig, Raster
 from ngce.raster.RasterConfig import MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN, \
     YMAX, V_NAME, V_UNIT, H_NAME, H_UNIT, H_WKID, FIELD_INFO, \
@@ -39,8 +37,8 @@ setArcpyEnv(True)
 CELL_SIZE = 10  # Meters
 ELE_CELL_SIZE = 10  # Meters
 FOOTPRINT_BUFFER_DIST = 25  # Meters
-B_SIMPLE_DIST = 0.5 # Meters
-C_SIMPLE_DIST = 0.5 # Meters
+B_SIMPLE_DIST = 0.5  # Meters
+C_SIMPLE_DIST = 0.5  # Meters
 
 MAX_TRIES = 10
 
@@ -102,7 +100,7 @@ def isProcessFile(f_path, target_path, createQARasters=False, isClassified=True,
         if not os.path.exists(vector_bound_path):
             process_file = True
         else:
-            deleteFields(vector_bound_path)
+            Utility.deleteFields(vector_bound_path)
         
         
         value_field = ELEVATION
@@ -196,34 +194,6 @@ def isProcessFile(f_path, target_path, createQARasters=False, isClassified=True,
     return process_file
 
 
-
-
-    
-    
-# '''
-# --------------------------------------------------------------------------------
-# Creates the las Dataset. Used in multiple places.
-# target_path = "<projectdir>\DERIVED"
-# --------------------------------------------------------------------------------
-# '''
-# 
-# def extractLas(f_name, isClassified, in_lasd_path, out_lasd_path, out_las_path, out_lasx_path=None):
-#     a = datetime.now()
-#     if not os.path.exists(out_lasd_path):
-#         lasd_layer = in_lasd_path
-#         if isClassified:
-#             lasd_layer = "{}_lasd_layer".format(f_name)
-#             arcpy.MakeLasDatasetLayer_management(in_lasd_path, lasd_layer, "0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", "'Last Return';'First of Many';'Last of Many';'Single Return';1;2;3;4;5", "INCLUDE_UNFLAGGED", "INCLUDE_SYNTHETIC", "INCLUDE_KEYPOINT", "EXCLUDE_WITHHELD", "")
-#         a = doTime(a, "\tCreated LASD layer '{}'".format(lasd_layer))
-# #         compute_stats = "NO_COMPUTE_STATS"
-#         rearrange = "MAINTAIN_POINTS"
-#         if out_lasx_path is not None and not os.path.exists(out_lasx_path):
-#             rearrange = "REARRANGE_POINTS"
-#         compute_stats = "COMPUTE_STATS"
-#         arcpy.ExtractLas_3d(lasd_layer, out_las_path, "DEFAULT", "", "PROCESS_EXTENT", "", "MAINTAIN_VLR", rearrange, compute_stats, out_lasd_path)
-#         a = doTime(a, "\tExtracted LAS to '{}'".format(out_las_path))
-    
-
 def createLasDataset(f_name, f_path, spatial_reference, target_path, isClassified):
     a = datetime.now()
     aa = a
@@ -290,7 +260,8 @@ def createLasDataset(f_name, f_path, spatial_reference, target_path, isClassifie
     
     a = doTime(aa, "\tCompleted LASD '{}'".format(out_lasd_path))
 
-# 
+
+# Methods to add later if the las is not classified
 # def classifyGround(lasd_path, las_v_unit):
 #     methods = ["CONSERVATIVE", 'STANDARD', "AGGRESSIVE"]
 #     veg_classes = {3:5, 4:25, 5:50}
@@ -353,10 +324,10 @@ def createLasDatasetStats(lasd_path, f_path, spatial_reference, stat_file_path):
     deleteFileIfExists(stat_file_path)
 
     # Determine state of statistics
-    calculation_type="SKIP_EXISTING_STATS"
+    calculation_type = "SKIP_EXISTING_STATS"
     desc = arcpy.Describe(lasd_path)
     if desc.needsUpdateStatistics:
-        calculation_type="OVERWRITE_EXISTING_STATS"
+        calculation_type = "OVERWRITE_EXISTING_STATS"
     
     arcpy.LasDatasetStatistics_management(in_las_dataset=lasd_path,
                                           calculation_type=calculation_type,
@@ -402,31 +373,6 @@ def createLasDatasetStats(lasd_path, f_path, spatial_reference, stat_file_path):
 #     arcpy.Delete_management(in_data=vector_RBDES_bound_path, data_type="ShapeFile")
 #     
 #     doTime(a, "\tCreated BOUND {}".format(vector_bound_path))
-
-
-def deleteField(in_table, drop_field):
-    #arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
-    try:    
-        arcpy.DeleteField_management(in_table=in_table, drop_field=drop_field)
-    except:
-        #arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
-        pass
-
-def deleteFields(in_table):
-    fields = arcpy.ListFields(in_table)
-    existing_fields = []
-    for field in fields:
-        existing_fields.append(field.name)
-        
-    #arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
-    drop_fields=["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id", "Buff_Dist",
-                 "MINSIMPTOL", "MAXSIMPTOL", "ORIG_FID", "INPOLY_FID", "SIMPGNFLAG", "ID", "BUFF_DIST",
-                 "minsimptol", "maxsimptol", "orig_fid", "inpoly_fid", "simpgnflag", "id", "buff_dist"]
-    for drop_field in drop_fields:
-        #arcpy.AddMessage("\t\tTrying to drop field '{}' from '{}'".format(drop_field, in_table))
-        if drop_field in existing_fields:
-           deleteField(in_table, drop_field)
-        
         
     
 '''
@@ -439,10 +385,9 @@ But it performs 10x faster than the A method and is more accurate than C
 '''
 def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_path, log_path):
     a = datetime.now()
-    aa = a
     
     deleteFileIfExists(vector_bound_path, useArcpy=True)
-    horz_cs_name, horz_cs_unit_name, horz_cs_factory_code, vert_cs_name, vert_unit_name = Utility.getSRValues(spatial_reference)
+    horz_cs_name, horz_cs_unit_name, horz_cs_factory_code, vert_cs_name, vert_unit_name = Utility.getSRValues(spatial_reference)  # @UnusedVariable
     raster_type = LAS.LAS_raster_type_1_all_bin_mean_idw
     if str(horz_cs_unit_name.upper()).find("METER") < 0:
         raster_type = LAS.LAS_raster_type_3_all_bin_mean_idw
@@ -517,11 +462,6 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
                                      edge_tolerance="-1",
                                      max_sliver_size="5",
                                      min_thinness_ratio="0.05")
-#     arcpy.BuildFootprints_management(las_qainfo.LASMD_path, where_clause="#", reset_footprint="RADIOMETRY", min_data_value=0,
-#                                      max_data_value=22000, approx_num_vertices=200, shrink_distance="0", maintain_edges="MAINTAIN_EDGES",
-#                                      skip_derived_images="SKIP_DERIVED_IMAGES", update_boundary="UPDATE_BOUNDARY", request_size="2000",
-#                                      min_region_size=las_qainfo.LAS_Footprint_MIN_REGION_SIZE, simplification_method="NONE", edge_tolerance="#", max_sliver_size="20",
-#                                      min_thinness_ratio="0.05")
      
     doTime(a, "\t\tCompleted build footprints on {}".format(md_path))
     a = datetime.now()
@@ -563,7 +503,7 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
             a = doTime(a, "\t\tWARNING: Failed footprint buffer {}.  Trying again ...".format(vector_REB_bound_path))
             deleteFileIfExists(vector_REB_bound_path, useArcpy=True)
             deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
-            arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path_1, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", method="PLANAR")#, dissolve_option="ALL")
+            arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path_1, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", method="PLANAR")  # , dissolve_option="ALL")
             addToolMessages()
             a = doTime(a, "\t\tCompleted footprint buffer {}".format(vector_REB_bound_path_1))
             arcpy.Dissolve_management(in_features=vector_REB_bound_path_1, out_feature_class=vector_REB_bound_path, multi_part="MULTI_PART")
@@ -576,7 +516,7 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
                 a = doTime(a, "\t\tWARNING: Failed 2nd footprint buffer {}.  Trying one more time ...".format(vector_REB_bound_path))
                 deleteFileIfExists(vector_REB_bound_path, useArcpy=True)
                 deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
-                arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path_1, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="FLAT", method="PLANAR")#, dissolve_option="ALL")
+                arcpy.Buffer_analysis(in_features=vector_R_bound_path, out_feature_class=vector_REB_bound_path_1, buffer_distance_or_field="{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="FLAT", method="PLANAR")  # , dissolve_option="ALL")
                 addToolMessages()
                 a = doTime(a, "\t\tCompleted footprint buffer {}".format(vector_REB_bound_path_1))
                 arcpy.Dissolve_management(in_features=vector_REB_bound_path_1, out_feature_class=vector_REB_bound_path, multi_part="MULTI_PART")
@@ -584,7 +524,7 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
                 a = doTime(a, "\t\tCompleted footprint dissolve (flat) {}".format(vector_REB_bound_path))
                 deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
             except:
-                RunUtil.runTool(r'ngce\pmdm\a\A04_B1_BufferDissolveFootprint.py', [vector_R_bound_path,vector_REB_bound_path,vector_REB_bound_path_1,FOOTPRINT_BUFFER_DIST], bit32=False, log_path=log_path)
+                RunUtil.runTool(r'ngce\pmdm\a\A04_B1_BufferDissolveFootprint.py', [vector_R_bound_path, vector_REB_bound_path, vector_REB_bound_path_1, FOOTPRINT_BUFFER_DIST], bit32=False, log_path=log_path)
                 if not os.path.exists(vector_REB_bound_path):
                     raise Exception("Failed to buffer and dissolve tile {}".format(f_name))
 
@@ -597,21 +537,18 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
     vector_REBS_bound_path = os.path.join(stat_out_folder, "B_{}_REBS.shp".format(f_name))
     deleteFileIfExists(vector_REBS_bound_path, useArcpy=True)
     arcpy.SimplifyPolygon_cartography(in_features=vector_REB_bound_path, out_feature_class=vector_REBS_bound_path, algorithm="POINT_REMOVE", tolerance="{} Meters".format(B_SIMPLE_DIST), minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
-    #addToolMessages()
-    deleteFields(vector_REBS_bound_path)
-    arcpy.RepairGeometry_management(in_features=vector_REBS_bound_path, delete_null="DELETE_NULL")
     
+    Utility.deleteFields(vector_REBS_bound_path)
+    arcpy.RepairGeometry_management(in_features=vector_REBS_bound_path, delete_null="DELETE_NULL")
     arcpy.Delete_management(in_data=vector_REB_bound_path, data_type="ShapeFile")
      
     vector_RE_bound_path = os.path.join(stat_out_folder, "B_{}_RE.shp".format(f_name))
     deleteFileIfExists(vector_RE_bound_path, useArcpy=True)    
     arcpy.EliminatePolygonPart_management(in_features=vector_REBS_bound_path, out_feature_class=vector_RE_bound_path, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
-    #addToolMessages()
     arcpy.Delete_management(in_data=vector_REBS_bound_path, data_type="ShapeFile")
      
     arcpy.Buffer_analysis(in_features=vector_RE_bound_path, out_feature_class=vector_bound_path, buffer_distance_or_field="-{} Meters".format(FOOTPRINT_BUFFER_DIST), line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
     arcpy.RepairGeometry_management(in_features=vector_bound_path, delete_null="DELETE_NULL")
-    #addToolMessages()
     arcpy.Delete_management(in_data=vector_RE_bound_path, data_type="ShapeFile")
      
     footprint_area = 0
@@ -658,7 +595,7 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
                 arcpy.AddWarning("\tWARNING: Failed to modify fields, trying again")
                 pass
     
-    deleteFields(vector_bound_path)
+    Utility.deleteFields(vector_bound_path)
     
 
     doTime(a, "\tCreated BOUND {}".format(vector_bound_path))
@@ -877,14 +814,14 @@ def createVectorBoundaryC(f_path, vector_bound_path, isClassified, stat_props=No
         aa = doTime(aa, "\t\tC ElinatePolygonPart {}".format(vector_bound_2_path))
         arcpy.SimplifyPolygon_cartography(in_features=vector_bound_2_path, out_feature_class=vector_bound_path, algorithm="POINT_REMOVE", tolerance="{} Meters".format(C_SIMPLE_DIST), minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
         aa = doTime(aa, "\t\tC SimplifyPolygon {}".format(vector_bound_path))
-        deleteFields(vector_bound_path)
+        Utility.deleteFields(vector_bound_path)
         
         
         arcpy.RepairGeometry_management(in_features=vector_bound_path, delete_null="DELETE_NULL")
         aa = doTime(aa, "\t\tC RepairGeometry {}".format(vector_bound_path))
         deleteFileIfExists(vector_bound_1_path, useArcpy=True)
         deleteFileIfExists(vector_bound_2_path, useArcpy=True)
-        deleteFields(vector_bound_path)
+        Utility.deleteFields(vector_bound_path)
           
         footprint_area = 0
         for row in arcpy.da.SearchCursor(vector_bound_path, ["SHAPE@"]):  # @UndefinedVariable
@@ -892,7 +829,7 @@ def createVectorBoundaryC(f_path, vector_bound_path, isClassified, stat_props=No
             footprint_area = shape.getArea ("PRESERVE_SHAPE", "SQUAREMETERS")
             aa = doTime(aa, "\t\tC FootprintArea = {}".format(footprint_area))
 
-        deleteFields(vector_bound_path)
+        Utility.deleteFields(vector_bound_path)
         arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[PATH][0], field_alias=FIELD_INFO[PATH][1], field_type=FIELD_INFO[PATH][2], field_length=FIELD_INFO[PATH][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
         arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[NAME][0], field_alias=FIELD_INFO[NAME][1], field_type=FIELD_INFO[NAME][2], field_length=FIELD_INFO[NAME][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
         arcpy.AddField_management(in_table=vector_bound_path, field_name=FIELD_INFO[IS_CLASSIFIED][0], field_alias=FIELD_INFO[IS_CLASSIFIED][1], field_type=FIELD_INFO[IS_CLASSIFIED][2], field_length=FIELD_INFO[IS_CLASSIFIED][3], field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED")
@@ -939,7 +876,7 @@ def createVectorBoundaryC(f_path, vector_bound_path, isClassified, stat_props=No
             arcpy.AddWarning("  WARNING: Failed to find info file {}".format(info_file_path))
             raise Exception("  WARNING: Failed to find info file {}".format(info_file_path))
 
-        deleteFields(vector_bound_path)
+        Utility.deleteFields(vector_bound_path)
     except Exception as inst:
         doTime(a, "\tERROR CREATING BOUND {}:{}".format(inst, vector_bound_path))
         deleteFileIfExists(vector_bound_path, useArcpy=True)
@@ -954,7 +891,7 @@ def createVectorBoundaryC(f_path, vector_bound_path, isClassified, stat_props=No
         raise
     
     if os.path.exists(vector_bound_path):
-        deleteFields(vector_bound_path)
+        Utility.deleteFields(vector_bound_path)
         
     doTime(a, "\tCREATED BOUND {}".format(vector_bound_path))
         
@@ -1245,24 +1182,25 @@ def getCellSize(spatial_reference, cell_size, createMissingRasters=False):
             horz_cs_name, horz_cs_unit_name, horz_cs_factory_code, vert_cs_name, vert_unit_name = Utility.getSRValues(spatial_reference)  # @UnusedVariable
             
             horz_cs_unit_name = str(horz_cs_unit_name).upper()
-            #arcpy.AddMessage("\t\tGet Cell Size for hunit {}".format(horz_cs_unit_name))
+            # arcpy.AddMessage("\t\tGet Cell Size for hunit {}".format(horz_cs_unit_name))
             
             if horz_cs_unit_name.find("FT") >= 0 or horz_cs_unit_name.find("FOOT") >= 0 or horz_cs_unit_name.find("FEET") >= 0:
                 result = result / 0.3048
-                #if horz_cs_unit_name.find("INT") > 0:
+                # if horz_cs_unit_name.find("INT") > 0:
                 #    result = result / 0.3048
                     
                 if horz_cs_unit_name.find("US") > 0:
                     result = result / (1200 / 3937)
 
-            arcpy.AddMessage("\t\tCell Size for hunit {}={}".format(horz_cs_unit_name,result))
+            arcpy.AddMessage("\t\tCell Size for hunit {}={}".format(horz_cs_unit_name, result))
             
                     
         except:
             pass
     arcpy.AddMessage("\t\tCell Size = {}".format(result))
     return result
-#   processFile(f_path, target_path, spatial_reference, isClassified, createQARasters,       createMissingRasters,       overrideBorderPath)
+
+
 def processFile(f_path, target_path, spatial_reference, isClassified, createQARasters=False, createMissingRasters=False, overrideBorderPath=None):
     if not isinstance(createQARasters, bool):
         createQARasters = (str(createQARasters) in ['True', 'true', '1', 't', 'y', 'yes', 'yeah', 'yup', 'certainly', 'uh-huh'])
@@ -1299,227 +1237,236 @@ def processFile(f_path, target_path, spatial_reference, isClassified, createQARa
     if not os.path.exists(stat_out_folder):
         os.makedirs(stat_out_folder)
 
-    if point_count <= 0:
+    if point_count <= 2:
+        # Can't create polygons from 2 points
         arcpy.AddMessage("\tLAS file {} has {} points. SKIPPING FILE!".format(f_name, point_count))
     else:
+        try:
+            # Export LAS Stats file from lasx 
+            stat_file_path = os.path.join(stat_out_folder, "S_{}.txt".format(f_name))
+            if os.path.exists(stat_file_path):
+                arcpy.AddMessage("\tStat file exists: {}".format(stat_file_path))
+            else:
+                createLasDatasetStats(out_lasd_path, f_path, spatial_reference, stat_file_path)
+                
+            # Export Point File Information
+            point_file_path = os.path.join(stat_out_folder, "I_{}.shp".format(f_name))    
+            if os.path.exists(point_file_path):
+                arcpy.AddMessage("\tInfo file exists: {}".format(point_file_path))
+            else:
+                createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spatial_reference)
+                
+            # Create the derived files
+            lasd_all = None
             
-        # Export LAS Stats file from lasx 
-        stat_file_path = os.path.join(stat_out_folder, "S_{}.txt".format(f_name))
-        if os.path.exists(stat_file_path):
-            arcpy.AddMessage("\tStat file exists: {}".format(stat_file_path))
-        else:
-            createLasDatasetStats(out_lasd_path, f_path, spatial_reference, stat_file_path)
+            lasd_last, lasd_first = exportElevation(target_path, isClassified, f_name, out_lasd_path, createMissingRasters)
+            if createMissingRasters:
+                lasd_first = exportIntensity(target_path, isClassified, f_name, out_lasd_path, createMissingRasters)
             
-        # Export Point File Information
-        point_file_path = os.path.join(stat_out_folder, "I_{}.shp".format(f_name))    
-        if os.path.exists(point_file_path):
-            arcpy.AddMessage("\tInfo file exists: {}".format(point_file_path))
-        else:
-            createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spatial_reference)
-            
-        # Create the derived files
-        lasd_all = None
-        
-        lasd_last, lasd_first = exportElevation(target_path, isClassified, f_name, out_lasd_path, createMissingRasters)
-        if createMissingRasters:
-            lasd_first = exportIntensity(target_path, isClassified, f_name, out_lasd_path, createMissingRasters)
-        
-        # Export the boundary shape file
-        vector_bound_path = os.path.join(stat_out_folder, "B_{}.shp".format(f_name))
-        vector_bound_B_path = os.path.join(stat_out_folder, "B_{}.shp".format(f_name))
-        vector_bound_C_path = os.path.join(stat_out_folder, "C_{}.shp".format(f_name))
-        # if os.path.exists(vector_bound_path):
-        if os.path.exists(vector_bound_B_path) and os.path.exists(vector_bound_C_path) :
-            arcpy.AddMessage("\tBound files exists: {}".format(vector_bound_path))
-        else:
-            
-            value_field = ELEVATION
-            name = "_" + FIRST
-            if not isClassified:
-                # Using a generic name for non-classified data
-                name = ""
-            
-            out_folder = os.path.join(target_path, value_field)
-            if len(name) > 0:
-                out_folder = os.path.join(target_path, value_field, name[1:])
-            
-            out_raster = os.path.join(out_folder, "{}{}".format(f_name, name))
-            out_raster_path = "{}.tif".format(out_raster)
-            if not os.path.exists(out_raster_path):
-                out_raster = os.path.join(out_folder, "C_{}{}".format(f_name, name))
+            # Export the boundary shape file
+            vector_bound_path = os.path.join(stat_out_folder, "B_{}.shp".format(f_name))
+            vector_bound_B_path = os.path.join(stat_out_folder, "B_{}.shp".format(f_name))
+            vector_bound_C_path = os.path.join(stat_out_folder, "C_{}.shp".format(f_name))
+            # if os.path.exists(vector_bound_path):
+            if os.path.exists(vector_bound_B_path) and os.path.exists(vector_bound_C_path) :
+                arcpy.AddMessage("\tBound files exists: {}".format(vector_bound_path))
+            else:
+                
+                value_field = ELEVATION
+                name = "_" + FIRST
+                if not isClassified:
+                    # Using a generic name for non-classified data
+                    name = ""
+                
+                out_folder = os.path.join(target_path, value_field)
+                if len(name) > 0:
+                    out_folder = os.path.join(target_path, value_field, name[1:])
+                
+                out_raster = os.path.join(out_folder, "{}{}".format(f_name, name))
                 out_raster_path = "{}.tif".format(out_raster)
-            
-            
-            stat_props = Raster.createRasterDatasetStats(out_raster_path)
-            
-            
-            minz = stat_props[MIN]
-            maxz = stat_props[MAX]
-            meanz = stat_props[MEAN]
-            stdevz = stat_props[STAND_DEV]
-            
-            value_field = ELEVATION
-            name = "_" + LAST
-            if not isClassified:
-                # Using a generic name for non-classified data
-                name = ""
-            
-            out_folder = os.path.join(target_path, value_field)
-            if len(name) > 0:
-                out_folder = os.path.join(target_path, value_field, name[1:])
-            
-            out_raster = os.path.join(out_folder, "{}{}".format(f_name, name))
-            out_raster_path = "{}.tif".format(out_raster)
-            if not os.path.exists(out_raster_path):
-                out_raster = os.path.join(out_folder, "C_{}{}".format(f_name, name))
+                if not os.path.exists(out_raster_path):
+                    out_raster = os.path.join(out_folder, "C_{}{}".format(f_name, name))
+                    out_raster_path = "{}.tif".format(out_raster)
+                
+                
+                stat_props = Raster.createRasterDatasetStats(out_raster_path)
+                
+                
+                minz = stat_props[MIN]
+                maxz = stat_props[MAX]
+                meanz = stat_props[MEAN]
+                stdevz = stat_props[STAND_DEV]
+                
+                value_field = ELEVATION
+                name = "_" + LAST
+                if not isClassified:
+                    # Using a generic name for non-classified data
+                    name = ""
+                
+                out_folder = os.path.join(target_path, value_field)
+                if len(name) > 0:
+                    out_folder = os.path.join(target_path, value_field, name[1:])
+                
+                out_raster = os.path.join(out_folder, "{}{}".format(f_name, name))
                 out_raster_path = "{}.tif".format(out_raster)
-            
-            stat_props = Raster.createRasterDatasetStats(out_raster_path)
-            # first argument is the preferred value (from the 'all' data set)
-            maxz = chooseZValue(maxz, stat_props[MAX])
-            minz = chooseZValue(minz, stat_props[MIN])
-            meanz = chooseZValue(meanz, stat_props[MEAN])
-            stdevz = chooseZValue(stdevz, stat_props[STAND_DEV])
-            
-            stat_props[MAX] = (None if maxz is None else max(maxz))
-            stat_props[MIN] = (None if minz is None else min(minz))
-            stat_props[MEAN] = (None if meanz is None else meanz[0])
-            stat_props[STAND_DEV] = (None if stdevz is None else stdevz[0])
-            try:
-                if stat_props[MAX] is not None and stat_props[MIN] is not None: 
-                    stat_props[RANGE] = (stat_props[MAX] - stat_props[MIN])
-            except:
-                pass
-            
-            # NOT USED (slow & same result as B): createVectorBoundaryA(stat_out_folder, f_name, lasd_path, vector_bound_path)
-            
-            if not os.path.exists(vector_bound_B_path):
-                if point_count > SMALL_POINT_COUNT:
-                    createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_B_path, target_path)
-                else:
-                    try:
+                if not os.path.exists(out_raster_path):
+                    out_raster = os.path.join(out_folder, "C_{}{}".format(f_name, name))
+                    out_raster_path = "{}.tif".format(out_raster)
+                
+                stat_props = Raster.createRasterDatasetStats(out_raster_path)
+                # first argument is the preferred value (from the 'all' data set)
+                maxz = chooseZValue(maxz, stat_props[MAX])
+                minz = chooseZValue(minz, stat_props[MIN])
+                meanz = chooseZValue(meanz, stat_props[MEAN])
+                stdevz = chooseZValue(stdevz, stat_props[STAND_DEV])
+                
+                stat_props[MAX] = (None if maxz is None else max(maxz))
+                stat_props[MIN] = (None if minz is None else min(minz))
+                stat_props[MEAN] = (None if meanz is None else meanz[0])
+                stat_props[STAND_DEV] = (None if stdevz is None else stdevz[0])
+                try:
+                    if stat_props[MAX] is not None and stat_props[MIN] is not None: 
+                        stat_props[RANGE] = (stat_props[MAX] - stat_props[MIN])
+                except:
+                    pass
+                
+                # NOT USED (slow & same result as B): createVectorBoundaryA(stat_out_folder, f_name, lasd_path, vector_bound_path)
+                
+                if not os.path.exists(vector_bound_B_path):
+                    if point_count > SMALL_POINT_COUNT:
                         createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_B_path, target_path)
-                    except:
-                        arcpy.AddWarning("Failed to build boundary B, but point count is small. Ignoring error for {}.".format(f_name))
-
-            success = False
-            tries = 0
-            if not os.path.exists(vector_bound_C_path):
-                if point_count > SMALL_POINT_COUNT:
-                    while not success and tries < MAX_TRIES:
-                        tries = tries + 1
+                    else:
+                        try:
+                            createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_B_path, target_path)
+                        except:
+                            arcpy.AddWarning("Failed to build boundary B, but point count is small. Ignoring error for {}.".format(f_name))
+    
+                success = False
+                tries = 0
+                if not os.path.exists(vector_bound_C_path):
+                    if point_count > SMALL_POINT_COUNT:
+                        while not success and tries < MAX_TRIES:
+                            tries = tries + 1
+                            try:
+                                createVectorBoundaryC(out_raster_path, vector_bound_C_path, isClassified, stat_props)
+                                success = True
+                            except:
+                                if tries >= MAX_TRIES:
+                                    deleteFileIfExists(vector_bound_C_path, useArcpy=True) 
+                                    arcpy.AddError("\tERROR: Failed to create C_ footprint shape file {}, giving up.".format(vector_bound_C_path))
+                                    raise Exception("\tERROR: Failed to create C_ footprint shape file {}, giving up.".format(vector_bound_C_path))
+                                else:
+                                    arcpy.AddWarning("\tWARNING: Failed to create C_ footprint shape file {}, trying again".format(vector_bound_C_path))
+                                    pass
+                    else:
                         try:
                             createVectorBoundaryC(out_raster_path, vector_bound_C_path, isClassified, stat_props)
-                            success = True
                         except:
-                            if tries >= MAX_TRIES:
-                                deleteFileIfExists(vector_bound_C_path, useArcpy=True) 
-                                arcpy.AddError("\tERROR: Failed to create C_ footprint shape file {}, giving up.".format(vector_bound_C_path))
-                                raise Exception("\tERROR: Failed to create C_ footprint shape file {}, giving up.".format(vector_bound_C_path))
-                            else:
-                                arcpy.AddWarning("\tWARNING: Failed to create C_ footprint shape file {}, trying again".format(vector_bound_C_path))
-                                pass
-                else:
-                    try:
-                        createVectorBoundaryC(out_raster_path, vector_bound_C_path, isClassified, stat_props)
-                    except:
-                        deleteFileIfExists(vector_bound_C_path, useArcpy=True)
-                        arcpy.AddWarning("Failed to build boundary C, but point count is small. Ignoring error for {}.".format(f_name))
-            
+                            deleteFileIfExists(vector_bound_C_path, useArcpy=True)
+                            arcpy.AddWarning("Failed to build boundary C, but point count is small. Ignoring error for {}.".format(f_name))
                 
-        
-        # Do later with the final boundary file
-    #     if len(out_rasters) > 0:
-    #         vector_bound_B_path = os.path.join(stat_out_folder, "BB{}.shp".format(f_name))
-    #         arcpy.Buffer_analysis(in_features=vector_bound_path, out_feature_class=vector_bound_B_path, buffer_distance_or_field="1 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
-    #     
-    #         for out_raster_path in out_rasters:
-    #             clipDerivedRaster(out_raster_path, vector_bound_B_path)
-    #         
-    #         deleteFileIfExists(vector_bound_B_path, True)
-            
-        # Create the QA statistics files
-        if createQARasters and (point_count > SMALL_POINT_COUNT):
-            try:
-                arcpy.AddMessage("Creating QA Raters = {}".format(createQARasters))
-                cell_size = getCellSize(spatial_reference, CELL_SIZE)
-                # Create the statistics rasters
-                stats_methods = STATS_METHODS
-                for dataset_name in DATASET_NAMES:
-                    name = dataset_name
-                    lasd = out_lasd_path
-                                    
-                    if not isClassified:
-                        # Using a generic name for non-classified data
-                        name = ""
                     
-                    for method in stats_methods:
-                        if createQARasters or method == pulse_count_dir or method == point_count_dir:
-                            out_folder = os.path.join(target_path, method)
-                            if len(name) > 0:
-                                out_folder = os.path.join(target_path, method, name[1:])
-                                
-                            if not os.path.exists(out_folder):
-                                os.makedirs(out_folder)
-                            
-                            out_raster = os.path.join(out_folder, "{}{}".format(f_name, name))
-                            out_raster_path = "{}.tif".format(out_raster)
-                            out_raster1_path = "{}1.tif".format(out_raster)
-                            
-                            if os.path.exists(out_raster_path):
-                                # arcpy.AddMessage("\tRaster already exists, skipping creation: {}".format(out_raster_path))
-                                continue
-                            else:
-                                a = datetime.now()
-                                
+            
+            # Do later with the final boundary file
+            #     if len(out_rasters) > 0:
+            #         vector_bound_B_path = os.path.join(stat_out_folder, "BB{}.shp".format(f_name))
+            #         arcpy.Buffer_analysis(in_features=vector_bound_path, out_feature_class=vector_bound_B_path, buffer_distance_or_field="1 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
+            #     
+            #         for out_raster_path in out_rasters:
+            #             clipDerivedRaster(out_raster_path, vector_bound_B_path)
+            #         
+            #         deleteFileIfExists(vector_bound_B_path, True)
+                
+            # Create the QA statistics files
+            if createQARasters and (point_count > SMALL_POINT_COUNT):
+                try:
+                    arcpy.AddMessage("Creating QA Raters = {}".format(createQARasters))
+                    cell_size = getCellSize(spatial_reference, CELL_SIZE)
+                    # Create the statistics rasters
+                    stats_methods = STATS_METHODS
+                    for dataset_name in DATASET_NAMES:
+                        name = dataset_name
+                        lasd = out_lasd_path
+                                        
+                        if not isClassified:
+                            # Using a generic name for non-classified data
+                            name = ""
+                        
+                        for method in stats_methods:
+                            if createQARasters or method == pulse_count_dir or method == point_count_dir:
+                                out_folder = os.path.join(target_path, method)
+                                if len(name) > 0:
+                                    out_folder = os.path.join(target_path, method, name[1:])
                                     
+                                if not os.path.exists(out_folder):
+                                    os.makedirs(out_folder)
                                 
-                                # do this here to avoid arcpy penalty if they all exist
-                                if isClassified:
-                                    if name == "_" + LAST:
-                                        if lasd_last is None:
-                                            lasd_last = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_last", class_code="0;2;8;9;10;11;12", return_values="'Last Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
-                                        lasd = lasd_last
-                                    elif name == "_" + FIRST:
-                                        if lasd_first is None:
-                                            lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
-                                        lasd = lasd_first
-                                    elif name == '_' + ALL:
-                                        if lasd_all is None:
-                                            lasd_all = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_All", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="'Last Return';'First of Many';'Last of Many';'Single Return';1;2;3;4;5", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
-                                        lasd = lasd_all
-
-                                arcpy.LasPointStatsAsRaster_management(lasd, out_raster_path, method, SAMPLE_TYPE, cell_size)
-
-            ##                    # NOTE: This section removed so long as CELL_SIZE==10Raster is integer type, units chaged to count/100 sq meters)                        
-            ##                    if ((method is pulse_count_dir) or (method is point_count_dir)):
-            ##                        # divide the cells by cell size (meters) squared, overwrite
-            ##                        
-            ##                        os.rename(out_raster_path, out_raster1_path)
-            ##                        ras1 = arcpy.Raster(out_raster1_path)
-            ##                        ras = ras1 / ((CELL_SIZE / 10.0) ** 2) # divide by 10 meters to make units count/100 sq meters
-            ##                        del ras1
-            ##                        ras.save(out_raster_path)
-            ##                        arcpy.Delete_management(out_raster1_path)
-            ##                        del ras
+                                out_raster = os.path.join(out_folder, "{}{}".format(f_name, name))
+                                out_raster_path = "{}.tif".format(out_raster)
+                                out_raster1_path = "{}1.tif".format(out_raster)
                                 
-                                arcpy.BuildPyramidsandStatistics_management(in_workspace=out_raster_path,
-                                                                            build_pyramids="BUILD_PYRAMIDS",
-                                                                            calculate_statistics="CALCULATE_STATISTICS",
-                                                                            BUILD_ON_SOURCE="BUILD_ON_SOURCE",
-                                                                            pyramid_level="-1",
-                                                                            SKIP_FIRST="NONE",
-                                                                            resample_technique="NEAREST",
-                                                                            compression_type="LZ77",
-                                                                            compression_quality="75",
-                                                                            skip_existing="SKIP_EXISTING")
-                                
-                                doTime(a, "\tCreated {}x{} RASTER {}".format(cell_size, cell_size, out_raster))
-            except:
-                arcpy.AddWarning("Failed to create RASTER")
+                                if os.path.exists(out_raster_path):
+                                    # arcpy.AddMessage("\tRaster already exists, skipping creation: {}".format(out_raster_path))
+                                    continue
+                                else:
+                                    a = datetime.now()
+                                    
+                                        
+                                    
+                                    # do this here to avoid arcpy penalty if they all exist
+                                    if isClassified:
+                                        if name == "_" + LAST:
+                                            if lasd_last is None:
+                                                lasd_last = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_last", class_code="0;2;8;9;10;11;12", return_values="'Last Return'", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
+                                            lasd = lasd_last
+                                        elif name == "_" + FIRST:
+                                            if lasd_first is None:
+                                                lasd_first = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_first", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="1", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
+                                            lasd = lasd_first
+                                        elif name == '_' + ALL:
+                                            if lasd_all is None:
+                                                lasd_all = arcpy.MakeLasDatasetLayer_management(in_las_dataset=out_lasd_path, out_layer="LasDataset_All", class_code="0;1;2;3;4;5;6;8;9;10;11;12;13;14;15;16;17", return_values="'Last Return';'First of Many';'Last of Many';'Single Return';1;2;3;4;5", no_flag="true", synthetic="true", keypoint="true", withheld="false", surface_constraints="")
+                                            lasd = lasd_all
+    
+                                    arcpy.LasPointStatsAsRaster_management(lasd, out_raster_path, method, SAMPLE_TYPE, cell_size)
+    
+                                    # # NOTE: This section removed so long as CELL_SIZE==10Raster is integer type, units chaged to count/100 sq meters)                        
+                                    # if ((method is pulse_count_dir) or (method is point_count_dir)):
+                                    #    # divide the cells by cell size (meters) squared, overwrite
+                                    #
+                                    #    os.rename(out_raster_path, out_raster1_path)
+                                    #    ras1 = arcpy.Raster(out_raster1_path)
+                                    #    ras = ras1 / ((CELL_SIZE / 10.0) ** 2) # divide by 10 meters to make units count/100 sq meters
+                                    #    del ras1
+                                    #    ras.save(out_raster_path)
+                                    #    arcpy.Delete_management(out_raster1_path)
+                                    #    del ras
+                                    
+                                    arcpy.BuildPyramidsandStatistics_management(in_workspace=out_raster_path,
+                                                                                build_pyramids="BUILD_PYRAMIDS",
+                                                                                calculate_statistics="CALCULATE_STATISTICS",
+                                                                                BUILD_ON_SOURCE="BUILD_ON_SOURCE",
+                                                                                pyramid_level="-1",
+                                                                                SKIP_FIRST="NONE",
+                                                                                resample_technique="NEAREST",
+                                                                                compression_type="LZ77",
+                                                                                compression_quality="75",
+                                                                                skip_existing="SKIP_EXISTING")
+                                    
+                                    doTime(a, "\tCreated {}x{} RASTER {}".format(cell_size, cell_size, out_raster))
+                except:
+                    arcpy.AddWarning("Failed to create RASTER")
+            
+            # Don't remove the .lasd file since we may need it again if something went wrong above
+            # arcpy.Delete_management(lasd_path)
         
-        # Don't remove the .lasd file since we may need it again if something went wrong above
-        # arcpy.Delete_management(lasd_path)
+        
+        except:
+            if point_count <= SMALL_POINT_COUNT:
+                # too few points to worry about
+                arcpy.AddWarning("\tLAS file {} failed to process with {} points. SKIPPING FILE!".format(f_name, point_count))
+            else:
+                raise
     
     try:
         if arcpy.Exists("LasDataset_last"):
@@ -1602,7 +1549,7 @@ if __name__ == '__main__':
     
     if len(sys.argv) > 6:
         arcpy.AddMessage("createMissingRasters argv = '{}'".format(sys.argv[6]))
-        createMissingRasters =  (str(sys.argv[6]).upper() == "TRUE")
+        createMissingRasters = (str(sys.argv[6]).upper() == "TRUE")
 
     if len(sys.argv) > 7:
         overrideBorderPath = sys.argv[7]    

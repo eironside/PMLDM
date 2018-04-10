@@ -97,7 +97,7 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
         
     ProjectMDs_fgdb_path = ProjectFolder.published.fgdb_path
     arcpy.AddMessage("Project file GDB Path: {}".format(ProjectMDs_fgdb_path))
-    # Don't need to do heigh models
+    # Don't need to do height models
     md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.INT]
           
     # Ensure the master_md_path exists

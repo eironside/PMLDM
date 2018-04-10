@@ -8,7 +8,6 @@ import shutil
 import sys
 import time
 import traceback
-import random
 
 from ngce import Utility
 from ngce.Utility import doTime
@@ -120,7 +119,7 @@ def clearScratchFiles(section_mxd_name, anno_paths, mask_paths, annoLyr_paths):
 
 
     
-    arcpy.AddMessage("Cleared scratch directory {}".format(directory))
+    arcpy.AddMessage("\t\tCleared scratch directory {}".format(directory))
 
 def isProcessFile(scratch, name):
     filter_folder_name = "T{}".format(name)
@@ -239,7 +238,7 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
     annoShp2257 = os.path.join(filter_folder, r"Contours_2257Anno2256.shp")
     annoShp4514 = os.path.join(filter_folder, r"Contours_4514Anno4513.shp")
     annoShp9028 = os.path.join(filter_folder, r"Contours_9028Anno9027.shp")
-    annoShp_paths = [annoShp1128, annoShp2257, annoShp4514, annoShp9028]
+    annoShp_paths = [annoShp1128, annoShp2257, annoShp4514, annoShp9028]  # @UnusedVariable
     
     mask1128 = os.path.join(filter_folder, r"Mask1128.shp")
     mask2257 = os.path.join(filter_folder, r"Mask2256.shp")
@@ -277,9 +276,8 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                         a = Utility.doTime(a, "\t{}: Saved a copy of the mxd template to '{}'".format(name, section_mxd_name))
                         
                     except Exception as e:
-
-                        arcpy.AddMessage('Copying Section MXD Failed: {}'.format(section_mxd_name))
-                        arcpy.AddMessage('Error: {}'.format(e))
+                        arcpy.AddWarning('Copying Section MXD Failed: {}'.format(section_mxd_name))
+                        arcpy.AddWarning('Error: {}'.format(e))
                                 
                 # Set MXD For Processing
                 mxd = arcpy.mapping.MapDocument(section_mxd_name)
@@ -428,7 +426,7 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                             else:
                                 arcpy.AddWarning("t{}: WARNING: Can't create masking layer. Layer file missing {}".format(name, lyr_path))
                     except Exception as e:
-                        arcpy.AddError('\t{}: Exception: {}'.format(name, e))
+                        arcpy.AddError('{}: Exception: {}'.format(name, e))
                         pass
                 mxd.save()
                 a = Utility.doTime(a, "\t{}: Created masking polygons".format(name))
