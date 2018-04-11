@@ -284,17 +284,45 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                 if clearScratch:
                     clearScratch = False
                     clearScratchFiles(section_mxd_name, anno_paths, mask_paths, annoLyr_paths)
-
-                if not os.path.exists(section_mxd_name):
+                
+                mxd_tries1 = 0
+                while not os.path.exists(section_mxd_name) and mxd_tries1 < TRIES_ALLOWED:
+                    mxd_tries1 = mxd_tries1 + 1
                     try:
-                        arcpy.AddMessage('Section MXD Name: {}'.format(section_mxd_name))
+                        if not os.path.exists(filter_folder):
+                            os.makedirs(filter_folder)
+                            arcpy.AddMessage('\tREPEAT: Made section Scratch Folder Name: {}'.format(filter_folder))
+                        else:
+                            arcpy.AddMessage('\tEXISTS: Section Scratch Folder Name: {}'.format(filter_folder))
+                    
+                        arcpy.AddMessage('\tSection MXD Name: {}'.format(section_mxd_name))
                         shutil.copyfile(ContourConfig.MXD_ANNO_TEMPLATE, section_mxd_name)
                         
                         a = Utility.doTime(a, "\t{}: Saved a copy of the mxd template to '{}'".format(name, section_mxd_name))
+                        arcpy.AddMessage('\tSection MXD Name {} exists? {}'.format(section_mxd_name, os.path.exists(section_mxd_name)))
                         
                     except Exception as e:
+                        time.sleep(mxd_tries1)
+                        
                         arcpy.AddWarning('Copying Section MXD Failed: {}'.format(section_mxd_name))
                         arcpy.AddWarning('Error: {}'.format(e))
+                        type_, value_, traceback_ = sys.exc_info()
+                        tb = traceback.format_exception(type_, value_, traceback_, 3)
+                        arcpy.AddWarning('Error: \n{}: {}\n{}\n'.format(type_, value_, tb[1]))
+                        
+                        try:
+                            arcpy.AddMessage('\t\t\t: Removing folder: {}'.format(filter_folder))
+                            shutil.rmtree(filter_folder)
+                            arcpy.AddMessage('\t\t\t: folder{} exists? {}'.format(filter_folder, os.path.exists(filter_folder)))
+                            if not os.path.exists(filter_folder):
+                                os.makedirs(filter_folder)
+                                arcpy.AddMessage('\tREPEAT: Made section Scratch Folder Name: {}'.format(filter_folder))
+                            arcpy.AddMessage('\t\t\t: folder{} exists? {}'.format(filter_folder, os.path.exists(filter_folder)))
+                        except:
+                            arcpy.AddWarning('\t\t\t: folder{} exists: {}'.format(filter_folder, os.path.exists(filter_folder)))
+                        
+                        if mxd_tries1 >= TRIES_ALLOWED:
+                            raise e
                                 
                 # Set MXD For Processing
                 mxd = arcpy.mapping.MapDocument(section_mxd_name)
