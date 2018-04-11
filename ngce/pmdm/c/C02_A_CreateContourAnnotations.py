@@ -1,4 +1,19 @@
 
+'''
+DANGER: 
+DANGER: 
+DANGER: 
+DANGER: ERIC IS MODIFYING THIS FILE.
+DANGER: 
+DANGER: 
+DANGER: 
+DANGER: 
+DANGER: 
+'''
+
+
+
+
 import arcpy
 import datetime
 from functools import partial
@@ -19,6 +34,8 @@ from ngce.contour.ContourConfig import CONTOUR_GDB_NAME, CONTOUR_NAME_WM
 from ngce.folders import ProjectFolders
 from ngce.pmdm import RunUtil
 from ngce.pmdm.a import A05_C_ConsolidateRasterInfo
+
+
 
 
 CPU_HANDICAP = 0  # set higher to use fewer CPUs
