@@ -1,19 +1,4 @@
 
-'''
-DANGER: 
-DANGER: 
-DANGER: 
-DANGER: ERIC IS MODIFYING THIS FILE.
-DANGER: 
-DANGER: 
-DANGER: 
-DANGER: 
-DANGER: 
-'''
-
-
-
-
 import arcpy
 import datetime
 from functools import partial
@@ -804,7 +789,7 @@ def PrepareContoursForJob(strJobId):
     
     processJob(project_job, project, strUID)
     
-    doTime(aa, "Operation Complete: C01 Create Contours From MD")
+    doTime(aa, "Operation Complete: C02 Create Contour Annotoations")
 
     
 
