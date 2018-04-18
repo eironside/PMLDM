@@ -383,6 +383,14 @@ class ProjectJob(object):
 
         return row
 
+    def updateProject(self, row):
+        wmx_job_id = self.getWMXJobID(row)
+        where_clause = "{} = {}".format(arcpy.AddFieldDelimiters(self.fclass, field_ProjectJob_WMXJobID), wmx_job_id)
+
+        Utility.addOrUpdateRecord(in_table=self.fclass, field_names=self.fields, uidIndex=self.uid_index, where_clause=where_clause, rowValueList=row)
+
+        return row
+
     def updateJobAOI(self, project_row, project_AOI):
         wmx_job_id = self.getWMXJobID(project_row)
         # Where WMXJobID = '<Job_ID>'
@@ -409,6 +417,9 @@ class ProjectJob(object):
     def getProjectDir(self, row):
         return getFieldValue(self, row, field_ProjectJob_ProjDir)
 
+    def setProjectDir(self, row, value):
+        return setFieldValue(self, row, field_ProjectJob_ProjDir, value)
+
     def getProjectID(self, row):
         return getFieldValue(self, row, field_ProjectJob_ProjID)
 
@@ -423,6 +434,9 @@ class ProjectJob(object):
 
     def getParentDir(self, row):
         return getFieldValue(self, row, field_ProjectJob_ParentDir)
+
+    def setParentDir(self, row, value):
+        return setFieldValue(self, row, field_ProjectJob_ParentDir, value)
 
     def getState(self, row):
         return getFieldValue(self, row, field_ProjectJob_State)

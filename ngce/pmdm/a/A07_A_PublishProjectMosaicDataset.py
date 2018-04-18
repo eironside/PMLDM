@@ -39,8 +39,10 @@ from ngce import Utility
 from ngce.pmdm import RunUtil
 from ngce.Utility import doTime
 from ngce.cmdr.JobUtil import getProjectFromWMXJobID
+from ngce.cmdr import CMDR
 from ngce.folders import ProjectFolders, FoldersConfig
 from ngce.raster import Raster
+from ngce.pmdm.a import A06_A_CreateProjectMosaicDataset
 import xml.dom.minidom as DOM 
 
 
@@ -105,6 +107,30 @@ def updateSDServerSideFunctions(ssFunctionsLst, ssFunctionsList, sddraftPath, up
     xml_filew.write(dom.toxml())
     xml_filew.close()
 
+def updateJobDirectory(project_wmx_jobid, ProjectJob, project):
+    project = list(project)
+    arcpy.AddMessage("Working with project:  {}".format(project))
+    ProjectParentDirectory, ProjectDirectory = Utility.getJobProjectDirs(project_wmx_jobid)
+    arcpy.AddMessage("Splitting project directory:  {}".format(ProjectDirectory))
+    old_path, project_id = os.path.split(ProjectDirectory)
+    arcpy.AddMessage("Old parent directory:  {}".format(old_path))
+    arcpy.AddMessage("ProjectID:  {}".format(project_id))
+    new_path = ProjectParentDirectory
+    arcpy.AddMessage("New parent directory:  {}".format(new_path))
+
+    new_project_path = os.path.join(new_path, project_id)
+    arcpy.AddMessage("New project directory:  {}".format(new_project_path))
+    
+    ProjectJob.setParentDir(project, new_path)
+    ProjectJob.setProjectDir(project, new_project_path)
+    arcpy.AddMessage("Set project directories:  \n\tParent: {}\n\tProject: {}".format(new_path, new_project_path))
+
+    ProjectJob.updateProject(project)
+    arcpy.AddMessage("Updated project directories:  \n\tParent: {}\n\tProject: {}".format(new_path, new_project_path))
+
+    return old_path, new_path
+
+    
 
 def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunctionPath, update=False, runCount=0):
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
@@ -113,6 +139,12 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
     ProjectYear = ProjectJob.getYear(project)
     ProjectAlias = ProjectJob.getAlias(project)
     ProjectAliasClean = ProjectJob.getAliasClean(project)
+    project_wmx_jobid = ProjectJob.getWMXJobID(project)
+
+    Deliver = CMDR.Deliver()
+    delivery = Deliver.getDeliver(project_wmx_jobid)
+    dateDeliver=Deliver.getDeliverDate(delivery)
+    
     startupType = "STARTED"
     Utility.printArguments(["ProjectJob", "project", "ProjectUID", "serverConnectionFile", "serverFunctionPath", "update", "runCount", "ProjectFolder", "ProjectID", "ProjectState", "ProjectYear", "ProjectAlias", "ProjectAliasClean", "startupType"],
                    [ProjectJob, project, ProjectUID, serverConnectionFile, serverFunctionPath, update, runCount, ProjectFolder, ProjectID, ProjectState, ProjectYear, ProjectAlias, ProjectAliasClean, startupType], "A07_A Publish Project")
@@ -123,10 +155,15 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
         ssFunctions = Raster.getServerSideFunctions(serverFunctionPath)
     
     folderName = ProjectState
+
+    # If the project has been moved for publishing, update the project directory
+    old_path, new_path = updateJobDirectory(project_wmx_jobid, ProjectJob, project)
     
     
     md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.DCM, FoldersConfig.INT]
     for md_name in md_list:
+        update_paths_success = False
+        
         # @TODO Add more info here!
         serviceDescription = "for project '{}' within state {} published in the year {}".format(ProjectAlias, ProjectState, ProjectYear)
         serviceTags = ",".join([ProjectID, ProjectAliasClean, ProjectState, str(ProjectYear)])
@@ -134,16 +171,30 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
         filegdb_name = "{}_{}.gdb".format(ProjectFolder.published.fgdb_name, md_name)
         if ProjectFolder.published.fgdb_name.endswith(".gdb"):
             filegdb_name = "{}_{}.gdb".format(ProjectFolder.published.fgdb_name[:-4], md_name)
-        ProjectMDs_fgdb_path = os.path.join(ProjectFolder.published.path, filegdb_name)  
-        arcpy.AddMessage("File Geodatabase Path:  {0}".format(ProjectMDs_fgdb_path))
-    
+
+        #ProjectMDs_fgdb_path = os.path.join(ProjectFolder.published.path, filegdb_name)
+        
+        #arcpy.AddMessage("OLD File Geodatabase Path:  {0}".format(ProjectMDs_fgdb_path))
+        new_publish_path = os.path.join(new_path, ProjectID, "PUBLISHED")
+        old_publish_path = os.path.join(old_path, ProjectID, "PUBLISHED")
+        
+        new_projectMDs_fgdb_path = os.path.join(new_publish_path, filegdb_name)  
+        arcpy.AddMessage("File Geodatabase Path:  {0}".format(new_projectMDs_fgdb_path))
       
         # Ensure the master_md_path exists
-        if arcpy.Exists(ProjectMDs_fgdb_path):
+        if arcpy.Exists(new_projectMDs_fgdb_path):
         
-            project_md_path = os.path.join(ProjectMDs_fgdb_path, md_name)
+            project_md_path = os.path.join(new_projectMDs_fgdb_path, md_name)
             arcpy.AddMessage("Mosaic Dataset Path:  {0}".format(project_md_path))
             if arcpy.Exists(project_md_path):
+                try:
+                    arcpy.AddMessage("Repairing Mosaic Dataset Paths:  {}\n\told: {}\n\tnew: {}".format(new_projectMDs_fgdb_path, old_publish_path, new_publish_path))
+                    arcpy.RepairMosaicDatasetPaths_management(in_mosaic_dataset=project_md_path, paths_list="# {0} {1}".format(ProjectFolder.published.path, new_publish_path), where_clause="1=1")
+                    update_paths_success = True
+                except:
+                    if md_name <> FoldersConfig.DHM and md_name <> FoldersConfig.DCM:
+                        arcpy.AddWarning("Failed to update paths, mosaic dataset paths should be verified and updated by hand if necessary. {}".format(project_md_path))
+                    
                 serviceName = "{}_{}".format(ProjectID, md_name) 
                 arcpy.AddMessage("Service Name:  {0}".format(serviceName))
                 # Retrieve some properties from the Mosaic Dataset to place in the tags field
@@ -259,13 +310,29 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
                 else:        
                     arcpy.AddError("Exiting: Found 'RasterPath' in list of allowed MD fields. Please remove this field from the list before publishing.")
                     arcpy.AddError("         To remove RasterPath from the list, go to Mosaic Dataset Properties, Defaults tab, Allowed Fields...")
+
+                # Clean up and delete the .sd file
+                Utility.deleteFileIfExists(sdPath, False)
+                
+                # For some reason publishing breaks the referenced mosaics.
+                # The function paths also don't update properly.
+                # So delete them and re-create later.
+                if md_name == FoldersConfig.DHM or md_name == FoldersConfig.DCM:
+                    arcpy.AddMessage("Deleting Mosaic Dataset to recreate later {}".format(project_md_path))
+                    Utility.deleteFileIfExists(project_md_path, True)
+                
             else:
                 arcpy.AddWarning("Project mosaic dataset not found '{}'.".format(project_md_path))
         else:
-            arcpy.AddError("Project file geodatabase not found '{}'. Please add this before proceeding.".format(ProjectMDs_fgdb_path))
+            arcpy.AddError("Project file geodatabase not found '{}'. Please add this before proceeding.".format(new_projectMDs_fgdb_path))
     
     # FOR LOOP
-    #
+
+    
+    ##
+    ##    Re-create the MD if it is FoldersConfig.DHM, FoldersConfig.DCM
+    ##
+    A06_A_CreateProjectMosaicDataset.CreateProjectMDs(project_wmx_jobid, dateDeliver=dateDeliver)
 
 
 def PublishMosaicDataset(strJobId, serverConnectionFile, serverFunctionPath, update=False, runCount=0):

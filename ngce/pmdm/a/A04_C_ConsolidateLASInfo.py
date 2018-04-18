@@ -232,6 +232,7 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
     arcpy.AddMessage("\tBuffering")
     arcpy.Buffer_analysis(in_features=raster_footprint, out_feature_class=lasd_boundary_1, buffer_distance_or_field="10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="NONE", method="PLANAR")
     Utility.addToolMessages()
+    arcpy.RepairGeometry_management(in_features=lasd_boundary_1, delete_null="DELETE_NULL")
     deleteFields(lasd_boundary_1)
 
     lasd_boundary_2 = "{}2".format(target_raster_boundary)
@@ -243,6 +244,7 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
         statistics_fields=statistics_fields
         )
     Utility.addToolMessages()
+    arcpy.RepairGeometry_management(in_features=lasd_boundary_2, delete_null="DELETE_NULL")
     deleteFields(lasd_boundary_2)
     a = doTime(a, "\tDissolved to {}".format(lasd_boundary_2))
     
@@ -259,11 +261,13 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
     lasd_boundary_3 = "{}3".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_3, True)
     arcpy.EliminatePolygonPart_management(in_features=lasd_boundary_2, out_feature_class=lasd_boundary_3, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
+    arcpy.RepairGeometry_management(in_features=lasd_boundary_3, delete_null="DELETE_NULL")
     deleteFileIfExists(lasd_boundary_1, True)
     deleteFields(lasd_boundary_3)
     lasd_boundary_4 = "{}4".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_4, True)
     arcpy.SimplifyPolygon_cartography(in_features=lasd_boundary_3, out_feature_class=lasd_boundary_4, algorithm="BEND_SIMPLIFY", tolerance="20 Meters", minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
+    arcpy.RepairGeometry_management(in_features=lasd_boundary_4, delete_null="DELETE_NULL")
     deleteFields(lasd_boundary_4)
     #try:
     #    arcpy.DeleteField_management(in_table=lasd_boundary_4, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
@@ -273,6 +277,7 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
 
     deleteFileIfExists(target_raster_boundary, True)
     arcpy.Buffer_analysis(in_features=lasd_boundary_4, out_feature_class=target_raster_boundary, buffer_distance_or_field="-10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
+    arcpy.RepairGeometry_management(in_features=target_raster_boundary, delete_null="DELETE_NULL")
     deleteFields(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_4, True)
 

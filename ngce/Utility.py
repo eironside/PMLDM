@@ -27,6 +27,7 @@ SDE_WMX_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wm
 SDE_CMDR_FILE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cmdr.sde')
 WMX_AOI_FC = "LDM_WMX.DBO.JTX_JOBS_AOI"
 #WMX_AOI_FC = "NGCE_WMX.DBO.JTX_JOBS_AOI"
+WMX_PROP_FC = "LDM_WMX.DBO.JTXX_LDM_PROPS"
 
 # A set of standard fields that are not used and should be deleted
 DROP_FIELDS = ["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id", "Buff_Dist",
@@ -194,6 +195,26 @@ def getJobAoi(jobId):
     arcpy.AddMessage("Job {} AOI: {}".format(jobId, shape[jobId]))
     return shape[jobId]
 
+def getJobProjectDirs(jobId):
+    '''
+        returns ProjectParentDirectory, ProjectDirectory
+    '''
+    ProjectParentDirectory = None
+    ProjectDirectory = None
+    if not jobId is None:
+        in_table = os.path.join(SDE_WMX_FILE_PATH, WMX_PROP_FC)
+        field_names = ["ProjectParentDirectory", "ProjectDirectory"]
+        uidIndex = None
+        where_clause = "{} = {}".format(arcpy.AddFieldDelimiters(in_table, "WMX_JOB_ID"), jobId)
+
+        record = getExistingRecord(in_table, field_names, uidIndex, where_clause)[0]
+        arcpy.AddMessage(record)
+        ProjectParentDirectory = record[0]
+        ProjectDirectory = record[1]
+        
+        
+    arcpy.AddMessage("Job {} Directories: {}, {}".format(jobId, ProjectParentDirectory, ProjectDirectory))
+    return [ProjectParentDirectory, ProjectDirectory]
 
 
 
