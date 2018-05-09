@@ -224,7 +224,13 @@ def bufferZValues(z_min, z_max, add_buffer=True):
     return z_min, z_max
 
 def getRasterBoundData(bound_path, elev_type, add_buffer=True):
-    arcpy.AddMessage("Raster Bound Data: \n\tbound_path={}\n\telev_type={}\n\tadd_buffer={}\n\t".format(bound_path, elev_type, add_buffer))
+
+    try:
+        arcpy.AddMessage("Raster Bound Data: \n\tbound_path={}\n\telev_type={}\n\tadd_buffer={}\n\t".format(
+            bound_path, elev_type, add_buffer
+            ))
+    except UnicodeEncodeError as uer:
+        arcpy.AddMessage('Raster Bound Data - Encoding Error Has Truncated Text')
     z_min = None
     z_max = None
     v_name = None
@@ -253,7 +259,13 @@ def getRasterBoundData(bound_path, elev_type, add_buffer=True):
         h_wkid = row[6]
     
     z_min, z_max = bufferZValues(z_min, z_max, add_buffer)
-    arcpy.AddMessage("Raster Bound Data: \n\tz_min={}\n\tz_max={}\n\tv_name={}\n\tv_unit={}\n\th_name={}\n\th_unit={}\n\th_wkid={}\n\t".format(z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid))
+
+    try:
+        arcpy.AddMessage("Raster Bound Data: \n\tz_min={}\n\tz_max={}\n\tv_name={}\n\tv_unit={}\n\th_name={}\n\th_unit={}\n\th_wkid={}\n\t".format(
+            z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid
+            ))
+    except UnicodeEncodeError as uer:
+        arcpy.AddMessage('Raster Bound Data - Encoding Error Has Truncated Text')
 
     
     if elev_type is not "INTENSITY":
@@ -353,8 +365,7 @@ def processRastersInFolder(fileList, target_path, publish_path, elev_type, bound
             f_path = ",".join(f_paths)
             indx = indx + len(f_paths)
             
-            #arcpy.AddMessage('       processRastersInFolder: Working on {}/{}: {}'.format(indx, total, f_path))
-            arcpy.AddMessage('       processRastersInFolder: Working on {}/{}'.format(indx, total))
+            arcpy.AddMessage('       processRastersInFolder: Working on {} {}/{}'.format(elev_type, indx, total))
             args = [f_path, elev_type, target_path, publish_path, bound_path, str(z_min), str(z_max), v_name, v_unit, h_name, h_unit, str(h_wkid), spatial_ref]
             
             try:
@@ -496,6 +507,10 @@ def validateRasterSpaitialRef(ProjectFolder, start_dir, elev_type, target_path, 
 
 
 def processJob(ProjectJob, project, ProjectUID):
+
+    a = datetime.now()
+    aa = a
+    aaa = aa
     
     ProjectFolder = ProjectFolders.getProjectFolderFromDBRow(ProjectJob, project)
     ProjectID = ProjectJob.getProjectID(project)
@@ -525,6 +540,7 @@ def processJob(ProjectJob, project, ProjectUID):
         raise Exception("No DTM Files Found, cannot proceed.")
     
     for elev_type in elev_types:
+        
         spatialRef_error[elev_type] = False
         start_dir = os.path.join(ProjectFolder.delivered.path, elev_type)
         f_name = getFileProcessList(start_dir, elev_type, target_path, publish_path, return_first=True, check_sr=False)
@@ -556,7 +572,10 @@ def processJob(ProjectJob, project, ProjectUID):
                 if raster_boundary is not None:
                     raster_boundaries.append(raster_boundary)
                     arcpy.RepairGeometry_management(in_features=raster_boundary, delete_null="KEEP_NULL")
-    
+
+        a = doTime(a, 'COMPLETED: Finished processing {}\n---------------------------------------\n\n'.format(elev_type))
+
+    aa = doTime(aa, 'COMPLETED: Finished processing all elevation types')
     
     if arcpy.Exists(raster_footprint_main):
         A05_C_ConsolidateRasterInfo.deleteFileIfExists(raster_footprint_main, True)
@@ -621,7 +640,9 @@ def processJob(ProjectJob, project, ProjectUID):
             arcpy.Compact_management(in_workspace=fgdb_path)
     except:
         pass
-    
+
+    aa = doTime(aa, 'COMPLETED: Finished merging raster footprints and boundaries')
+    doTime(aaa, 'COMPLETED: A05_A Completed')
     return errorMsg
         
     

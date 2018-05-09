@@ -67,6 +67,9 @@ LAS_RASTER_TYPE = LAS.LAS_raster_type_1_all_bin_mean_idw
 
 arcpy.env.parallelProcessingFactor = "8"
 
+SKIP_FACTOR_LRG = 100
+SKIP_FACTOR_MED = SKIP_FACTOR_LRG/4
+SKIP_FACTOR_SML = SKIP_FACTOR_LRG/10
 
 def addNameSource(footprints, img_type):
     a = datetime.now()
@@ -140,6 +143,8 @@ def mergeFootprints(las_footprints, el_type, fgdb_path):
             Utility.deleteFields(raster_footprints_all)
             
             merged_raster_footprints = raster_footprints_all
+
+            Utility.deleteFileIfExists(raster_footprints_sim)
             
             a = doTime(a, "\tRepaired footprint geometry in {}".format(raster_footprints_all))
         else:
@@ -153,16 +158,19 @@ def mergeFootprints(las_footprints, el_type, fgdb_path):
 
 
 def isSpatialRefSameForAll(InputFolder):
+    a = datetime.now()
+    aa = a
     arcpy.env.workspace = InputFolder
     rasters = arcpy.ListRasters("*", "TIF")
     count = len(rasters)
-    arcpy.AddMessage("Checking raster spatial references for {} rasters in folder {}".format(count, InputFolder))
+    a = doTime(a, "Listed {} rasters from folder {}".format(count, InputFolder))
+    
 
     SpatRefFirstRaster = None
     SRMatchFlag = True
     firstRaster = None
 
-
+    arcpy.AddMessage("Checking raster spatial references for {} rasters in folder {}".format(count, InputFolder))
     for raster in rasters:
         describe = arcpy.Describe(raster)
         SRef = describe.SpatialReference.exportToString()
@@ -174,6 +182,7 @@ def isSpatialRefSameForAll(InputFolder):
             SRMatchFlag = False
             arcpy.AddError("Raster has a PCSCode (EPSG code) that is different than first raster: \n\tFirst raster '{}' SR: {}\n\tThis raster '{}' SR: {}".format(firstRaster, SpatRefFirstRaster, raster, SRef))
 
+    doTime(aa, "Checked raster spatial references for {}".format(count))
     return SRMatchFlag, count
 
 
@@ -220,7 +229,7 @@ def setMosaicDatasetProperties(md_path):
                                                         default_processing_template="None")
 
 
-def generateOverviews(target_path, md_name, md_path, count_rasters, spatial_ref, cellsize):
+def generateOverviews(target_path, md_name, md_path, count_rasters, spatial_ref, cellsize, boundary_fc_path = None):
     Utility.setArcpyEnv(is_overwrite_output=True)
     a = datetime.now()
     linearUnitName = spatial_ref.linearUnitName
@@ -240,14 +249,18 @@ def generateOverviews(target_path, md_name, md_path, count_rasters, spatial_ref,
     #     overview_factor="2"
     #     force_overview_tiles="FORCE_OVERVIEW_TILES"
     #     compression_method="LZW"
-    arcpy.DefineOverviews_management(md_path, mosaic_dataset_overview_path, in_template_dataset="#", extent="#", pixel_size=cellsizeOVR, number_of_levels="#", tile_rows="5120", tile_cols="5120", overview_factor="2", force_overview_tiles="FORCE_OVERVIEW_TILES", resampling_method="BILINEAR", compression_method="LZ77", compression_quality="100")
+    #     20180507 EI: Added the template dataset using the las dataset boundary to constrain overview generation to fix issues with .las file invalid projections
+    arcpy.DefineOverviews_management(md_path, mosaic_dataset_overview_path, in_template_dataset=boundary_fc_path, extent="#", pixel_size=cellsizeOVR,
+                                     number_of_levels="#", tile_rows="5120", tile_cols="5120", overview_factor="2", force_overview_tiles="FORCE_OVERVIEW_TILES",
+                                     resampling_method="BILINEAR", compression_method="LZ77", compression_quality="100")
     Utility.addToolMessages()
 
 
 
     # Build Overviews as defined in the previous step
     #    define_missing_tiles="NO_DEFINE_MISSING_TILES"
-    arcpy.BuildOverviews_management(md_path, where_clause="#", define_missing_tiles="NO_DEFINE_MISSING_TILES", generate_overviews="GENERATE_OVERVIEWS", generate_missing_images="GENERATE_MISSING_IMAGES", regenerate_stale_images="REGENERATE_STALE_IMAGES")
+    arcpy.BuildOverviews_management(md_path, where_clause="#", define_missing_tiles="NO_DEFINE_MISSING_TILES", generate_overviews="GENERATE_OVERVIEWS", generate_missing_images="GENERATE_MISSING_IMAGES",
+                                    regenerate_stale_images="REGENERATE_STALE_IMAGES")
     Utility.addToolMessages()
 
 
@@ -266,8 +279,12 @@ def generateOverviews(target_path, md_name, md_path, count_rasters, spatial_ref,
 #     arcpy.SynchronizeMosaicDataset_management(in_mosaic_dataset=md_path, where_clause="", new_items="NO_NEW_ITEMS", sync_only_stale="SYNC_STALE", update_cellsize_ranges="NO_CELL_SIZES", update_boundary="NO_BOUNDARY", update_overviews="NO_OVERVIEWS", build_pyramids="NO_PYRAMIDS", calculate_statistics="NO_STATISTICS", build_thumbnails="NO_THUMBNAILS", build_item_cache="NO_ITEM_CACHE", rebuild_raster="NO_RASTER", update_fields="NO_FIELDS", fields_to_update="area;cell_h;cell_w;CenterX;CenterY;comp_type;created_date;created_user;el_type;format;GroupName;h_name;h_unit;h_wkid;height;is_class;last_edited_date;last_edited_user;nodata;pixel;PointCount;PointSpacing;ProductName;Project_Date;Project_Dir;Project_GUID;Project_ID;Project_Source;ra_pt_ct;ra_pt_sp;ra_zmax;ra_zmin;ra_zran;Raster;Shape;Tag;unc_size;v_name;v_unit;Version;width;xmax;xmin;ymax;ymin;zdev;ZMax;zmax_1;zmean;ZMin;zmin_1;ZOrder;zran", existing_items="UPDATE_EXISTING_ITEMS", broken_items="REMOVE_BROKEN_ITEMS", skip_existing_items="SKIP_EXISTING_ITEMS", refresh_aggregate_info="NO_REFRESH_INFO", estimate_statistics="NO_STATISTICS")
 #     Utility.addToolMessages()
 
+    arcpy.AddMessage("Building statistics on overviews: {0}".format(md_path))
     overview_layer = arcpy.MakeMosaicLayer_management(in_mosaic_dataset=md_path, out_mosaic_layer="{}_MosaicLayer".format(md_name), where_clause="TypeID = 2")
-    arcpy.BuildPyramidsandStatistics_management(overview_layer, include_subdirectories="INCLUDE_SUBDIRECTORIES", build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="NONE", block_field="#", estimate_statistics="NONE", x_skip_factor="1", y_skip_factor="1", ignore_values="#", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="BILINEAR", compression_type="NONE", compression_quality="75", skip_existing="SKIP_EXISTING")
+    arcpy.BuildPyramidsandStatistics_management(overview_layer, include_subdirectories="INCLUDE_SUBDIRECTORIES", build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="NONE",
+                                                block_field="#", estimate_statistics="NONE",
+                                                x_skip_factor=SKIP_FACTOR_LRG, y_skip_factor=SKIP_FACTOR_LRG, ignore_values="#", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="BILINEAR",
+                                                compression_type="NONE", compression_quality="75", skip_existing="SKIP_EXISTING")
     Utility.addToolMessages()
     
     arcpy.CalculateField_management(in_table=overview_layer, field="Project_Source", expression='"OVR"', expression_type="PYTHON_9.3", code_block="")
@@ -293,7 +310,13 @@ def addLasFilesToMosaicDataset(out_las_dataset, las_folder, las_v_name, las_v_un
     las_h_name = LASSpatialRef.name
     las_h_unit = LASSpatialRef.linearUnitName
     las_h_code = LASSpatialRef.PCSCode
-    arcpy.AddMessage("Adding LAS files with spatial reference:\n\tH Name '{}'\n\tH Unit '{}'\n\tH Code '{}'\n\tV Name '{}'\n\tV Unit '{}'".format(las_h_name, las_h_unit, las_h_code, las_v_name, las_v_unit))
+    try:
+        arcpy.AddMessage(
+            "Adding LAS files with spatial reference:\n\tH Name '{}'\n\tH Unit '{}'\n\tH Code '{}'\n\tV Name '{}'\n\tV Unit '{}'".format(
+                las_h_name, las_h_unit, las_h_code, las_v_name, las_v_unit)
+            )
+    except UnicodeEncodeError as uer:
+        arcpy.AddMessage('Adding Las Files - Encoding Error Has Truncated Text')
 
     # Get the maximum value of ItemTS From the Project Mosaic Dataset
     #    The value of ItemTS is based on the last time the row was modified. Knowing
@@ -310,7 +333,11 @@ def addLasFilesToMosaicDataset(out_las_dataset, las_folder, las_v_name, las_v_un
 
     # Add the LAS files to the Mosaic Dataset, but don't recalculate cell size ranges, since MaxPS will be
     # set in a subsequent step. Don't update the boundary.
-    arcpy.AddRastersToMosaicDataset_management(md_path, LAS_RASTER_TYPE, las_folder, update_cellsize_ranges="NO_CELL_SIZES", update_boundary="NO_BOUNDARY", update_overviews="NO_OVERVIEWS", maximum_pyramid_levels="#", maximum_cell_size="0", minimum_dimension="1500", spatial_reference=LASSpatialRef, filter="#", sub_folder="NO_SUBFOLDERS", duplicate_items_action="ALLOW_DUPLICATES", build_pyramids="NO_PYRAMIDS", calculate_statistics="NO_STATISTICS", build_thumbnails="NO_THUMBNAILS", operation_description="#", force_spatial_reference="NO_FORCE_SPATIAL_REFERENCE")
+    arcpy.AddRastersToMosaicDataset_management(md_path, LAS_RASTER_TYPE, las_folder, update_cellsize_ranges="NO_CELL_SIZES", update_boundary="NO_BOUNDARY",
+                                               update_overviews="NO_OVERVIEWS", maximum_pyramid_levels="#", maximum_cell_size="0", minimum_dimension="1500",
+                                               spatial_reference=LASSpatialRef, filter="#", sub_folder="NO_SUBFOLDERS", duplicate_items_action="ALLOW_DUPLICATES",
+                                               build_pyramids="NO_PYRAMIDS", calculate_statistics="NO_STATISTICS", build_thumbnails="NO_THUMBNAILS",
+                                               operation_description="#", force_spatial_reference="NO_FORCE_SPATIAL_REFERENCE")
     Utility.addToolMessages()
 
     # If the LAS have Z-units of FOOT_INTL or FOOT_US then append the appropriate function to their
@@ -376,21 +403,24 @@ def getDates(dateDeliver, dateStart, dateEnd, project_year):
     return dateDeliver, dateStart, dateEnd
 
 
-def createReferenceddMosaicDataset(in_md_path, out_md_path, spatial_ref, raster_v_unit):
+def createReferenceddMosaicDataset(in_md_path, out_md_path, spatial_ref, raster_v_unit, area_of_interest=None):
     a = datetime.now()
-    arcpy.CreateReferencedMosaicDataset_management(in_dataset=in_md_path, out_mosaic_dataset=out_md_path, coordinate_system=spatial_ref, number_of_bands="1", pixel_type="32_BIT_FLOAT", where_clause="TypeID <> 3", in_template_dataset="", extent="", select_using_features="SELECT_USING_FEATURES", lod_field="", minPS_field="", maxPS_field="", pixelSize="", build_boundary="BUILD_BOUNDARY")
+    arcpy.CreateReferencedMosaicDataset_management(in_dataset=in_md_path, out_mosaic_dataset=out_md_path, coordinate_system=spatial_ref, number_of_bands="1", pixel_type="32_BIT_FLOAT", where_clause="TypeID <> 3",
+                                                   in_template_dataset=area_of_interest, extent="", select_using_features="SELECT_USING_FEATURES", lod_field="", minPS_field="", maxPS_field="", pixelSize="",
+                                                   build_boundary="NO_BOUNDARY")
 
     raster_function_path = Raster.Height_function_chain_path
 
     arcpy.EditRasterFunction_management(out_md_path, edit_mosaic_dataset_item="EDIT_MOSAIC_DATASET", edit_options="INSERT", function_chain_definition=raster_function_path, location_function_name="#")
     Utility.addToolMessages()
-
-    arcpy.CalculateStatistics_management(in_raster_dataset=out_md_path, x_skip_factor="50", y_skip_factor="50", ignore_values="", skip_existing="OVERWRITE", area_of_interest="Feature Set")
+## 20180508 EI No reason to calc stats here, it has to be done manually
+    #arcpy.CalculateStatistics_management(in_raster_dataset=out_md_path, x_skip_factor=SKIP_FACTOR_LRG, y_skip_factor=SKIP_FACTOR_LRG, ignore_values="", skip_existing="OVERWRITE", area_of_interest=area_of_interest)
     # setMosaicDatasetProperties(out_md_path)
     arcpy.AddMessage("\tNOTE: !!! Please edit the raster function !! Replace the DTM with this project's DTM mosaic dataset and recaclculate statistics on the mosaic dataset.\n\n\t{}\n".format(out_md_path))
     doTime(a, "Created Referenced MD '{}'".format(out_md_path))
 
-def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, imagePath, md_name, md_path, SpatRefMD, fix):
+def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, imagePath, md_name, md_path, SpatRefMD, fix, area_of_interest= None):
+    a = datetime.now()
     filegdb_path = os.path.join(publish_path, filegdb_name)
 
     # If the file gdb doesn't exist, then create it
@@ -407,7 +437,12 @@ def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, 
     Utility.addToolMessages()
     Raster.addStandardMosaicDatasetFields(md_path)
 
-    arcpy.AddRastersToMosaicDataset_management(md_path, raster_type="Raster Dataset", input_path=imagePath, update_cellsize_ranges="NO_CELL_SIZES", update_boundary="UPDATE_BOUNDARY", update_overviews="NO_OVERVIEWS", maximum_pyramid_levels="#", maximum_cell_size="0", minimum_dimension="1500", spatial_reference="#", filter="*.TIFF,*.TIF", sub_folder="NO_SUBFOLDERS", duplicate_items_action="ALLOW_DUPLICATES", build_pyramids="NO_PYRAMIDS", calculate_statistics="CALCULATE_STATISTICS", build_thumbnails="NO_THUMBNAILS", operation_description="#", force_spatial_reference="NO_FORCE_SPATIAL_REFERENCE")
+    arcpy.AddMessage("Adding rasters to mosaic dataset {}".format(md_path))
+    arcpy.AddRastersToMosaicDataset_management(md_path, raster_type="Raster Dataset", input_path=imagePath, update_cellsize_ranges="NO_CELL_SIZES",
+                                               update_boundary="UPDATE_BOUNDARY", update_overviews="NO_OVERVIEWS", maximum_pyramid_levels="#", maximum_cell_size="0",
+                                               minimum_dimension="1500", spatial_reference="#", filter="*.TIFF,*.TIF", sub_folder="NO_SUBFOLDERS",
+                                               duplicate_items_action="ALLOW_DUPLICATES", build_pyramids="NO_PYRAMIDS", calculate_statistics="CALCULATE_STATISTICS",
+                                               build_thumbnails="NO_THUMBNAILS", operation_description="#", force_spatial_reference="NO_FORCE_SPATIAL_REFERENCE")
     Utility.addToolMessages()
     # Get a record count just to be sure we found raster products to ingest
     count_rasters = int(arcpy.GetCount_management(md_path).getOutput(0))
@@ -439,13 +474,19 @@ def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, 
         else:
             arcpy.AddMessage("Raster vertical unit is meters, no need for conversion. {}".format(raster_v_unit))
 
-    arcpy.CalculateStatistics_management(md_path, x_skip_factor="1", y_skip_factor="1", ignore_values="#", skip_existing="OVERWRITE", area_of_interest="Feature Set")
+    doTime(a, "Updated function. Calculating statistics on  {} ".format(md_path))
+    arcpy.CalculateStatistics_management(md_path, x_skip_factor=SKIP_FACTOR_LRG, y_skip_factor=SKIP_FACTOR_LRG, ignore_values="#", skip_existing="OVERWRITE", area_of_interest=None)
     Utility.addToolMessages()
-    
+    doTime(a, "Calculated statistics on  {} ".format(md_path))
+
+    arcpy.AddMessage("Calculating Project_Source field on {}".format(md_path))
     arcpy.CalculateField_management(in_table=md_path, field="Project_Source", expression='"RAS"', expression_type="PYTHON_9.3", code_block="")
+    doTime(a, "Calculated field Project_Source on  {} ".format(md_path))    
     
     # This tool is re-run because sometimes the clip_to_footprints="NOT_CLIP" gets re-set to "CLIP" for some reason
     setMosaicDatasetProperties(md_path)
+    
+    doTime(a, "Finished adding rasters to {} ".format(md_path))
     return count_rasters, md_cellsize
 
 
@@ -514,12 +555,15 @@ def importMosaicDatasetGeometries(md_path, footprint_path, boundary_path):
         arcpy.ImportMosaicDatasetGeometry_management(md_path, target_featureclass_type="FOOTPRINT", target_join_field="NameSource", input_featureclass=footprint_path, input_join_field="NameSource")
         Utility.addToolMessages()
     if boundary_path is not None:
+        
         arcpy.ImportMosaicDatasetGeometry_management(md_path, target_featureclass_type="BOUNDARY", target_join_field="OBJECTID", input_featureclass=boundary_path, input_join_field="OBJECTID")
         Utility.addToolMessages()
 
 
-def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster_v_unit = None):
+def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster_v_unit = None, area_of_interest = None):
     if raster_v_unit is not None:
+        raster_v_unit = str(raster_v_unit).upper()
+        #arcpy.AddMessage("Raster vertical unit is {}. Checking to see if it needs to be converted...".format(raster_v_unit))
         if ("FEET" in raster_v_unit) or ("FOOT" in raster_v_unit) or ("FT" in raster_v_unit):
             if ("US" in raster_v_unit) or ("SURVEY" in raster_v_unit):
                 arcpy.AddMessage("Raster vertical unit is {}, adding conversion function for US Feet.".format(raster_v_unit))
@@ -530,8 +574,10 @@ def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster
                 raster_z_min = raster_z_min * 0.3048
                 raster_z_max = raster_z_max * 0.3048
         else:
-            arcpy.AddMessage("Raster vertical unit is not provided, no need for conversion. {}".format(raster_v_unit))
-    
+            arcpy.AddMessage("Raster vertical unit is {}. Leaving it as is.".format(raster_v_unit))
+    else:
+        arcpy.AddMessage("Raster vertical unit is not provided, no need for conversion.")
+
     full_calc = False
     minResult = arcpy.GetRasterProperties_management(md_path, property_type="MINIMUM", band_index="Band_1")
     Utility.addToolMessages()
@@ -543,14 +589,13 @@ def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster
 
     arcpy.AddMessage("Before statistics calc Min/Max \n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
 
-
-
     # Only Calculate Statistics if they are corrupted (The constants can apply to Meters or Feet)
     if minMDValue < -300.0 or maxMDValue > 30000.0:
-        arcpy.AddWarning("Mosaic values for Min/Max are way out of spec. Trying full calc statistics \n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
+        arcpy.AddWarning("Mosaic values for Min/Max are way out of spec. Trying large calc statistics \n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
         full_calc = True
         # Calculate stats on the Mosaic Dataset (note: if this takes too long, enlarge skip factors)
-        arcpy.CalculateStatistics_management(md_path, x_skip_factor="1", y_skip_factor="1", ignore_values="#", skip_existing="OVERWRITE", area_of_interest="Feature Set")
+        arcpy.AddMessage("CalculateStatistics_management with skip factor {}".format(SKIP_FACTOR_LRG))
+        arcpy.CalculateStatistics_management(md_path, x_skip_factor=SKIP_FACTOR_LRG, y_skip_factor=SKIP_FACTOR_LRG, ignore_values=None, skip_existing="OVERWRITE", area_of_interest=None)
         Utility.addToolMessages()
 
         minResult = arcpy.GetRasterProperties_management(md_path, property_type="MINIMUM", band_index="Band_1")
@@ -569,11 +614,15 @@ def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster
     if zmin_deviation > 0.1 or zmax_deviation > 0.1:
         if not full_calc:
             full_calc = True
-            arcpy.AddWarning("Mosaic values for Min/Max are >10% of rasters. Trying full calc statistics \n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
+            arcpy.AddWarning("Mosaic values for Min/Max are >10% of rasters. Trying medium calc statistics \n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
             # Calculate statistics and histogram for all rows in the Mosaic Dataset
-            arcpy.BuildPyramidsandStatistics_management(md_path, include_subdirectories="INCLUDE_SUBDIRECTORIES", build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="NONE", block_field="#", estimate_statistics="NONE", x_skip_factor="10", y_skip_factor="10", ignore_values="#", pyramid_level="-1", SKIP_FIRST="NONE", resample_technique="BILINEAR", compression_type="DEFAULT", compression_quality="75", skip_existing="SKIP_EXISTING")
-            Utility.addToolMessages()
-            arcpy.CalculateStatistics_management(md_path, x_skip_factor="1", y_skip_factor="1", ignore_values="#", skip_existing="OVERWRITE", area_of_interest="Feature Set")
+            #arcpy.AddMessage("BuildPyramidsandStatistics_management")
+            #arcpy.BuildPyramidsandStatistics_management(md_path, include_subdirectories="INCLUDE_SUBDIRECTORIES", build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="NONE",
+            #                                            block_field="#", estimate_statistics="NONE", x_skip_factor=SKIP_FACTOR_MED, y_skip_factor=SKIP_FACTOR_MED, ignore_values="#", pyramid_level="-1",
+            #                                            SKIP_FIRST="NONE", resample_technique="BILINEAR", compression_type="DEFAULT", compression_quality="75", skip_existing="SKIP_EXISTING")
+            #Utility.addToolMessages()
+            arcpy.AddMessage("CalculateStatistics_management with skip factor {}".format(SKIP_FACTOR_MED))
+            arcpy.CalculateStatistics_management(md_path, x_skip_factor=SKIP_FACTOR_MED, y_skip_factor=SKIP_FACTOR_MED, ignore_values="#", skip_existing="OVERWRITE", area_of_interest=None)
             Utility.addToolMessages()
 
             # This tool is re-run because sometimes the clip_to_footprints="NOT_CLIP" gets re-set to "CLIP" for some reason
@@ -599,11 +648,46 @@ def calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster
     if raster_z_max <> 0:
         zmax_deviation = abs((maxMDValue - raster_z_max) / raster_z_max)
     if zmin_deviation > 0.1 or zmax_deviation > 0.1:
+        
+        
+        arcpy.AddWarning("Mosaic values for Min/Max are still >10% of rasters. Trying full calc statistics \n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
+        # Calculate statistics and histogram for all rows in the Mosaic Dataset
+        #arcpy.AddMessage("BuildPyramidsandStatistics_management")
+        #arcpy.BuildPyramidsandStatistics_management(md_path, include_subdirectories="INCLUDE_SUBDIRECTORIES", build_pyramids="NONE", calculate_statistics="CALCULATE_STATISTICS", BUILD_ON_SOURCE="NONE",
+        #                                            block_field="#", estimate_statistics="NONE", x_skip_factor=SKIP_FACTOR_MED, y_skip_factor=SKIP_FACTOR_MED, ignore_values="#", pyramid_level="-1",
+        #                                            SKIP_FIRST="NONE", resample_technique="BILINEAR", compression_type="DEFAULT", compression_quality="75", skip_existing="SKIP_EXISTING")
+        #Utility.addToolMessages()
+        arcpy.AddMessage("CalculateStatistics_management with skip factor {}".format(SKIP_FACTOR_SML))
+        arcpy.CalculateStatistics_management(md_path, x_skip_factor=SKIP_FACTOR_SML, y_skip_factor=SKIP_FACTOR_SML, ignore_values="#", skip_existing="OVERWRITE", area_of_interest=None)
+        Utility.addToolMessages()
+
+        # This tool is re-run because sometimes the clip_to_footprints="NOT_CLIP" gets re-set to "CLIP" for some reason
+        setMosaicDatasetProperties(md_path)
+
+        minResult = arcpy.GetRasterProperties_management(md_path, property_type="MINIMUM", band_index="Band_1")
+        Utility.addToolMessages()
+        minMDValue = float(minResult.getOutput(0))
+
+        maxResult = arcpy.GetRasterProperties_management(md_path, property_type="MAXIMUM", band_index="Band_1")
+        Utility.addToolMessages()
+        maxMDValue = float(maxResult.getOutput(0))
+
+        arcpy.AddMessage("After full statistics calc Min/Max \n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
+
+
+
+    zmin_deviation = abs((minMDValue - raster_z_min) / MOSAIC_Z_TOLERANCE)
+    zmax_deviation = abs((maxMDValue - raster_z_max) / MOSAIC_Z_TOLERANCE)
+    if raster_z_min <> 0:
+        zmin_deviation = abs((minMDValue - raster_z_min) / raster_z_min)
+    if raster_z_max <> 0:
+        zmax_deviation = abs((maxMDValue - raster_z_max) / raster_z_max)
+    if zmin_deviation > 0.1 or zmax_deviation > 0.1:
         arcpy.AddWarning("Min/Max MD values ({},{}) still don't match expected values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
     else:
         arcpy.AddMessage("Current Min/Max is within tolerance:\n\tMosaic values ({},{})\n\tRaster values ({},{})".format(minMDValue, maxMDValue, raster_z_min, raster_z_max))
 
-def createHeightRefMD(imageDir, publish_folder, md_paths, SpatRefMD, raster_v_unit):
+def createHeightRefMD(imageDir, publish_folder, md_paths, SpatRefMD, raster_v_unit, area_of_interest=None):
     # ## DCM is the height above last return (e.g. canopy height)
     # ## DHM is the height above ground
 
@@ -620,7 +704,7 @@ def createHeightRefMD(imageDir, publish_folder, md_paths, SpatRefMD, raster_v_un
     if arcpy.Exists(dhm_md_path):
         arcpy.AddMessage("Height Model already exists. {}".format(dhm_md_path))
     else:
-        createReferenceddMosaicDataset(md_paths[DSM], dhm_md_path, SpatRefMD, raster_v_unit)
+        createReferenceddMosaicDataset(md_paths[DSM], dhm_md_path, SpatRefMD, raster_v_unit, area_of_interest=area_of_interest)
 
 def getOriginalCoordinateSystem(publish_folder):
     ocs_spatial_ref = None
@@ -685,6 +769,8 @@ def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd
 
     publish_folder = ProjectFolder.published
     derived_fgdb_path = ProjectFolder.derived.fgdb_path
+    arcpy.Compact_management(derived_fgdb_path)
+    Utility.addToolMessages()
 
     lasd_path = ProjectFolder.derived.lasd_path
     lasd_boundary_path = A04_C_ConsolidateLASInfo.getLasdBoundaryPath(derived_fgdb_path)
@@ -755,10 +841,17 @@ def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd
                 else:
                     arcpy.AddMessage("Working on {} rasters for elevation type {} vertical unit {}.".format(ras_count, el_type, raster_v_unit))
 
-                    count_rasters, md_cellsize = createMosaicDatasetAndAddRasters(raster_v_unit, publish_folder.path, pub_filegdb_name, raster_target_path, md_name, md_path, SpatRef, fix)
+                    count_rasters, md_cellsize = createMosaicDatasetAndAddRasters(raster_v_unit, publish_folder.path, pub_filegdb_name, raster_target_path, md_name, md_path, SpatRef, fix, area_of_interest=lasd_boundary_path)
                     count_total = count_rasters 
                     if count_total > 0:
                         md_paths[md_name] = md_path
+                        arcpy.Compact_management(in_workspace=os.path.dirname(md_path))
+                        Utility.addToolMessages()
+
+                    if fix is None:
+                        calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster_v_unit, area_of_interest=lasd_boundary_path)
+                    else:
+                        calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, area_of_interest=lasd_boundary_path)
                     
                     # Import the boundary here for stats calcs
                     importMosaicDatasetGeometries(md_path, None, raster_boundary)
@@ -766,7 +859,7 @@ def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd
                     count_overviews = 0
                     count_las = 0
                     if fix is None:
-                        count_overviews, count_total = generateOverviews(raster_target_path, md_name, md_path, count_rasters, SpatRef, md_cellsize)
+                        count_overviews, count_total = generateOverviews(raster_target_path, md_name, md_path, count_rasters, SpatRef, md_cellsize, lasd_boundary_path)
                         count_las, count_total = addLasFilesToMosaicDataset(lasd_path, las_qainfo.las_directory, las_v_name, las_v_unit, isClassified, md_path, count_total)
                     
                     raster_footprint_path = None
@@ -781,38 +874,30 @@ def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd
                     del all_layer
                     
                     importMosaicDatasetGeometries(md_path, raster_footprint_path, raster_boundary)
+                    arcpy.Compact_management(in_workspace=os.path.dirname(md_path))
+                    Utility.addToolMessages()
                     updateMosaicDatasetFields(dateDeliver, md_path, raster_footprint_path, SpatRef)
                     
                     arcpy.CalculateField_management(in_table=md_path, field="Project_ID", expression='"{}"'.format(project_id), expression_type="PYTHON_9.3", code_block="")
 
-                    if fix is None:
-                        calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path)
-                    else:
-                        calculateMosaicDatasetStatistics(raster_z_min, raster_z_max, md_path, raster_v_unit)
-
                     # Analyze the Mosaic Dataset in preparation for publishing it
+                    arcpy.AddMessage("Analyzing mosaic dataset {}".format(md_path))
                     arcpy.AnalyzeMosaicDataset_management(md_path, where_clause="#", checker_keywords="FOOTPRINT;FUNCTION;RASTER;PATHS;SOURCE_VALIDITY;STALE;PYRAMIDS;STATISTICS;PERFORMANCE;INFORMATION")
                     Utility.addToolMessages()
                     arcpy.AddMessage("To view detailed results, Add the MD to the map, rt-click --> Data --> View Analysis Results")
 
-
+                    Utility.deleteFileIfExists(raster_footprint_path)
+                    
                     arcpy.AddMessage("Mosaic dataset has {} rasters {} overviews and {} las files.".format(count_rasters, count_overviews, count_las))
                     doTime(a, "completed building mosaic dataset {}".format(md_path))
-
-
-#             # @TODO: Add a spatial reference check
-#             if PCSCodeZeroFlag == 1:
-#                 arcpy.AddWarning("*** Refer to the PCSCode column in the Footprint table for specifics.***")
-#                 arcpy.AddWarning("*** PCSCode = 0 indicates a non-standard datum or unit of measure.     ***")
-#                 arcpy.AddError("One or more rasters has a PCSCode (EPSG code) of 0.")
 
     if md_paths[DSM] is None:
         arcpy.AddWarning("DSM doesnt exist, height models cant be created.")
     else:
         # ## DHM is the height above ground
-        createHeightRefMD(DHM, publish_folder, md_paths, SpatRefMD, raster_v_unit)
+        createHeightRefMD(DHM, publish_folder, md_paths, SpatRefMD, raster_v_unit, area_of_interest=lasd_boundary_path)
         # ## DCM is the height above last return (e.g. canopy height)
-        createHeightRefMD(DCM, publish_folder, md_paths, SpatRefMD, raster_v_unit)
+        createHeightRefMD(DCM, publish_folder, md_paths, SpatRefMD, raster_v_unit, area_of_interest=lasd_boundary_path)
 
 
     doTime(aa, "A06 A Operation complete")

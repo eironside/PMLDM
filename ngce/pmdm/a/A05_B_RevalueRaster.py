@@ -235,7 +235,16 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
     Utility.addToolMessages()
     checkRecordCount(vector_3_bound_path)
     
-    arcpy.SimplifyPolygon_cartography(in_features=vector_3_bound_path, out_feature_class=vector_2_bound_path, algorithm="POINT_REMOVE", tolerance="{} Meters".format(C_SIMPLE_DIST), minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
+    arcpy.SimplifyPolygon_cartography(
+        in_features=vector_3_bound_path,
+        out_feature_class=vector_2_bound_path,
+        algorithm="POINT_REMOVE",
+        tolerance="{} Meters".format(C_SIMPLE_DIST),
+        minimum_area="0 Unknown",
+        error_option="RESOLVE_ERRORS",
+        collapsed_point_option="NO_KEEP",
+        in_barriers=""
+        )
     Utility.addToolMessages()
     checkRecordCount(vector_2_bound_path)
 

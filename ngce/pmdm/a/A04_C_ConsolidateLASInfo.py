@@ -33,7 +33,7 @@ import datetime
 import os
 
 from ngce import Utility
-from ngce.Utility import deleteFileIfExists, doTime
+from ngce.Utility import deleteFileIfExists, doTime, deleteFields
 from ngce.cmdr import CMDRConfig
 from ngce.folders.FoldersConfig import STATS_METHODS, DATASET_NAMES
 from ngce.raster import RasterConfig, Raster
@@ -53,28 +53,28 @@ def getLasFootprintPath(fgdb_path):
 
 
 
-def deleteField(in_table, drop_field):
-    #arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
-    try:    
-        arcpy.DeleteField_management(in_table=in_table, drop_field=drop_field)
-    except:
-        #arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
-        pass
-
-def deleteFields(in_table):
-    fields = arcpy.ListFields(in_table)
-    existing_fields = []
-    for field in fields:
-        existing_fields.append(field.name)
-        
-    #arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
-    drop_fields=["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id", "buff_dist",
-                 "MINSIMPTOL", "MAXSIMPTOL", "ORIG_FID", "INPOLY_FID", "SIMPGNFLAG", "ID", "Buff_Dist",
-                 "minsimptol", "maxsimptol", "orig_fid", "inpoly_fid", "simpgnflag", "id", "BUFF_DIST"]
-    for drop_field in drop_fields:
-        #arcpy.AddMessage("\t\tTrying to drop field '{}' from '{}'".format(drop_field, in_table))
-        if drop_field in existing_fields:
-           deleteField(in_table, drop_field)
+##def deleteField(in_table, drop_field):
+##    #arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
+##    try:    
+##        arcpy.DeleteField_management(in_table=in_table, drop_field=drop_field)
+##    except:
+##        #arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
+##        pass
+##
+##def deleteFields(in_table):
+##    fields = arcpy.ListFields(in_table)
+##    existing_fields = []
+##    for field in fields:
+##        existing_fields.append(field.name)
+##        
+##    #arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
+##    drop_fields=["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag", "Id", "buff_dist",
+##                 "MINSIMPTOL", "MAXSIMPTOL", "ORIG_FID", "INPOLY_FID", "SIMPGNFLAG", "ID", "Buff_Dist",
+##                 "minsimptol", "maxsimptol", "orig_fid", "inpoly_fid", "simpgnflag", "id", "BUFF_DIST"]
+##    for drop_field in drop_fields:
+##        #arcpy.AddMessage("\t\tTrying to drop field '{}' from '{}'".format(drop_field, in_table))
+##        if drop_field in existing_fields:
+##           deleteField(in_table, drop_field)
         
         
 

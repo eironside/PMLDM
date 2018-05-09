@@ -177,6 +177,10 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
         #arcpy.AddMessage("OLD File Geodatabase Path:  {0}".format(ProjectMDs_fgdb_path))
         new_publish_path = os.path.join(new_path, ProjectID, "PUBLISHED")
         old_publish_path = os.path.join(old_path, ProjectID, "PUBLISHED")
+
+        #arcpy.AddMessage("OLD File Geodatabase Path:  {0}".format(ProjectMDs_fgdb_path))
+        new_delivered_path = os.path.join(new_path, ProjectID, "DELIVERED")
+        old_delivered_path = os.path.join(old_path, ProjectID, "DELIVERED")
         
         new_projectMDs_fgdb_path = os.path.join(new_publish_path, filegdb_name)  
         arcpy.AddMessage("File Geodatabase Path:  {0}".format(new_projectMDs_fgdb_path))
@@ -189,11 +193,27 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
             if arcpy.Exists(project_md_path):
                 try:
                     arcpy.AddMessage("Repairing Mosaic Dataset Paths:  {}\n\told: {}\n\tnew: {}".format(new_projectMDs_fgdb_path, old_publish_path, new_publish_path))
-                    arcpy.RepairMosaicDatasetPaths_management(in_mosaic_dataset=project_md_path, paths_list="# {0} {1}".format(ProjectFolder.published.path, new_publish_path), where_clause="1=1")
+                    arcpy.RepairMosaicDatasetPaths_management(in_mosaic_dataset=project_md_path, paths_list="# {0} {1}".format(old_path, new_path), where_clause="1=1")
+                    
+                    #arcpy.AddMessage("Repairing Mosaic Dataset Paths:  {}\n\told: {}\n\tnew: {}".format(new_projectMDs_fgdb_path, old_delivered_path, new_delivered_path))
+                    #arcpy.RepairMosaicDatasetPaths_management(in_mosaic_dataset=project_md_path, paths_list="# {0} {1}".format(old_delivered_path, new_delivered_path), where_clause="1=1")
+                    
                     update_paths_success = True
                 except:
                     if md_name <> FoldersConfig.DHM and md_name <> FoldersConfig.DCM:
                         arcpy.AddWarning("Failed to update paths, mosaic dataset paths should be verified and updated by hand if necessary. {}".format(project_md_path))
+
+                project_md_ocs_path = "{}_OCS".format(project_md_path)
+                if arcpy.Exists(project_md_ocs_path):
+                    try:
+                        arcpy.AddMessage("Repairing Mosaic Dataset Paths:  {}\n\told: {}\n\tnew: {}".format(project_md_ocs_path, old_path, new_path))
+                        arcpy.RepairMosaicDatasetPaths_management(in_mosaic_dataset=project_md_ocs_path, paths_list="# {0} {1}".format(old_path, new_path), where_clause="1=1")
+                        arcpy.ExportMosaicDatasetPaths_management(in_mosaic_dataset=project_md_ocs_path, out_table="[]_Paths".format(project_md_ocs_path), where_clause="1=1", export_mode="ALL", types_of_paths="RASTER;ITEM_CACHE")
+                        arcpy.AddMessage("List of repaired Mosaic Dataset Paths:  {}".format("[]_Paths".format(project_md_ocs_path)))                    
+                    except:
+                        arcpy.AddWarning("Failed to update paths, mosaic dataset paths should be verified and updated by hand if necessary. {}".format(project_md_ocs_path))
+                    
+
                     
                 serviceName = "{}_{}".format(ProjectID, md_name) 
                 arcpy.AddMessage("Service Name:  {0}".format(serviceName))
@@ -235,17 +255,24 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
                         ssFunctionsLst = ssFunctions.split(";")
                         if len(ssFunctionsLst) > 0:
                             foundHillshade = False
-                            for i, s in enumerate(ssFunctionsLst):
-                                if 'HILLSHADE' in s.upper():
-                                    arcpy.AddMessage("Will re-order SS Functions so Hillshade is default")
-                                    foundHillshade = True
-                                    break
+                            if md_name <> FoldersConfig.INT:
+                                for i, s in enumerate(ssFunctionsLst):
+                                    if 'HILLSHADE' in s.upper():
+                                        arcpy.AddMessage("Will re-order SS Functions for {} so {} is default".format(md_name, s))
+                                        foundHillshade = True
+                                        break
+                            else:
+                                for i, s in enumerate(ssFunctionsLst):
+                                    if 'METER' in s.upper():
+                                        arcpy.AddMessage("Will re-order SS Functions for {} so {} is default".format(md_name, s))
+                                        foundHillshade = True
+                                        break
                     
                             # if Hillshade is found then re-order the list
                             # Don't apply hillshade to intensity
-                            if foundHillshade and md_name <> FoldersConfig.INT:
+                            if foundHillshade:
                                 ssFunctionsLst.insert(0, ssFunctionsLst.pop(i))
-                                arcpy.AddMessage("Re-ordered SS Functions so Hillshade is default")
+                                arcpy.AddMessage("Re-ordered SS Functions to (first is default): ".format(ssFunctionsLst))
                                 
                             # convert the list of server-side functions into a comma delimited string
                             ssFunctionsList = ",".join(ssFunctionsLst)

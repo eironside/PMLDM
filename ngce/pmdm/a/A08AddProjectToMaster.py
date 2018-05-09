@@ -49,12 +49,26 @@ def DefineBuildOverviews (cellsizeOVR, MasterMD, MasterMD_overview_path, AreaToB
     # Sets the location of Mosaic Dataset overview TIFF files
     #  (Note: this folder needs to be in the ArcGIS Server Data Store)
 
-    arcpy.DefineOverviews_management(MasterMD, MasterMD_overview_path, AreaToBuildOVR, extent="#", pixel_size=cellsizeOVR,
-                                     number_of_levels="#", tile_rows="5120", tile_cols="5120", overview_factor="2",
-                                     force_overview_tiles="NO_FORCE_OVERVIEW_TILES", resampling_method="BILINEAR",
-                                     compression_method="LZW", compression_quality="100")   
-    messages = arcpy.GetMessages()
-    arcpy.AddMessage("\nResults output from DefineOverviews are: \n{0}\n".format(messages))
+    arcpy.DefineOverviews_management(in_mosaic_dataset=MasterMD,
+                                     overview_image_folder=MasterMD_overview_path,
+                                     in_template_dataset=AreaToBuildOVR,
+                                     extent="",
+                                     pixel_size=cellsizeOVR,
+                                     number_of_levels="",
+                                     tile_rows="5120",
+                                     tile_cols="5120",
+                                     overview_factor="2",
+                                     force_overview_tiles="NO_FORCE_OVERVIEW_TILES",
+                                     resampling_method="BILINEAR",
+                                     compression_method="LZW",
+                                     compression_quality="100")
+    #arcpy.DefineOverviews_management(MasterMD, MasterMD_overview_path, AreaToBuildOVR, extent="#", pixel_size=cellsizeOVR,
+    #                                 number_of_levels="#", tile_rows="5120", tile_cols="5120", overview_factor="2",
+    #                                 force_overview_tiles="NO_FORCE_OVERVIEW_TILES", resampling_method="BILINEAR",
+    #                                 compression_method="LZW", compression_quality="100")   
+    #messages = arcpy.GetMessages()
+    #arcpy.AddMessage("\nResults output from DefineOverviews are: \n{0}\n".format(messages))
+    Utility.addToolMessages()
    
     whereClauseOVR = "#"
     
@@ -62,8 +76,9 @@ def DefineBuildOverviews (cellsizeOVR, MasterMD, MasterMD_overview_path, AreaToB
                                     generate_overviews="GENERATE_OVERVIEWS", generate_missing_images="GENERATE_MISSING_IMAGES",
                                     regenerate_stale_images="IGNORE_STALE_IMAGES")
 #                                    regenerate_stale_images="REGENERATE_STALE_IMAGES")
-    messages = arcpy.GetMessages()
-    arcpy.AddMessage("\nResults output from BuildOverviews are: \n{0}\n".format(messages))
+    Utility.addToolMessages()
+    #messages = arcpy.GetMessages()
+    #arcpy.AddMessage("\nResults output from BuildOverviews are: \n{0}\n".format(messages))
 
     # Get another record count from the Master MD 
     result = arcpy.GetCount_management(MasterMD)
@@ -108,7 +123,9 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
         
         if arcpy.Exists(projectMD_path):
             master_md_path = os.path.join(masterParentDir, masterService, "{}_{}.gdb".format(masterName, md_name), md_name)
+            master_md_path = os.path.normpath(master_md_path)
             arcpy.AddMessage("Master {} MD Path: {}".format(md_name, master_md_path))
+            
             if arcpy.Exists(master_md_path):
 #                     project_md_path = os.path.join(ProjectMDs_fgdb_path, md_name)
 #                     if arcpy.Exists(project_md_path):
@@ -169,6 +186,7 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
                             cellsizeResult = arcpy.GetRasterProperties_management(projectMD_path, property_type="CELLSIZEX", band_index="")
                             cellsize = float(cellsizeResult.getOutput(0))
                             arcpy.AddMessage("Cell size of Project MD:  {0} {1}".format(cellsize, descProjectMDSR.linearUnitName))
+
                             
                             # Add the rows from the Project MD to the Master MD using the
                             # Table raster type, and don't update the cell size ranges or the boundary
@@ -208,14 +226,14 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
                             # Build the boundary
                             # NOTE: if the boundary has been set to a large shape, then APPEND should have no effect
                             #       on the existing boundary
-                            arcpy.BuildBoundary_management(master_md_path, where_clause="", append_to_existing="APPEND", simplification_method="NONE")
+                            #arcpy.BuildBoundary_management(master_md_path, where_clause="", append_to_existing="APPEND", simplification_method="NONE")
                             
-                            messages = arcpy.GetMessages()
-                            arcpy.AddMessage("\nResults output from BuildBoundary are: \n{0}\n".format(messages))
+                            #messages = arcpy.GetMessages()
+                            #arcpy.AddMessage("\nResults output from BuildBoundary are: \n{0}\n".format(messages))
                             
                             # set mosaic properties on the master *AGAIN* to ensure that clip to footprint doesn't get re-set
                             #  Clip to footprint is somehow getting reset in 10.3.  It should be set so that footprints are NOT clipping data (NOT_CLIP)
-                            transmissionFields = "Name;LowPS;CenterX;CenterY;ProjectID;ProjectDate;ProjectSrs;ProjectSrsUnits;ProjectSrsUnitsZ;ProjectSource;PCSCode"
+                            transmissionFields = "Name;LowPS;CenterX;CenterY;Project_Date;Project_ID;area;el_type;format;h_name;h_unit;h_wkid;v_name;v_unit;cell_h;cell_w;height;width;nodata;pixel;unc_size;xmax;xmin;ymax;ymin;zdev;ZMax;zmean;ZMin;zran;Version;ra_pt_ct;ra_pt_sp;ra_zmax;ra_zmin;ra_zran;PointCount;PointSpacing;is_class;LAS_ZMax;LAS_ZMin"
                             arcpy.AddMessage("\ntransmissionFields: {0}".format(transmissionFields))
                         
                             arcpy.SetMosaicDatasetProperties_management(master_md_path, rows_maximum_imagesize="25000", columns_maximum_imagesize="25000",
@@ -239,21 +257,26 @@ def processJob(ProjectJob, project, ProjectUID, masterParentDir, masterService):
                             messages = arcpy.GetMessages()
                             arcpy.AddMessage("\nResults output from SetMosaicDatasetProperties are: \n{0}\n".format(messages))
                         
-                        
-                            # define the location of the mosaic dataset overviews
-                            loc = master_md_path.rfind(".gdb")
-                            # arcpy.AddMessage("loc = {0}".format(loc))
-                            # MasterMD_overview_path = master_md_path[:loc] + r".Overviews" + master_md_path[loc+4:]
-                            MasterMD_overview_path = master_md_path[:loc] + r".Overviews"
-                            arcpy.AddMessage("Mosaic Dataset Overview Location: {0}".format(MasterMD_overview_path))
+                        ## 20180505 EIronside: Removed overview generation because they were taking a long time and things seem to work ok without them.
+##                            # define the location of the mosaic dataset overviews
+##                            loc = master_md_path.rfind(".gdb")
+##                            # arcpy.AddMessage("loc = {0}".format(loc))
+##                            # MasterMD_overview_path = master_md_path[:loc] + r".Overviews" + master_md_path[loc+4:]
+##                            MasterMD_overview_path = master_md_path[:loc] + r".Overviews"
+##                            arcpy.AddMessage("Mosaic Dataset Overview Location: {0}".format(MasterMD_overview_path))
                         
                             # Define and Build overviews 
                                  
                             # Begin building service overviews at low scale (305.74811 Meters)
                             
-                            cellsizeOVR = 305.74811
+                            #cellsizeOVR = 305.74811
+                            #see what happens without overviews...
+                            #DefineBuildOverviews(cellsizeOVR, master_md_path, MasterMD_overview_path, projectMD_path)
+                        ## 20180505 EIronside: Removed overview generation because they were taking a long time and things seem to work ok without them.
                             
-                            DefineBuildOverviews(cellsizeOVR, master_md_path, MasterMD_overview_path, "#")
+                            arcpy.Compact_management(in_workspace=os.path.dirname(master_md_path))
+
+                            arcpy.AddMessage("Completed Project Mosaic Dataset: {}\n\n".format(projectMD_path))
                         else:
                             arcpy.AddWarning("\nProject Mosaic bit depth is not 32-bit Floating Point. Ingoring mosaic dataset.")
                     else:

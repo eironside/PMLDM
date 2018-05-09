@@ -326,7 +326,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
 
             
             
-            arcpy.AddError("\t{}: Referenced Mosaic found '{}'".format(name, focal2_path))
+            arcpy.AddMessage("\t{}: Referenced Mosaic found '{}'".format(name, focal2_path))
             base_name = 'O08_BaseCont_' + name + '.shp'
             base_contours = os.path.join(workspace, base_name)
             if not os.path.exists(base_contours):

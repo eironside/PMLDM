@@ -24,7 +24,7 @@ import arcpy
 import datetime
 import os
 
-from ngce.Utility import deleteFileIfExists, doTime, alterFields
+from ngce.Utility import deleteFileIfExists, doTime, alterFields, deleteFields
 from ngce.cmdr import CMDRConfig
 from ngce.raster.RasterConfig import FIELD_INFO, ELEV_TYPE, PATH, NAME, V_NAME, \
     V_UNIT, H_NAME, H_UNIT, H_WKID, NODATA_VALUE, AREA, MAX, MEAN, MIN, RANGE, \
@@ -54,43 +54,71 @@ Optionally summarizes statistics
 def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statistics_fields="", alter_field_infos=None):
     a = datetime.datetime.now()
     aa = a
+
+    
     raster_boundary_1 = "{}1".format(target_raster_boundary)
     deleteFileIfExists(raster_boundary_1, True)
-    arcpy.AddMessage("\tDissolving with statistics: {}".format(statistics_fields))
-    arcpy.Dissolve_management(in_features=raster_footprint, out_feature_class=raster_boundary_1, dissolve_field=FIELD_INFO[ELEV_TYPE][0], statistics_fields=statistics_fields)
-    a = doTime(a, "\tDissolved to {}".format(raster_boundary_1))
-    
-    alterFields(alter_field_infos, raster_boundary_1)
+    arcpy.Buffer_analysis(in_features=raster_footprint, out_feature_class=raster_boundary_1, buffer_distance_or_field="10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="NONE", method="PLANAR")
+    arcpy.RepairGeometry_management(in_features=raster_boundary_1, delete_null="DELETE_NULL")
+    deleteFields(raster_boundary_1)
+    a = doTime(a, "\tBuffer out into {}".format(raster_boundary_1))
     
     raster_boundary_2 = "{}2".format(target_raster_boundary)
     deleteFileIfExists(raster_boundary_2, True)
-    arcpy.Buffer_analysis(in_features=raster_boundary_1, out_feature_class=raster_boundary_2, buffer_distance_or_field="10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
+    arcpy.AddMessage("\tDissolving with statistics: {}".format(statistics_fields))
+    arcpy.Dissolve_management(in_features=raster_boundary_1, out_feature_class=raster_boundary_2, dissolve_field=FIELD_INFO[ELEV_TYPE][0], statistics_fields=statistics_fields)
+    arcpy.RepairGeometry_management(in_features=raster_boundary_2, delete_null="DELETE_NULL")
+    deleteFields(raster_boundary_2)
+    a = doTime(a, "\tDissolved to {}".format(raster_boundary_2))
+
+    deleteFileIfExists(raster_boundary_1, True)
     
+    alterFields(alter_field_infos, raster_boundary_2)
+    a = doTime(a, "\tAltered Fields on {}".format(raster_boundary_2))
     
     raster_boundary_3 = "{}3".format(target_raster_boundary)
     deleteFileIfExists(raster_boundary_3, True)
     arcpy.EliminatePolygonPart_management(in_features=raster_boundary_2, out_feature_class=raster_boundary_3, condition="AREA", part_area="10000 SquareMiles", part_area_percent="0", part_option="CONTAINED_ONLY")
-    deleteFileIfExists(raster_boundary_2, True)
+    arcpy.RepairGeometry_management(in_features=raster_boundary_3, delete_null="DELETE_NULL")
+    deleteFields(raster_boundary_3)
+    a = doTime(a, "\tEliminated internal parts on {}".format(raster_boundary_3))
     
+    # Don't delete raster boundary 2 because we need it later
+
+    # JWS 4/26 - Bend Simplify -> Point Remove & 20 Meters -> 0.1 Meters
     raster_boundary_4 = "{}4".format(target_raster_boundary)
     deleteFileIfExists(raster_boundary_4, True)
-    arcpy.SimplifyPolygon_cartography(in_features=raster_boundary_3, out_feature_class=raster_boundary_4, algorithm="BEND_SIMPLIFY", tolerance="20 Meters", minimum_area="0 Unknown", error_option="RESOLVE_ERRORS", collapsed_point_option="NO_KEEP", in_barriers="")
-    try:
-        arcpy.DeleteField_management(in_table=raster_boundary_4, drop_field="Id;ORIG_FID;InPoly_FID;SimPgnFlag;MaxSimpTol;MinSimpTol")
-    except:
-        pass
+    arcpy.SimplifyPolygon_cartography(
+        in_features=raster_boundary_3,
+        out_feature_class=raster_boundary_4,
+        algorithm="POINT_REMOVE",
+        tolerance="0.1 Meters",
+        minimum_area="0 Unknown",
+        error_option="RESOLVE_ERRORS",
+        collapsed_point_option="NO_KEEP",
+        in_barriers=""
+        )
+    arcpy.RepairGeometry_management(in_features=raster_boundary_4, delete_null="DELETE_NULL")
+    deleteFields(raster_boundary_4)
+    a = doTime(a, "\tSimplified to {}".format(raster_boundary_4))
+
     deleteFileIfExists(raster_boundary_3, True)
     
     deleteFileIfExists(target_raster_boundary, True)
-    arcpy.Buffer_analysis(in_features=raster_boundary_4, out_feature_class=target_raster_boundary, buffer_distance_or_field="-10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="ALL", method="PLANAR")
+    arcpy.Buffer_analysis(in_features=raster_boundary_4, out_feature_class=target_raster_boundary, buffer_distance_or_field="-10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="NONE", method="PLANAR")
+    arcpy.RepairGeometry_management(in_features=target_raster_boundary, delete_null="DELETE_NULL")
+    deleteFields(target_raster_boundary)
+    a = doTime(a, "\tBuffer back into {}".format(target_raster_boundary))
+    
     deleteFileIfExists(raster_boundary_4, True)
     
     if alter_field_infos is not None and len(alter_field_infos) > 0:
         fields = ";".join([field[1] for field in alter_field_infos])
-        arcpy.JoinField_management(in_data=target_raster_boundary, in_field="OBJECTID", join_table=raster_boundary_1, join_field="OBJECTID", fields=fields)
+        arcpy.JoinField_management(in_data=target_raster_boundary, in_field="OBJECTID", join_table=raster_boundary_2, join_field="OBJECTID", fields=fields)
         # Utility.addToolMessages()
-        
-    deleteFileIfExists(raster_boundary_1, True)
+        a = doTime(a, "\tJoined {} with {}".format(target_raster_boundary, raster_boundary_2))
+    
+    deleteFileIfExists(raster_boundary_2, True)
     
     a = doTime(aa, "Dissolved raster footprints to dataset boundary {} ".format(target_raster_boundary))
     
@@ -233,6 +261,8 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
             
             deleteFileIfExists(raster_footprint, True)
             arcpy.Merge_management(inputs=b_file_list, output=raster_footprint)
+            arcpy.RepairGeometry_management(in_features=raster_footprint, delete_null="DELETE_NULL")
+            deleteFields(raster_footprint)
             
             field_alter = []
             for base_field in FIELD_INFO:
@@ -246,6 +276,9 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
             
             a = doTime(a, "Merged raster footprints {}".format(raster_footprint))
             
+            arcpy.RepairGeometry_management(in_features=raster_footprint, delete_null="DELETE_NULL")
+            deleteFields(raster_footprint)
+            
         if arcpy.Exists(raster_boundary):
             arcpy.AddMessage("Raster Boundary exist: {}".format(raster_boundary))
         else:
@@ -255,22 +288,26 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
             addProjectInfo(raster_footprint, raster_boundary, project_ID, project_path, project_UID)
 
         # Buffer Footprint @ 1 Meter & Clip to Avoid Gaps in Output Mosaic
-        one_meter_buffer = arcpy.Buffer_analysis(
-            raster_footprint,
-            os.path.join(fgdb_path, '{}_1m'.format(os.path.split(raster_footprint)[1])),
-            '1 METER'
-            )
+        one_meter_buffer = arcpy.Buffer_analysis(raster_footprint, os.path.join(fgdb_path, '{}_2m'.format(os.path.split(raster_footprint)[1])), '2 METER')
+        arcpy.RepairGeometry_management(in_features=one_meter_buffer, delete_null="DELETE_NULL")
+        deleteFields(one_meter_buffer)
+        
         arcpy.Clip_analysis(one_meter_buffer, raster_boundary, raster_footprint)
-        arcpy.Delete_management(one_meter_buffer)
+        arcpy.RepairGeometry_management(in_features=raster_footprint, delete_null="DELETE_NULL")
+        deleteFields(raster_footprint)
 
-        # Buffer Footprint @ 1 Meter & Clip to Avoid Gaps in Output Mosaic
-        one_meter_buffer = arcpy.Buffer_analysis(
-            raster_footprint,
-            os.path.join(fgdb_path, '{}_1m'.format(os.path.split(raster_footprint)[1])),
-            '1 METER'
-            )
-        arcpy.Clip_analysis(one_meter_buffer, raster_boundary, raster_footprint)
         arcpy.Delete_management(one_meter_buffer)
+        
+        ## ?? DUPLICATE Code Block?? 
+        # Buffer Footprint @ 1 Meter & Clip to Avoid Gaps in Output Mosaic
+        #one_meter_buffer = arcpy.Buffer_analysis(
+        #    raster_footprint,
+        #    os.path.join(fgdb_path, '{}_1m'.format(os.path.split(raster_footprint)[1])),
+        #    '1 METER'
+        #    )
+        #arcpy.Clip_analysis(one_meter_buffer, raster_boundary, raster_footprint)
+        #arcpy.Delete_management(one_meter_buffer)
+        #deleteFields(raster_footprint)
             
     return raster_footprint, raster_boundary
             

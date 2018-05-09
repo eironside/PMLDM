@@ -99,20 +99,32 @@ def printArguments(argNameList, argList, argSource=None):
 
 
 
-def getExistingRecord(in_table, field_names, uidIndex, where_clause=None):
+def getExistingRecord(in_table, field_names, uidIndex, where_clause=None, repeat = 0):
     arcpy.AddMessage("Searching for row from {} where {}".format(in_table, where_clause))
     strUID = None
     row = None
+    count = 0
+    
+    a = datetime.datetime.now()
+    aa = a
     for r in arcpy.da.SearchCursor(in_table, field_names, where_clause=where_clause):  # @UndefinedVariable
+        count = count + 1
+        a = doTime(a,"\tfound {}".format(count))
+        row = r
         if uidIndex >= 0:
             if r[uidIndex] is not None and len(r[uidIndex]) > 0:
-                row = r
+                #row = r
                 strUID = r[uidIndex]
+                break
 
-        else:
-            row = r
+        #else:
+            #row = r
+            #break
 
-    arcpy.AddMessage("Found row {} with UID {}".format(row, strUID))
+    doTime(aa, "Found {} row {} with UID {}".format(count, row, strUID))
+    if row is None and repeat < 5:
+        repeat = repeat + 1
+        row, strUID = getExistingRecord(in_table, field_names, uidIndex, where_clause, repeat)
     return row, strUID
 
 
