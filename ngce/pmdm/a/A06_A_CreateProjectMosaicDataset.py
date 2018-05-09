@@ -144,7 +144,7 @@ def mergeFootprints(las_footprints, el_type, fgdb_path):
             
             merged_raster_footprints = raster_footprints_all
 
-            Utility.deleteFileIfExists(raster_footprints_sim)
+            Utility.deleteFileIfExists(raster_footprints_sim, True)
             
             a = doTime(a, "\tRepaired footprint geometry in {}".format(raster_footprints_all))
         else:
@@ -891,7 +891,8 @@ def processJob(project_job, project, ProjectUID, dateDeliver, dateStart, dateEnd
                     Utility.addToolMessages()
                     arcpy.AddMessage("To view detailed results, Add the MD to the map, rt-click --> Data --> View Analysis Results")
 
-                    Utility.deleteFileIfExists(raster_footprint_path)
+                    Utility.deleteFileIfExists(raster_footprint_path, True)
+                    Utility.deleteFileIfExists(raster_boundary, True)
                     
                     arcpy.AddMessage("Mosaic dataset has {} rasters {} overviews and {} las files.".format(count_rasters, count_overviews, count_las))
                     doTime(a, "completed building mosaic dataset {}".format(md_path))

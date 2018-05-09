@@ -36,7 +36,7 @@ iterate through the list of .las files and generate individual file
 statistics datasets for each
 ------------------------------------------------------------
 '''
-def createLasStatistics(fileList, target_path, spatial_reference=None, isClassified=True, createQARasters=False, createMissingRasters=False, overrideBorderPath=None, runAgain=True):
+def createLasStatistics(fileList, target_path, spatial_reference=None, isClassified=True, createQARasters=False, createMissingRasters=True, overrideBorderPath=None, runAgain=True):
     a = datetime.now()
     path = os.path.join(RunUtil.TOOLS_PATH, "A04_B_CreateLASStats.py")
     Utility.printArguments(["fileList", "target_path", "spatial_reference", "isClassified", "createQARasters", "createMissingRasters", "overrideBorderPath"],
@@ -449,7 +449,7 @@ def createMXD(las_qainfo, target_path, project_ID):
 
     return mxd
 
-def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=False, overrideBorderPath=None):
+def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=True, overrideBorderPath=None):
     aaa = datetime.now()
     a = aaa
     lasd_boundary = None
@@ -612,7 +612,7 @@ def processJob(ProjectJob, project, createQARasters=False, createMissingRasters=
 
 
 
-def GenerateQALasDataset(strJobId, createQARasters=False, createMissingRasters=False, overrideBorderPath=None):
+def GenerateQALasDataset(strJobId, createQARasters=False, createMissingRasters=True, overrideBorderPath=None):
     Utility.printArguments(["WMXJobID", "createQARasters", "createMissingRasters", "overrideBorderPath"],
                            [strJobId, createQARasters, createMissingRasters, overrideBorderPath], "A04 GenerateQALasDataset")
 
