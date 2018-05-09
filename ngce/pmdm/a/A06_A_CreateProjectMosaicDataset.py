@@ -416,7 +416,12 @@ def createReferenceddMosaicDataset(in_md_path, out_md_path, spatial_ref, raster_
 ## 20180508 EI No reason to calc stats here, it has to be done manually
     #arcpy.CalculateStatistics_management(in_raster_dataset=out_md_path, x_skip_factor=SKIP_FACTOR_LRG, y_skip_factor=SKIP_FACTOR_LRG, ignore_values="", skip_existing="OVERWRITE", area_of_interest=area_of_interest)
     # setMosaicDatasetProperties(out_md_path)
-    arcpy.AddMessage("\tNOTE: !!! Please edit the raster function !! Replace the DTM with this project's DTM mosaic dataset and recaclculate statistics on the mosaic dataset.\n\n\t{}\n".format(out_md_path))
+    arcpy.AddMessage("\tNOTE: !!! Please edit the raster function !! Replace the DTM with this project's DTM mosaic dataset.\n\n\t{}\n".format(out_md_path))
+
+    try:
+        arcpy.SetRasterProperties_management(in_raster=out_md_path, statistics="1 3.0 50.0 8.0 4.25")
+    except:
+        pass
     doTime(a, "Created Referenced MD '{}'".format(out_md_path))
 
 def createMosaicDatasetAndAddRasters(raster_v_unit, publish_path, filegdb_name, imagePath, md_name, md_path, SpatRefMD, fix, area_of_interest= None):
