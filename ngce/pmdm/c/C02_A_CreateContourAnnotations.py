@@ -494,10 +494,14 @@ def db_list_gen(scratch, dirs, names, shp=False):
         for index, name in e_names:
             target = os.path.join(db, name)
             target_shp = os.path.join(folder, "{}.shp".format(name))
-            if not shp and arcpy.Exists(target):
-                lists[index].append(target)
-            elif shp and os.path.exists(target_shp):
-                lists[index].append(target_shp)
+            ## 20180510 EI: Removed following arcpy.Exists because it takes forever.
+            ##              If shp exists, anno feature class in fgdb exists.
+            #if not shp and arcpy.Exists(target):
+            if os.path.exists(target_shp):
+                if not shp:
+                    lists[index].append(target)
+                else:
+                    lists[index].append(target_shp)
             
     return lists
 
@@ -511,7 +515,7 @@ def run_merge(lists, results):
         output_name = os.path.split(x[0])[1]
         merge_fc_path = os.path.join(results, output_name)
         if arcpy.Exists(merge_fc_path):
-            arcpy.AddMessage("Merged exists: {}".format(merge_fc_path))
+            a = Utility.doTime(a, "Merged exists: {}".format(merge_fc_path))
         else:
             arcpy.Merge_management(x, merge_fc_path)
             a = Utility.doTime(a, "Merged {}".format(merge_fc_path))
@@ -539,7 +543,7 @@ def handle_merge(scratch):
 
     # Get Directories in Scratch Folder
     dirs = [name for name in os.listdir(scratch) if os.path.isdir(os.path.join(scratch, name))]
-    a = Utility.doTime(aa, "Generated dir List of length {}".format(len(dirs)))
+    a = Utility.doTime(a, "Generated dir List of length {}".format(len(dirs)))
     
     # Annotation Names
     a_names = [
@@ -559,15 +563,17 @@ def handle_merge(scratch):
 
     # Generate DB Merge Lists
     m_list = db_list_gen(scratch, dirs, m_names, True)
-    a = Utility.doTime(aa, "Generated mask List [[{}], [{}], [{}], [{}]]".format(len(m_list[0]), len(m_list[1]), len(m_list[2]), len(m_list[3])))
+    a = Utility.doTime(a, "Generated mask List [[{}], [{}], [{}], [{}]]".format(len(m_list[0]), len(m_list[1]), len(m_list[2]), len(m_list[3])))
     a_list = db_list_gen(scratch, dirs, a_names)
-    a = Utility.doTime(aa, "Generated anno List [[{}], [{}], [{}], [{}]]".format(len(a_list[0]), len(a_list[1]), len(a_list[2]), len(a_list[3])))
+    a = Utility.doTime(a, "Generated anno List [[{}], [{}], [{}], [{}]]".format(len(a_list[0]), len(a_list[1]), len(a_list[2]), len(a_list[3])))
 
     # Merge Features
     run_merge(a_list, results)
+    a = Utility.doTime(a, "Finished merging annotation results")
     run_merge(m_list, results_folder)
-    
-    Utility.doTime(aa, "Finished merging results")
+    a = Utility.doTime(a, "Finished merging mask results")
+
+    Utility.doTime(aa, 'Exit Merging Multiprocessing Results')
     return results, results_folder
 
     
@@ -762,11 +768,13 @@ def processJob(project_job, project, strUID):
     buildAnnotations(scratch_path, in_cont_fc, base_scheme_poly, name_list, footprint_path, False)
     a = Utility.doTime(a, "Built annotations")
     updated_name_list = getContourPrepList(scratch_path, name_list)
+    a = Utility.doTime(a, "Got Contour Prep List")
     
     if len(updated_name_list) > 0:
         arcpy.AddWarning("Failed to build artifacts for {} tiles".format(len(updated_name_list)))
         for fail in updated_name_list:
             arcpy.AddWarning("\t{}: Failed".format(fail))
+        a = Utility.doTime(a, "Finished getting failed artifacts")
         # raise Exception("Failed to build artifacts for {} tiles".format(len(updated_name_list)))
     
     # Merge Multiprocessing Results

@@ -373,15 +373,17 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                     if spatial_ref is not None:
                         arcpy.AddMessage("Applying projection to raster '{}' {}".format(target_f_path, spatial_ref))
                         if str(spatial_ref).lower().endswith(".prj"):
+                            arcpy.AddMessage("loading spatial reference from prj file '{}'".format(spatial_ref))
                             spatial_ref = arcpy.SpatialReference(spatial_ref)
-
+                            arcpy.AddMessage("loaded spatial reference from prj file '{}'".format(spatial_ref))
                         # 3/22/18 - Handle UTF-8 Encoding - 'u\u2013' From MI Delta
                         try:
-                            arcpy.AddMessage(
-                                "Applying projection to raster '{}' {}".format(target_f_path, spatial_ref.exportToString().encode('utf-8'))
-                                )
+                            arcpy.AddMessage("Applying projection '{}'".format( spatial_ref))
+                            arcpy.AddMessage("Applying string projection '{}'".format( spatial_ref.exportToString()))
+                            arcpy.AddMessage("Applying encoded projection '{}'".format( spatial_ref.exportToString().encode('utf-8')))
                         except Exception as e:
                             arcpy.AddMessage('Error: {}'.format(e))
+                            
                         arcpy.DefineProjection_management(in_dataset=target_f_path, coor_system=spatial_ref)
                     
                     # Set the no data default value on the input raster

@@ -135,7 +135,7 @@ def ImportContourCacheToMaster(jobID, serverConnectionFilePath, masterServiceNam
 #                                           num_of_caching_service_instances="6",
 #                                           area_of_interest="//aiotxftw6na01data/sql1/elevation/OK_SugarCreekEric_2008/DERIVED/OK_SugarCreekEric_2008.gdb/BoundaryLASDataset",
 #                                           overwrite="OVERWRITE")
-        a = doTime(a, "TWO: Ready to start import of '{}' into '{}'".format(projectCache, masterService))
+        a = doTime(a, "TWO: Finished import of '{}' into '{}'".format(projectCache, masterService))
 
 
 

@@ -86,7 +86,11 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     
     # Get input parameters
     mxd = contourMxd_path  # arcpy.GetParameterAsText(0)
-    areaOfInterest = ContourBoundFC  # arcpy.GetParameterAsText(1)
+    ## 2018051 EI: Switched to using envelope here to create all cache tiles. Use AOI for import in C04
+    #areaOfInterest = ContourBoundFC  # arcpy.GetParameterAsText(1)
+    areaOfInterest = ""
+    updateExtents = ContourBoundFC  # arcpy.GetParameterAsText(1)
+    
     localServer = serverConnectionFile  # arcpy.GetParameterAsText(2)
     
     serviceName = "{}_{}".format(projectID, ContourConfig.CONTOUR_2FT_SERVICE_NAME)  # arcpy.GetParameterAsText(3)
@@ -126,6 +130,7 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     Utility.printArguments(
         ["mxd",
          "areaOfInterest",
+         "updateExtents",
          "serviceName",
          "folder",
          "sddraft",
@@ -134,6 +139,7 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
          "cache_path"],
         [mxd,
          areaOfInterest,
+         updateExtents,
          serviceName,
          folder,
          sddraft,
@@ -149,7 +155,7 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     # Other map service properties that should not be modified
     updateMode = "RECREATE_ALL_TILES"  # @TODO: Can we change this to recreate missing?
     waitForJobCompletion = "WAIT"  # @TODO: What if we don't wait??
-    updateExtents = ""
+    
     
     # Construct path for local cached service
     inputService = os.path.join(localServer, folder, serviceName + ".MapServer")

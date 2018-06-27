@@ -227,14 +227,27 @@ def createBoundaryFeatureClass(raster_footprint, target_raster_boundary, statist
     a = datetime.datetime.now()
     aa = a
     deleteFields(raster_footprint)
+    
+    lasd_boundary_0 = "{}0".format(target_raster_boundary)
     lasd_boundary_1 = "{}1".format(target_raster_boundary)
+
+    deleteFileIfExists(lasd_boundary_0, True)
     deleteFileIfExists(lasd_boundary_1, True)
+
+    arcpy.AddMessage("\tMultipart to Singlepart")
+    arcpy.MultipartToSinglepart_management(in_features=raster_footprint, out_feature_class=lasd_boundary_0)
+    Utility.addToolMessages()
+    arcpy.RepairGeometry_management(in_features=lasd_boundary_0, delete_null="DELETE_NULL")
+    deleteFields(lasd_boundary_0)
+    
     arcpy.AddMessage("\tBuffering")
-    arcpy.Buffer_analysis(in_features=raster_footprint, out_feature_class=lasd_boundary_1, buffer_distance_or_field="10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="NONE", method="PLANAR")
+    arcpy.Buffer_analysis(in_features=lasd_boundary_0, out_feature_class=lasd_boundary_1, buffer_distance_or_field="10 Meters", line_side="FULL", line_end_type="ROUND", dissolve_option="NONE", method="PLANAR")
     Utility.addToolMessages()
     arcpy.RepairGeometry_management(in_features=lasd_boundary_1, delete_null="DELETE_NULL")
     deleteFields(lasd_boundary_1)
 
+    deleteFileIfExists(lasd_boundary_0, True)
+    
     lasd_boundary_2 = "{}2".format(target_raster_boundary)
     deleteFileIfExists(lasd_boundary_2, True)
     arcpy.AddMessage("\tDissolving with statistics: {}".format(statistics_fields))

@@ -42,7 +42,7 @@ import time
 import traceback
 
 from ngce import Utility
-from ngce.Utility import isSrValueValid, grouper, doTime
+from ngce.Utility import isSrValueValid, grouper, doTime, SDE_CMDR_FILE_PATH
 from ngce.cmdr.JobUtil import getProjectFromWMXJobID
 from ngce.folders import ProjectFolders
 from ngce.folders.FoldersConfig import DTM, DSM, DLM, INT
@@ -51,7 +51,7 @@ from ngce.folders.ProjectFolders import createAnalysisFolders, \
 from ngce.las import LAS
 from ngce.pmdm import RunUtil
 from ngce.pmdm.a import A05_B_RevalueRaster, A04_A_GenerateQALasDataset, \
-    A04_C_ConsolidateLASInfo, A05_C_ConsolidateRasterInfo
+    A04_C_ConsolidateLASInfo, A05_C_ConsolidateRasterInfo, A05_D_UpdateCMDRMetadata
 from ngce.raster.Raster import createRasterDatasetStats
 from ngce.raster.RasterConfig import FIELD_INFO, MIN, MAX, V_NAME, V_UNIT, \
     H_NAME, H_UNIT, H_WKID, ELEV_TYPE, IS_CLASSIFIED
@@ -640,6 +640,12 @@ def processJob(ProjectJob, project, ProjectUID):
             arcpy.Compact_management(in_workspace=fgdb_path)
     except:
         pass
+
+    # JWS 6/8/18 - Push Derived FGDB Metadata to CMDR Geodatabase
+    try:
+        A05_D_UpdateCMDRMetadata.copy_metadata(fgdb_path, SDE_CMDR_FILE_PATH)
+    except Exception as e:
+        arcpy.AddMessage('Exception Pushing FGDB Metadata: {}'.format(e))
 
     aa = doTime(aa, 'COMPLETED: Finished merging raster footprints and boundaries')
     doTime(aaa, 'COMPLETED: A05_A Completed')
