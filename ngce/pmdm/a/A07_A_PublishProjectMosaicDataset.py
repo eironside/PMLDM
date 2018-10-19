@@ -142,7 +142,8 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
     project_wmx_jobid = ProjectJob.getWMXJobID(project)
 
     Deliver = CMDR.Deliver()
-    delivery = Deliver.getDeliver(project_wmx_jobid)
+    #delivery = Deliver.getDeliver(project_wmx_jobid)
+    delivery = Deliver.getDeliver(ProjectID)
     dateDeliver=Deliver.getDeliverDate(delivery)
     
     startupType = "STARTED"
@@ -158,7 +159,37 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
 
     # If the project has been moved for publishing, update the project directory
     old_path, new_path = updateJobDirectory(project_wmx_jobid, ProjectJob, project)
-    
+    old_ProjectID = ProjectID
+    arcpy.AddMessage("\n\n-----------------------------------------------------------")
+    try:
+        arcpy.AddMessage("Job directory paths:  \n\tOLD: {}\n\tNEW: {}".format(old_path, new_path))
+        doRepath = True
+        if str(old_path).lower().strip() == str(new_path).lower().strip():
+            arcpy.AddMessage("Job directory paths old/new match, checking MD first record project folder value")
+            
+            filegdb_name = "{}_{}.gdb".format(ProjectFolder.published.fgdb_name[:-4], FoldersConfig.DTM)
+            arcpy.AddMessage("checking fgdb '{}' ".format(filegdb_name))
+            dtm_md_path = os.path.join(new_path, ProjectID, FoldersConfig.published_dir, filegdb_name, FoldersConfig.DTM)
+            arcpy.AddMessage("checking MD '{}' first record project folder value".format(dtm_md_path))
+            record_project_path, uid = Utility.getExistingRecord(dtm_md_path, ["Project_Dir"], 0)
+            arcpy.AddMessage("first record is {}".format(record_project_path))
+            record_project_path = list(record_project_path)[0]
+            
+            arcpy.AddMessage("MD first record project folder value is {}".format(record_project_path))
+            # add a slash back in because strings remove it and remove the project name at the end
+            old_path, old_ProjectID = os.path.split("\{}".format(str(record_project_path).strip()))
+            
+            
+
+        arcpy.AddMessage("Job directory paths:  \n\tOLD: {}\n\tNEW: {}\n\tOLD Project ID: {}\n\tNEW Project ID: {}".format(old_path,new_path, old_ProjectID,ProjectID))
+        if str(old_path).lower().strip() == str(new_path).lower().strip():
+            doRepath = False
+            arcpy.AddMessage("Job directory paths match, doRepath = False")
+            
+        
+    except:
+        pass
+    arcpy.AddMessage("-----------------------------------------------------------\n\n")
     
     md_list = [FoldersConfig.DTM, FoldersConfig.DSM, FoldersConfig.DLM, FoldersConfig.DHM, FoldersConfig.DCM, FoldersConfig.INT]
     for md_name in md_list:
@@ -173,15 +204,19 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
             filegdb_name = "{}_{}.gdb".format(ProjectFolder.published.fgdb_name[:-4], md_name)
 
         #ProjectMDs_fgdb_path = os.path.join(ProjectFolder.published.path, filegdb_name)
+        new_project_path = os.path.join(new_path, ProjectID)
+        old_project_path = os.path.join(old_path, ProjectID)
+        if str(ProjectID).lower().strip() != str(old_ProjectID).lower().strip():
+            old_project_path = os.path.join(old_path, old_ProjectID)
         
         #arcpy.AddMessage("OLD File Geodatabase Path:  {0}".format(ProjectMDs_fgdb_path))
-        new_publish_path = os.path.join(new_path, ProjectID, "PUBLISHED")
-        old_publish_path = os.path.join(old_path, ProjectID, "PUBLISHED")
+        new_publish_path = os.path.join(new_project_path, "PUBLISHED")
+        old_publish_path = os.path.join(old_project_path, "PUBLISHED")
 
         #arcpy.AddMessage("OLD File Geodatabase Path:  {0}".format(ProjectMDs_fgdb_path))
-        new_delivered_path = os.path.join(new_path, ProjectID, "DELIVERED")
-        old_delivered_path = os.path.join(old_path, ProjectID, "DELIVERED")
-        
+        new_delivered_path = os.path.join(new_project_path, "DELIVERED")
+        old_delivered_path = os.path.join(old_project_path, "DELIVERED")
+            
         new_projectMDs_fgdb_path = os.path.join(new_publish_path, filegdb_name)  
         arcpy.AddMessage("File Geodatabase Path:  {0}".format(new_projectMDs_fgdb_path))
       
@@ -192,9 +227,9 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
             arcpy.AddMessage("Mosaic Dataset Path:  {0}".format(project_md_path))
             if arcpy.Exists(project_md_path):
                 try:
-                    arcpy.AddMessage("Repairing Mosaic Dataset Paths:  {}\n\told: {}\n\tnew: {}".format(new_projectMDs_fgdb_path, old_publish_path, new_publish_path))
-                    arcpy.RepairMosaicDatasetPaths_management(in_mosaic_dataset=project_md_path, paths_list="# {0} {1}".format(old_path, new_path), where_clause="1=1")
-                    
+                    arcpy.AddMessage("Repairing Mosaic Dataset Paths:  {}\n\told: {}\n\tnew: {}".format(new_projectMDs_fgdb_path, old_project_path, new_project_path))
+                    arcpy.RepairMosaicDatasetPaths_management(in_mosaic_dataset=project_md_path, paths_list="# {0} {1}".format(old_project_path, new_project_path), where_clause="1=1")
+                    Utility.addToolMessages()
                     #arcpy.AddMessage("Repairing Mosaic Dataset Paths:  {}\n\told: {}\n\tnew: {}".format(new_projectMDs_fgdb_path, old_delivered_path, new_delivered_path))
                     #arcpy.RepairMosaicDatasetPaths_management(in_mosaic_dataset=project_md_path, paths_list="# {0} {1}".format(old_delivered_path, new_delivered_path), where_clause="1=1")
                     
@@ -203,16 +238,29 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile, serverFunc
                     if md_name <> FoldersConfig.DHM and md_name <> FoldersConfig.DCM:
                         arcpy.AddWarning("Failed to update paths, mosaic dataset paths should be verified and updated by hand if necessary. {}".format(project_md_path))
 
+                try:
+                    out_table="{}_Paths".format(project_md_path)
+                    arcpy.ExportMosaicDatasetPaths_management(in_mosaic_dataset=project_md_path, out_table=out_table, where_clause="1=1", export_mode="ALL", types_of_paths="RASTER;ITEM_CACHE")
+                    Utility.addToolMessages()
+                    arcpy.AddMessage("List of repaired Mosaic Dataset Paths:  {}".format(out_table))                    
+                except:
+                    pass
+                    
                 project_md_ocs_path = "{}_OCS".format(project_md_path)
                 if arcpy.Exists(project_md_ocs_path):
                     try:
-                        arcpy.AddMessage("Repairing Mosaic Dataset Paths:  {}\n\told: {}\n\tnew: {}".format(project_md_ocs_path, old_path, new_path))
-                        arcpy.RepairMosaicDatasetPaths_management(in_mosaic_dataset=project_md_ocs_path, paths_list="# {0} {1}".format(old_path, new_path), where_clause="1=1")
-                        arcpy.ExportMosaicDatasetPaths_management(in_mosaic_dataset=project_md_ocs_path, out_table="[]_Paths".format(project_md_ocs_path), where_clause="1=1", export_mode="ALL", types_of_paths="RASTER;ITEM_CACHE")
-                        arcpy.AddMessage("List of repaired Mosaic Dataset Paths:  {}".format("[]_Paths".format(project_md_ocs_path)))                    
+                        arcpy.AddMessage("Repairing Mosaic Dataset Paths:  {}\n\told: {}\n\tnew: {}".format(project_md_ocs_path, old_project_path, new_project_path))
+                        arcpy.RepairMosaicDatasetPaths_management(in_mosaic_dataset=project_md_ocs_path, paths_list="# {0} {1}".format(old_project_path, new_project_path), where_clause="1=1")
+                        Utility.addToolMessages()
                     except:
                         arcpy.AddWarning("Failed to update paths, mosaic dataset paths should be verified and updated by hand if necessary. {}".format(project_md_ocs_path))
-                    
+                    try:
+                        out_table = "{}_Paths".format(project_md_ocs_path)
+                        arcpy.ExportMosaicDatasetPaths_management(in_mosaic_dataset=project_md_ocs_path, out_table=out_table, where_clause="1=1", export_mode="ALL", types_of_paths="RASTER;ITEM_CACHE")
+                        Utility.addToolMessages()
+                        arcpy.AddMessage("List of repaired Mosaic Dataset Paths:  {}".format(out_table))                    
+                    except:
+                        pass
 
                     
                 serviceName = "{}_{}".format(ProjectID, md_name) 
@@ -370,7 +418,7 @@ def PublishMosaicDataset(strJobId, serverConnectionFile, serverFunctionPath, upd
 
     processJob(ProjectJob, project, strUID, serverConnectionFile, serverFunctionPath)
             
-    doTime(aa, "Operation Complete: A06 Publish Mosaic Dataset")
+    doTime(aa, "Operation Complete: A07 Publish Mosaic Dataset")
 
   
 if __name__ == '__main__':

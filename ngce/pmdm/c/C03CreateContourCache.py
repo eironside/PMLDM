@@ -155,6 +155,12 @@ def processJob(ProjectJob, project, ProjectUID, serverConnectionFile):
     # Other map service properties that should not be modified
     updateMode = "RECREATE_ALL_TILES"  # @TODO: Can we change this to recreate missing?
     waitForJobCompletion = "WAIT"  # @TODO: What if we don't wait??
+    cache_dir_path = os.path.join(cache_path, "{}_{}".format(folder, serviceName))
+    if os.path.exists(cache_dir_path):
+        arcpy.AddMessage("Cache directory already exists, only recreating empty tiles: {0}".format(cache_dir_path))
+        updateMode = "RECREATE_EMPTY_TILES"
+        waitForJobCompletion = "DO_NOT_WAIT"
+    
     
     
     # Construct path for local cached service

@@ -31,6 +31,7 @@ returns the current time
 import arcpy
 import datetime
 import os
+import glob
 
 from ngce import Utility
 from ngce.Utility import deleteFileIfExists, doTime, deleteFields
@@ -524,6 +525,14 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
 
     a = doTime(a, "Found {} footprints".format(len(b_file_list)))
 
+    try:
+        for file_type in [r'C_*.shp', r'B_*.shp']:
+            bad_shape_type_list = list(filter(lambda x: arcpy.Describe(x).shapeType != 'Polygon',glob.glob(os.path.join(stat_out_folder, file_type))))
+            if len(bad_shape_type_list) > 0:
+                for bad_type in bad_shape_type_list:
+                    arcpy.AddMessage("ERROR: Bad shape type in file '{}'".format(bad_type))
+    except:
+        pass
 
     las_footprint = getLasFootprintPath(fgdb_path)
     lasd_boundary = getLasdBoundaryPath(fgdb_path)

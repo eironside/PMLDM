@@ -25,7 +25,7 @@ PROCESS_DELAY = 1
 PROCESS_CHUNKS = 6  # files per thread
 PROCESS_SPARES = -5  # processors to leave as spares
 
-arcpy.env.parallelProcessingFactor = "8"
+arcpy.env.parallelProcessingFactor = "100%"
 
 arcpy.env.overwriteOutput = True
 

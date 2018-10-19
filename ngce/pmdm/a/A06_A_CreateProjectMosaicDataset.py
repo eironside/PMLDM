@@ -65,7 +65,7 @@ Utility.setArcpyEnv(True)
 LAS_RASTER_TYPE = LAS.LAS_raster_type_1_all_bin_mean_idw
 
 
-arcpy.env.parallelProcessingFactor = "8"
+arcpy.env.parallelProcessingFactor = "100%"
 
 SKIP_FACTOR_LRG = 100
 SKIP_FACTOR_MED = SKIP_FACTOR_LRG/4
@@ -174,6 +174,7 @@ def isSpatialRefSameForAll(InputFolder):
     for raster in rasters:
         describe = arcpy.Describe(raster)
         SRef = describe.SpatialReference.exportToString()
+        SRef = str(SRef).split(';')[0] # Split off extra parameters after ';' character
         if SpatRefFirstRaster is None:
             SpatRefFirstRaster = SRef
             firstRaster = raster

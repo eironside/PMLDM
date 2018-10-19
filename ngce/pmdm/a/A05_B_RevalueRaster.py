@@ -21,7 +21,7 @@ from ngce.raster.RasterConfig import STAT_FOLDER_ORG, STAT_RASTER_FOLDER, FIELD_
 
 
 C_SIMPLE_DIST = 0.1 # Meters
-arcpy.env.parallelProcessingFactor = "8"
+arcpy.env.parallelProcessingFactor = "1"
 
 Utility.setArcpyEnv(True)
 
@@ -211,6 +211,13 @@ It performs 10x faster than the other 'B' method
 def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_bound_path, minZ, maxZ, bound_path, elev_type):
     a = datetime.now()
     arcpy.AddMessage("\tCreating {} bound for '{}' using min z '{}' and max z'{}'".format(elev_type, f_path, minZ, maxZ))
+    arcpy.AddMessage('Z: ' + arcpy.env.outputZFlag)  
+    arcpy.env.outputZFlag = "Disabled"  
+    arcpy.AddMessage('Z: ' + arcpy.env.outputZFlag)  
+      
+    arcpy.AddMessage('M: ' + arcpy.env.outputMFlag)  
+    arcpy.env.outputMFlag = "Disabled"  
+    arcpy.AddMessage('M: ' + arcpy.env.outputMFlag)  
     
     vector_1_bound_path = os.path.join(stat_out_folder, "B1_{}.shp".format(f_name))
     vector_2_bound_path = os.path.join(stat_out_folder, "B2_{}.shp".format(f_name))
@@ -527,7 +534,7 @@ def processFile(bound_path, f_path, elev_type, target_path, publish_path, z_min,
         arcpy.AddMessage("\tBound file exists: {}".format(vector_bound_path))
     else:
         raster_props = createRasterDatasetStats(publish_f_path)
-        createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_bound_path, z_min, z_max, bound_path, elev_type)
+        createVectorBoundaryC(publish_f_path, f_name, raster_props, stat_out_folder, vector_bound_path, z_min, z_max, bound_path, elev_type)
     
     CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_props)
     

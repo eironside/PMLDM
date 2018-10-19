@@ -30,7 +30,7 @@ from ngce.raster.RasterConfig import MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN
 
 RasterConfig.NODATA_DEFAULT
 SMALL_POINT_COUNT = 100
-arcpy.env.parallelProcessingFactor = "8"
+arcpy.env.parallelProcessingFactor = "1"
 
 setArcpyEnv(True)
 
@@ -498,6 +498,10 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
         addToolMessages()
         a = doTime(a, "\t\tCompleted footprint buffer & dissolve {}".format(vector_REB_bound_path))
     except:
+        try:
+            addToolMessages()
+        except:
+            pass
         time.sleep(1)
         try:
             a = doTime(a, "\t\tWARNING: Failed footprint buffer {}.  Trying again ...".format(vector_REB_bound_path))
@@ -511,6 +515,10 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
             deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
             a = doTime(a, "\t\tCompleted footprint dissolve {}".format(vector_REB_bound_path))
         except:
+            try:
+                addToolMessages()
+            except:
+                pass
             time.sleep(1)
             try:
                 a = doTime(a, "\t\tWARNING: Failed 2nd footprint buffer {}.  Trying one more time ...".format(vector_REB_bound_path))
@@ -524,6 +532,10 @@ def createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, ve
                 a = doTime(a, "\t\tCompleted footprint dissolve (flat) {}".format(vector_REB_bound_path))
                 deleteFileIfExists(vector_REB_bound_path_1, useArcpy=True)
             except:
+                try:
+                    addToolMessages()
+                except:
+                    pass
                 RunUtil.runTool(r'ngce\pmdm\a\A04_B1_BufferDissolveFootprint.py', [vector_R_bound_path, vector_REB_bound_path, vector_REB_bound_path_1, FOOTPRINT_BUFFER_DIST], bit32=False, log_path=log_path)
                 if not os.path.exists(vector_REB_bound_path):
                     raise Exception("Failed to buffer and dissolve tile {}".format(f_name))
@@ -920,13 +932,16 @@ def createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spati
                 arcpy.AddField_management(in_table=point_file_path, field_name="Class", field_type="LONG")
             arcpy.CalculateField_management(in_table=point_file_path, field="Class", expression=-1, expression_type="PYTHON_9.3")
             success = True
+            addToolMessages()
             
         except Exception as e:
             if tries >= MAX_TRIES:
                 raise e
             else:
                 pass
-            
+
+    
+    
     # Create the rows for the other classes with -1 (null) values
     blank_rows = {}
     info_fields = ["SHAPE@", "FileName", "Class", "Pt_Count", "Pt_Spacing", "Z_Min", "Z_Max"]
@@ -940,16 +955,22 @@ def createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spati
                 clazz_row[2] = clazz
                 blank_rows[clazz] = clazz_row
         
-    
+    aa = doTime(a, "\t\tCreated blank rows {}".format(point_file_path))
+        
     arcpy.PointFileInformation_3d(input=f_path, out_feature_class=point_file_path1, in_file_type="LAS", input_coordinate_system=spatial_reference, folder_recursion="NO_RECURSION", extrude_geometry="NO_EXTRUSION", decimal_separator="DECIMAL_POINT", summarize_by_class_code="SUMMARIZE", improve_las_point_spacing="NO_LAS_SPACING")
+    addToolMessages()
     arcpy.Append_management(inputs=point_file_path1, target=point_file_path, schema_type="TEST")
+    addToolMessages()
     arcpy.Delete_management(in_data=point_file_path1, data_type="ShapeFile")
+    addToolMessages()
     
     # Delete the rows we have values for from the empty list
     for row in arcpy.da.SearchCursor(point_file_path, info_fields):  # @UndefinedVariable
         clazz = None if row[2] is None else int(row[2])
         if clazz is not None and clazz >= 0  and clazz <> 7 and  clazz <> 18:
             del blank_rows[clazz]
+
+    doTime(aa, "\t\tUpdated blank rows {}".format(point_file_path))
     
     # Add the rows for the other classes with -1 (null) values
     insert_curser = arcpy.da.InsertCursor(point_file_path, info_fields)  # @UndefinedVariable
@@ -1332,7 +1353,9 @@ def processFile(f_path, target_path, spatial_reference, isClassified, createQARa
                 
                 # NOT USED (slow & same result as B): createVectorBoundaryA(stat_out_folder, f_name, lasd_path, vector_bound_path)
                 
-                if not os.path.exists(vector_bound_B_path):
+                if os.path.exists(vector_bound_B_path):
+                    arcpy.AddMessage("\tB Boundary file exists: {}".format(vector_bound_B_path))
+                else:
                     if point_count > SMALL_POINT_COUNT:
                         createVectorBoundaryB(spatial_reference, stat_out_folder, f_name, f_path, vector_bound_B_path, target_path)
                     else:
@@ -1343,7 +1366,9 @@ def processFile(f_path, target_path, spatial_reference, isClassified, createQARa
     
                 success = False
                 tries = 0
-                if not os.path.exists(vector_bound_C_path):
+                if os.path.exists(vector_bound_C_path):
+                    arcpy.AddMessage("\tC Boundary file exists: {}".format(vector_bound_C_path))
+                else:
                     if point_count > SMALL_POINT_COUNT:
                         while not success and tries < MAX_TRIES:
                             tries = tries + 1
