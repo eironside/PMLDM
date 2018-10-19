@@ -543,6 +543,7 @@ def processJob(ProjectJob, project, ProjectUID):
 
         spatialRef_error[elev_type] = False
         start_dir = os.path.join(ProjectFolder.delivered.path, elev_type)
+        arcpy.AddMessage('### START DIR {}'.format(start_dir))
         f_name = getFileProcessList(start_dir, elev_type, target_path, publish_path, return_first=True, check_sr=False)
         if f_name is None:
             arcpy.AddMessage("Trying DERIVED source. No {} rasters found to re-value in {}.".format(elev_type, start_dir))

@@ -21,7 +21,8 @@ from ngce.raster.RasterConfig import STAT_FOLDER_ORG, STAT_RASTER_FOLDER, FIELD_
 
 
 C_SIMPLE_DIST = 0.1 # Meters
-arcpy.env.parallelProcessingFactor = "1"
+#Removed parallel since each B process is dedicated to a processor
+#arcpy.env.parallelProcessingFactor = "1"
 
 Utility.setArcpyEnv(True)
 
@@ -211,13 +212,6 @@ It performs 10x faster than the other 'B' method
 def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_bound_path, minZ, maxZ, bound_path, elev_type):
     a = datetime.now()
     arcpy.AddMessage("\tCreating {} bound for '{}' using min z '{}' and max z'{}'".format(elev_type, f_path, minZ, maxZ))
-    arcpy.AddMessage('Z: ' + arcpy.env.outputZFlag)  
-    arcpy.env.outputZFlag = "Disabled"  
-    arcpy.AddMessage('Z: ' + arcpy.env.outputZFlag)  
-      
-    arcpy.AddMessage('M: ' + arcpy.env.outputMFlag)  
-    arcpy.env.outputMFlag = "Disabled"  
-    arcpy.AddMessage('M: ' + arcpy.env.outputMFlag)  
     
     vector_1_bound_path = os.path.join(stat_out_folder, "B1_{}.shp".format(f_name))
     vector_2_bound_path = os.path.join(stat_out_folder, "B2_{}.shp".format(f_name))
@@ -254,6 +248,9 @@ def createVectorBoundaryC(f_path, f_name, raster_props, stat_out_folder, vector_
         )
     Utility.addToolMessages()
     checkRecordCount(vector_2_bound_path)
+
+    arcpy.AddMessage('ZFlag: ' + arcpy.env.outputZFlag)  
+    arcpy.AddMessage('MFlag: ' + arcpy.env.outputMFlag) 
 
     arcpy.Dissolve_management(in_features=vector_2_bound_path, out_feature_class=vector_1_bound_path, dissolve_field="", statistics_fields="", multi_part="MULTI_PART", unsplit_lines="DISSOLVE_LINES")
     Utility.addToolMessages()
@@ -497,6 +494,14 @@ def CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_p
 
     
 def processFile(bound_path, f_path, elev_type, target_path, publish_path, z_min, z_max, v_name, v_unit, h_name, h_unit, h_wkid, spatial_ref=None):
+    arcpy.AddMessage('Z: ' + arcpy.env.outputZFlag)  
+    arcpy.env.outputZFlag = "Disabled"  
+    arcpy.AddMessage('Z: ' + arcpy.env.outputZFlag)  
+      
+    arcpy.AddMessage('M: ' + arcpy.env.outputMFlag)  
+    arcpy.env.outputMFlag = "Disabled"  
+    arcpy.AddMessage('M: ' + arcpy.env.outputMFlag) 
+
     
     f_name, target_f_path, publish_f_path, stat_out_folder, stat_file_path, bound_out_folder, vector_bound_path = getFilePaths(f_path, elev_type, target_path, publish_path)  # @UnusedVariable
     

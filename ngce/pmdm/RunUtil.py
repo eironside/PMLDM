@@ -5,9 +5,11 @@ Created on Feb 12, 2016
 '''
 
 import arcpy
+import numpy
 import os
 import platform
 import subprocess
+import psutil
 import sys
 import tempfile
 import time
@@ -54,7 +56,7 @@ def getLogFile(log_path, script_name):
     
     return logfile
 
-def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
+def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS, profile=True):
     if log_path is None:
         log_path = WMX_TOOLS
         
@@ -93,8 +95,26 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS):
     # Error writing data to STDOUT, Switched to file logging
     # proc= subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, shell=False)
     proc = subprocess.Popen(args, env=env, shell=False, stdout=logfile, stderr=logfile)
+
+    # Check for Subprocess Completion & Optionally Capture System Profile Values
+    sys_info = []
+    sys_file = getLogFile(log_path, script_name + '_PROFILE___')
     while proc.poll() is None:
+        if profile:
+            cpu = psutil.cpu_percent(interval=1)
+            mem = psutil.virtual_memory().percent
+            now = time.strftime("%d-%m-%Y %H:%M:%S", time.localtime())
+            sys_file.write('{} -- CPU %: {} | MEM %: {} \n'.format(now, cpu, mem))
+            sys_info.append((cpu, mem))
+            time.sleep(1)
+        else:
         time.sleep(1)
+    sys_file.close()
+
+    # Write Profile Averages to Primary Log
+    if profile:
+        logfile.write('Median CPU %: {} '.format(numpy.median([_[0] for _ in sys_info])))
+        logfile.write('Median MEM %: {} '.format(numpy.median([_[1] for _ in sys_info])))
 
     out, err = proc.communicate(None)
     retCode = proc.returncode

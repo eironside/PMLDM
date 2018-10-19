@@ -30,7 +30,8 @@ from ngce.raster.RasterConfig import MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN
 
 RasterConfig.NODATA_DEFAULT
 SMALL_POINT_COUNT = 100
-arcpy.env.parallelProcessingFactor = "1"
+#Removed parallel since each B gets its own processor
+#arcpy.env.parallelProcessingFactor = "1"
 
 setArcpyEnv(True)
 
