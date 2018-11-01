@@ -25,7 +25,7 @@ from ngce.raster.RasterConfig import MEAN, MAX, MIN, STAND_DEV, XMIN, XMAX, YMIN
     AREA, NAME, PATH, IS_CLASSIFIED, POINT_COUNT, POINT_PERCENT, POINT_SPACING, \
     RANGE, FIRST_RETURNS, SECOND_RETURNS, THIRD_RETURNS, FOURTH_RETURNS, \
     SINGLE_RETURNS, FIRST_OF_MANY_RETURNS, LAST_OF_MANY_RETURNS, ALL_RETURNS, \
-    STAT_LAS_FOLDER, SAMPLE_TYPE
+    STAT_LAS_FOLDER, SAMPLE_TYPE,HEIGHT, WIDTH
 
 
 RasterConfig.NODATA_DEFAULT
@@ -1365,12 +1365,16 @@ def processFile(f_path, target_path, spatial_reference, isClassified, createQARa
                         except:
                             arcpy.AddWarning("Failed to build boundary B, but point count is small. Ignoring error for {}.".format(f_name))
     
+                num_rows = stat_props[HEIGHT]
+                num_cols = stat_props[WIDTH]
+                
                 success = False
                 tries = 0
                 if os.path.exists(vector_bound_C_path):
                     arcpy.AddMessage("\tC Boundary file exists: {}".format(vector_bound_C_path))
                 else:
-                    if point_count > SMALL_POINT_COUNT:
+                    arcpy.AddMessage("\tCreating C Boundary file for raster with {} rows {} cols and {} points: {}".format(num_rows, num_cols, point_count, vector_bound_C_path))
+                    if point_count > SMALL_POINT_COUNT and num_rows > 2 and num_cols > 2:
                         while not success and tries < MAX_TRIES:
                             tries = tries + 1
                             try:
@@ -1389,7 +1393,7 @@ def processFile(f_path, target_path, spatial_reference, isClassified, createQARa
                             createVectorBoundaryC(out_raster_path, vector_bound_C_path, isClassified, stat_props)
                         except:
                             deleteFileIfExists(vector_bound_C_path, useArcpy=True)
-                            arcpy.AddWarning("Failed to build boundary C, but point count is small. Ignoring error for {}.".format(f_name))
+                            arcpy.AddWarning("Failed to build boundary C, but it has {} rows {} cols and {} points. Ignoring error for {}.".format(num_rows, num_cols, point_count, f_name))
                 
                     
             

@@ -17,7 +17,7 @@ from ngce.raster.Raster import createRasterDatasetStats
 from ngce.raster.RasterConfig import STAT_FOLDER_ORG, STAT_RASTER_FOLDER, FIELD_INFO, \
     PATH, NAME, AREA, ELEV_TYPE, RANGE, KEY_LIST, MAX, MIN, BAND_COUNT, \
     PIXEL_TYPE, PIXEL_TYPE_F32, PIXEL_TYPE_D64, FORMAT, V_NAME, V_UNIT, H_NAME, \
-    H_UNIT, H_WKID, STAT_FOLDER_DER, STAT_FOLDER_PUB
+    H_UNIT, H_WKID, STAT_FOLDER_DER, STAT_FOLDER_PUB, WIDTH, HEIGHT
 
 
 C_SIMPLE_DIST = 0.1 # Meters
@@ -539,7 +539,17 @@ def processFile(bound_path, f_path, elev_type, target_path, publish_path, z_min,
         arcpy.AddMessage("\tBound file exists: {}".format(vector_bound_path))
     else:
         raster_props = createRasterDatasetStats(publish_f_path)
+        columns = raster_props[WIDTH]
+        rows = raster_props[HEIGHT]
+        arcpy.AddMessage("\tCreating boundary file for raster with {} rows and {} columns: {}".format(rows,columns,vector_bound_path))
+        # If a raster is too skinny in one direction, the bound will fail to be created. Ignore this raster.
+        if (rows > 2 and columns >2):
         createVectorBoundaryC(publish_f_path, f_name, raster_props, stat_out_folder, vector_bound_path, z_min, z_max, bound_path, elev_type)
+        else:
+            try:
+                createVectorBoundaryC(publish_f_path, f_name, raster_props, stat_out_folder, vector_bound_path, z_min, z_max, bound_path, elev_type)
+            except:
+                arcpy.AddMessage("\tWARNING: Failed to create bound file. Rows={} Columns={} so raster may be too small in one direction: {}".format(rows,columns,vector_bound_path))
     
     CheckRasterSpatialReference(v_name, v_unit, h_name, h_unit, h_wkid, raster_props)
     
