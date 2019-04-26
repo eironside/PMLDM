@@ -12,6 +12,7 @@ import shutil
 import string
 import sys
 import uuid
+import glob
 
 from ngce.folders.FoldersConfig import chars, repls
 from ngce.raster import RasterConfig
@@ -38,7 +39,7 @@ DROP_FIELDS = ["MinSimpTol", "MaxSimpTol", "Orig_FID", "InPoly_FID", "SimPgnFlag
 
 def deleteField(in_table, drop_field):
     # arcpy.AddMessage("\t\tDeleting field '{}' from '{}'".format(drop_field, in_table))
-    try:    
+    try:
         arcpy.DeleteField_management(in_table=in_table, drop_field=drop_field)
     except:
         # arcpy.AddWarning("\tWARNING: Failed to delete field '{}' from '{}'".format(drop_field, in_table))
@@ -50,7 +51,7 @@ def deleteFields(in_table):
         existing_fields = []
         for field in fields:
             existing_fields.append(field.name)
-            
+
         # arcpy.AddMessage("\t\tDropping unused fields. Existing fields in '{}' from '{}'".format(existing_fields, in_table))
         for drop_field in DROP_FIELDS:
             # arcpy.AddMessage("\t\tTrying to drop field '{}' from '{}'".format(drop_field, in_table))
@@ -91,8 +92,9 @@ def printArguments(argNameList, argList, argSource=None):
             argvalue = None
             if argList[i] is not None:
                 argvalue = str(argList[i])
-                if len(argvalue) > 100:
-                    argvalue = argvalue[0:100]
+                #Removed length restriction 16 April 2016 BJN
+##                if len(argvalue) > 100:
+##                    argvalue = argvalue[0:100]
             arcpy.AddMessage("{}. {} = '{}'".format(i, item, argvalue))
     except:
         pass
@@ -104,7 +106,7 @@ def getExistingRecord(in_table, field_names, uidIndex, where_clause=None, repeat
     strUID = None
     row = None
     count = 0
-    
+
     a = datetime.datetime.now()
     aa = a
     for r in arcpy.da.SearchCursor(in_table, field_names, where_clause=where_clause):  # @UndefinedVariable
@@ -172,9 +174,9 @@ def createUid(strUID):
 
 def setWMXJobDataAsEnvironmentWorkspace(jobId):
     # ## Swapped out WMX request for direct .sde file connection
-    arcpy.env.workspace = SDE_CMDR_FILE_PATH  # JobDataWorkspace[jobId] 
+    arcpy.env.workspace = SDE_CMDR_FILE_PATH  # JobDataWorkspace[jobId]
     arcpy.AddMessage("Environment workspace: '{}'".format(SDE_CMDR_FILE_PATH))
-    
+
 def startEditingSession():
     arcpy.AddMessage('Starting edit session...')
     edit = arcpy.da.Editor(arcpy.env.workspace)  # @UndefinedVariable
@@ -192,7 +194,7 @@ def stopEditingSession(edit):
         arcpy.AddMessage('Edit session stopped')
         del edit
 
-    
+
 def getJobAoi(jobId):
     if jobId not in shape.keys():
         in_table = os.path.join(SDE_WMX_FILE_PATH, WMX_AOI_FC)
@@ -203,7 +205,7 @@ def getJobAoi(jobId):
         aoi = getExistingRecord(in_table, field_names, uidIndex, where_clause)[0]
         # arcpy.AddMessage(aoi[0])
         shape[jobId] = aoi[0]
-        
+
     arcpy.AddMessage("Job {} AOI: {}".format(jobId, shape[jobId]))
     return shape[jobId]
 
@@ -223,8 +225,8 @@ def getJobProjectDirs(jobId):
         arcpy.AddMessage(record)
         ProjectParentDirectory = record[0]
         ProjectDirectory = record[1]
-        
-        
+
+
     arcpy.AddMessage("Job {} Directories: {}, {}".format(jobId, ProjectParentDirectory, ProjectDirectory))
     return [ProjectParentDirectory, ProjectDirectory]
 
@@ -316,7 +318,7 @@ def addAndCalcFieldGUID(dataset_path, field_name, field_value=None, field_alias=
                     field_value=field_value,
                     add_index=add_index,
                     debug=debug)
-    
+
 def addAndCalcFieldText(dataset_path, field_name, field_length, field_value=None, field_alias="", code_block="", add_index=False, debug=False):
     addAndCalcField(dataset_path=dataset_path,
                     field_type=FieldType_TEXT,
@@ -328,7 +330,7 @@ def addAndCalcFieldText(dataset_path, field_name, field_length, field_value=None
                     code_block=code_block,
                     debug=debug
                     )
-    
+
 def addAndCalcFieldLong(dataset_path, field_name, field_value=None, field_alias="", add_index=False, code_block="", debug=False):
     addAndCalcField(dataset_path=dataset_path,
                     field_type=FieldType_LONG,
@@ -344,7 +346,7 @@ def addAndCalcFieldDouble(dataset_path, field_name, field_value=None, field_alia
                     field_name=field_name,
                     field_alias=field_alias,
                     field_value=field_value,
-                    add_index=add_index)    
+                    add_index=add_index)
 
 def addAndCalcFieldFloat(dataset_path, field_name, field_value=None, field_alias="", add_index=False, code_block="", debug=False):
     addAndCalcField(dataset_path=dataset_path,
@@ -367,9 +369,9 @@ def addAndCalcFieldDate(dataset_path, field_name, field_value=None, field_alias=
                     code_block=code_block,
                     debug=debug
                     )
-    
+
 def addAndCalcField(dataset_path, field_type, field_name, field_alias="", field_length="", field_value=None, code_block="", add_index=False, debug=False):
-    if debug: 
+    if debug:
         arcpy.AddMessage("Adding {} field '{}({})' and setting value to '{}'".format(field_type, field_name, field_length, field_value))
 
     arcpy.AddField_management(dataset_path, field_name, field_type, field_precision="", field_scale="", field_length=field_length, field_alias=field_alias, field_is_nullable="NULLABLE", field_is_required="NON_REQUIRED", field_domain="")
@@ -496,7 +498,7 @@ def getVertCSInfo(spatialReference):
         vert_cs_name = vert_cs_name.encode('utf-8').strip().replace("'", "")
     if vert_unit_name is not None:
         vert_unit_name = vert_unit_name.encode('utf-8').strip().replace("'", "")
-        
+
     return vert_cs_name, vert_unit_name
 
 
@@ -506,40 +508,40 @@ def getString(str_value):
         result = str(str_value).strip().upper()
         if len(result) <= 0:
             result = None
-    
+
     return result
-    
+
 def getSRValues(spatial_ref):
-    
+
     if str(spatial_ref).lower().endswith(".prj"):
         spatial_ref = arcpy.SpatialReference(spatial_ref)
-        
+
     horz_cs_name = None
     horz_cs_unit_name = None
     horz_cs_factory_code = None
     vert_cs_name, vert_unit_name = None, None
-    
+
     name = None
     try:
         name = spatial_ref.name
     except:
         pass
-    
+
     if name is None:
         spatial_ref = arcpy.SpatialReference().loadFromString(spatial_ref)
-    
+
     if spatial_ref is not None:
         horz_cs_name = getString(spatial_ref.name)
         horz_cs_unit_name = getString(spatial_ref.linearUnitName)
         horz_cs_factory_code = getString(spatial_ref.factoryCode)
         vert_cs_name, vert_unit_name = getVertCSInfo(spatial_ref)
-        
+
         vert_cs_name = getString(vert_cs_name)
         vert_unit_name = getString(vert_unit_name)
-    
+
     return horz_cs_name, horz_cs_unit_name, horz_cs_factory_code, vert_cs_name, vert_unit_name
 
-    
+
 def clearFolder(folder):
     if os.path.exists(folder):
         arcpy.AddMessage("Deleting existing output destination {}".format(folder))
@@ -583,17 +585,26 @@ def doTime(a, msg):
     return datetime.datetime.now()
 
 
-def deleteFileIfExists(f_path, useArcpy=False):
+def deleteFileIfExists(f_path, useArcpy=False, deleteAllLike=False):
     try:
         if useArcpy:
             if arcpy.Exists(f_path):
                 arcpy.Delete_management(f_path)
         else:
-            if os.path.exists(f_path):
-                os.remove(f_path)
+            if not deleteAllLike:
+                if os.path.exists(f_path):
+                    os.remove(f_path)
+            else:
+                f_name, f_ext = os.path.splitext(f_path)
+                for x in glob.glob(f_name + '*'):
+                    try:
+                        os.remove(x)
+                    except:
+                        pass
+
     except:
         pass
-    
+
 def grouper(iterable, n, fillvalue=None):
     args = [iter(iterable)] * n
     return izip_longest(*args, fillvalue=fillvalue)
@@ -632,7 +643,7 @@ def alterFields(alter_field_infos, table):
                 alterField(table, alter_field_info[0], alter_field_info[1], alter_field_info[2])
             except:
                 pass
-        
+
     a = doTime(a, "\tAltered fields")
     return a
 
@@ -642,11 +653,11 @@ def isMatchingStringValue(val1, val2):
         val1 = str(val1).upper().strip()
     if val2 is not None:
         val2 = str(val2).upper().strip()
-    
+
     return (val1 == val2 and val1 is not None)
-    
-    
-    
+
+
+
 
 
 

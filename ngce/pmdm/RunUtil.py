@@ -9,7 +9,7 @@ import numpy
 import os
 import platform
 import subprocess
-import psutil
+#import psutil
 import sys
 import tempfile
 import time
@@ -48,27 +48,27 @@ def getLogFile(log_path, script_name):
         suffix=".log",
         dir=log_path,
         delete=False)
-    
+
     #try:
     #    arcpy.AddMessage("Logs are written to file: {}".format(str(logfile.name)))
     #except:
     #    pass
-    
+
     return logfile
 
 def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS, profile=True):
     if log_path is None:
         log_path = WMX_TOOLS
-        
+
     script_name = os.path.split(path)[1]
     path = r'"{}"'.format(os.path.join(WMX_TOOLS, path))
-    
+
     if toolArgs is not None:
         for index in range(0, len(toolArgs)):
             if toolArgs[index] is not None and str(toolArgs[index]).endswith('\\'):
                 toolArgs[index] = toolArgs[index][0:-1]
             toolArgs[index] = r'"{}"'.format(toolArgs[index])
-    
+
     if not bit32:
         arcpy.AddMessage("Architecture='{} {}' Python='{}'".format(arcpy.GetInstallInfo()['ProductName'], platform.architecture()[0], sys.executable))
 
@@ -84,7 +84,7 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS, profile=True):
     # exe = path_python27
 
     logfile = getLogFile(log_path, script_name)
-    
+
     args = [exe, path]
     if toolArgs is not None:
         for arg in toolArgs:
@@ -98,40 +98,40 @@ def runTool(path, toolArgs, bit32=False, log_path=WMX_TOOLS, profile=True):
 
     # Check for Subprocess Completion & Optionally Capture System Profile Values
     sys_info = []
-    sys_file = getLogFile(log_path, script_name + '_PROFILE___')
+    #sys_file = getLogFile(log_path, script_name + '_PROFILE___')
     while proc.poll() is None:
-        if profile:
-            cpu = psutil.cpu_percent(interval=1)
-            mem = psutil.virtual_memory().percent
-            now = time.strftime("%d-%m-%Y %H:%M:%S", time.localtime())
-            sys_file.write('{} -- CPU %: {} | MEM %: {} \n'.format(now, cpu, mem))
-            sys_info.append((cpu, mem))
-            time.sleep(1)
-        else:
+##        if profile:
+##            cpu = psutil.cpu_percent(interval=1)
+##            mem = psutil.virtual_memory().percent
+##            now = time.strftime("%d-%m-%Y %H:%M:%S", time.localtime())
+##            sys_file.write('{} -- CPU %: {} | MEM %: {} \n'.format(now, cpu, mem))
+##            sys_info.append((cpu, mem))
+##            time.sleep(1)
+##        else:
         time.sleep(1)
-    sys_file.close()
+    #sys_file.close()
 
-    # Write Profile Averages to Primary Log
-    if profile:
-        logfile.write('Median CPU %: {} '.format(numpy.median([_[0] for _ in sys_info])))
-        logfile.write('Median MEM %: {} '.format(numpy.median([_[1] for _ in sys_info])))
+##    # Write Profile Averages to Primary Log
+##    if profile:
+##        logfile.write('Median CPU %: {} '.format(numpy.median([_[0] for _ in sys_info])))
+##        logfile.write('Median MEM %: {} '.format(numpy.median([_[1] for _ in sys_info])))
 
     out, err = proc.communicate(None)
     retCode = proc.returncode
 
-    
+
     if out is not None and len(out) > 0:
         arcpy.AddMessage(out)
     if err is not None and len(err) > 0:
-        if retCode != 0:        
+        if retCode != 0:
             arcpy.AddError(err)
         else:
             arcpy.AddWarning(err)
-    
+
     logfilepath = logfile.name
     logfile.close()
 
-    if retCode != 0:  
+    if retCode != 0:
         arcpy.AddError("'{}' failed with return code {}. Details in log file {} ".format(path, retCode, logfilepath))
     elif not bit32:
         arcpy.AddMessage("{} Succeeded! Details in log file {}".format(path, logfilepath))
@@ -158,7 +158,7 @@ def runToolx64_async(path, toolArgs, logpre="", logpath=None):
     if logpath is None:
         logpath = WMX_TOOLS
     script_name = os.path.split(path)[1]
-    
+
     path = r'"{}"'.format(os.path.join(WMX_TOOLS, path))
 
     for index, item in enumerate(toolArgs):
@@ -171,7 +171,7 @@ def runToolx64_async(path, toolArgs, logpre="", logpath=None):
                 i = '"{}"'.format(toolArgs[index].encode('utf-8'))
             except Exception as e:
                 arcpy.AddMessage('Encoding Failed: {}'.format(e))
-        
+
         if i.endswith('\\'):
             toolArgs[index] = i[0:-1]
 
@@ -179,50 +179,50 @@ def runToolx64_async(path, toolArgs, logpre="", logpath=None):
             toolArgs[index] = i
 
         #toolArgs[index] = r'"{}"'.format(toolArgs[index])
-    
+
     path_python27 = PATH_PYTHON27_64
-    
+
     env = os.environ.copy()
     env['PYTHONPATH'] = r'{}\Lib\site-packages;{}'.format(path_python27, WMX_TOOLS)
     env['PATH'] = path_python27
-    exe = r'"{}\pythonw.exe"'.format(path_python27)        
-#         
+    exe = r'"{}\pythonw.exe"'.format(path_python27)
+#
 #     log_parts = os.path.split(logpath)
-#     if len(log_parts) >= 2 and (not str(log_parts[1]).upper() == "LOGS"):  
+#     if len(log_parts) >= 2 and (not str(log_parts[1]).upper() == "LOGS"):
 #         logpath = os.path.join(logpath, "Logs")
 #     if script_name is not None and len(str(script_name)) > 0:
 #         logpath = os.path.join(logpath, os.path.splitext(script_name)[0])
-#         
+#
 #     # #Override to local for testing, didn't make a difference
 #     # log_path = r"C:\Temp\logs"
 #     if not os.path.exists(logpath):
 #         os.makedirs(logpath)
-#     
+#
 #     logfile = tempfile.NamedTemporaryFile(prefix=logpre, suffix=".log", dir=logpath, delete=False)
-    logfile = getLogFile(logpath, script_name) 
-    
+    logfile = getLogFile(logpath, script_name)
+
     args = [exe, path]
     for arg in toolArgs:
         args.append(arg)
     args = " ".join(args)
-    
+
     # arcpy.AddMessage(args)
-    
+
     # Error writing data to STDOUT, Switched to file logging
     # proc= subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env, shell=False)
     proc = subprocess.Popen(args, env=env, shell=False, stdout=logfile, stderr=logfile)
     return proc, logfile
-    
+
 
 def endRun_async(path, proc, logfile):
     out, err = proc.communicate(None)
     retCode = proc.returncode
 
-    
+
     if out is not None and len(out) > 0:
         arcpy.AddMessage(out)
     if err is not None and len(err) > 0:
-        if retCode != 0:        
+        if retCode != 0:
             arcpy.AddError(err)
         else:
             arcpy.AddWarning(err)
@@ -237,10 +237,10 @@ def endRun_async(path, proc, logfile):
 #                 arcpy.AddMessage("{}".format(str(line).rstrip('\n').rstrip('\r').rstrip('\n')))
 #                 ret = line
 
-    if retCode != 0:  
+    if retCode != 0:
         arcpy.AddError("ERROR: '{}' failed with return code {}. Details in log file {} ".format(path, retCode, logfilepath))
-    #else: 
+    #else:
         #arcpy.AddMessage("\tSUCCESS: '{}' succeeded. Details in log file {}".format(path, logfilepath))
         #arcpy.AddMessage("\tSUCCESS: '{}' succeeded.".format(path))
-        
+
     return retCode

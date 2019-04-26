@@ -23,7 +23,7 @@ from ngce.pmdm.a import A04_C_ConsolidateLASInfo
 
 PROCESS_DELAY = 1
 PROCESS_CHUNKS = 6  # files per thread
-PROCESS_SPARES = -5  # processors to leave as spares
+PROCESS_SPARES = -4  # processors to leave as spares
 
 arcpy.env.parallelProcessingFactor = "100%"
 
@@ -116,7 +116,7 @@ def createLasStatistics(fileList, target_path, spatial_reference=None, isClassif
                 else:
                     # arcpy.AddMessage("Waiting for process list to clear {} jobs".format(len(processList)))
                     time.sleep(PROCESS_DELAY)
-
+# BRUCE's code here
         if runAgain and len(fileList_repeat) > 0:
             # try to clean up any errors along the way
             createLasStatistics(fileList, target_path, spatial_reference, isClassified, createQARasters, createMissingRasters, overrideBorderPath, runAgain=False)
@@ -326,7 +326,7 @@ def checkSpatialOnLas(start_dir, target_path, createQARasters, isClassified):
     if prj_Count > 0 and prj_File is not None and len(str(prj_File)) > 0:
         prj_Path = os.path.join(start_dir, prj_File)
         arcpy.AddMessage("\tReading spatial reference from PRJ file: {}".format(prj_Path))
-        
+
         prj_spatial_ref = arcpy.SpatialReference(prj_Path)
         arcpy.AddMessage("\tGot from PRJ file spatial reference: {}".format(prj_spatial_ref.name))
         if prj_spatial_ref is not None:
@@ -422,13 +422,13 @@ def createMXD(las_qainfo, target_path, project_ID):
 
         df = mxd.activeDataFrame
 
-        if not isLayerExist(mxd, df, "LAS Footprints"):
-            lyr_footprint = arcpy.MakeFeatureLayer_management(las_footprint_path, "LAS Footprints").getOutput(0)
+        if not (isLayerExist(mxd, df, "LAS Footprints") or isLayerExist(mxd, df, "FootprintLASFile")): #Changed condition 3 Apr 2019 BJN
+            lyr_footprint = arcpy.MakeFeatureLayer_management(las_footprint_path, "FootprintLASFile").getOutput(0) #Changed layer name 27 Mar 2019 BJN
             arcpy.mapping.AddLayer(df, lyr_footprint, 'BOTTOM')
             arcpy.AddMessage("Added layer to mxd: {}".format(lyr_footprint))
 
-        if not isLayerExist(mxd, df, "LAS Boundary"):
-            lyr_boundary = arcpy.MakeFeatureLayer_management(lasd_boundary_path, "LAS Boundary").getOutput(0)
+        if not (isLayerExist(mxd, df, "LAS Boundary") or isLayerExist(mxd, df, "BoundaryLASDataset")): #Changed condition 3 Apr 2019 BJN
+            lyr_boundary = arcpy.MakeFeatureLayer_management(lasd_boundary_path, "BoundaryLASDataset").getOutput(0) #Changed layer name 27 Mar 2019 BJN
             arcpy.mapping.AddLayer(df, lyr_boundary, 'BOTTOM')
             arcpy.AddMessage("Added layer to mxd: {}".format(lyr_boundary))
 
@@ -437,9 +437,9 @@ def createMXD(las_qainfo, target_path, project_ID):
             arcpy.mapping.AddLayer(df, lyr_lasd, 'TOP')
             arcpy.AddMessage("Added layer to mxd: {}".format(lyr_lasd))
 
-        if not isLayerExist(mxd, df, "LAS Boundary Difference"):
+        if not (isLayerExist(mxd, df, "LAS Boundary Difference") or isLayerExist(mxd, df, "BoundaryLASDataset_SD")): #Changed condition 3 Apr 2019 BJN
             lasd_boundary_SD = "{}_SD".format(lasd_boundary_path)
-            lyr_diff = arcpy.MakeFeatureLayer_management(lasd_boundary_SD, "LAS Boundary Difference").getOutput(0)
+            lyr_diff = arcpy.MakeFeatureLayer_management(lasd_boundary_SD, "BoundaryLASDataset_SD").getOutput(0) #Changed layer name 27 Mar 2019 BJN
             arcpy.mapping.AddLayer(df, lyr_diff, 'TOP')
             arcpy.AddMessage("Added layer to mxd: {}".format(lyr_diff))
 

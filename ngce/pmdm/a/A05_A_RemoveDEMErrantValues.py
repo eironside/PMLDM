@@ -59,8 +59,8 @@ from ngce.raster.RasterConfig import FIELD_INFO, MIN, MAX, V_NAME, V_UNIT, \
 
 PROCESS_DELAY = 10
 PROCESS_CHUNKS = 6  # files per thread. Factor of 2 please
-PROCESS_SPARES = -4  # processors to leave as spares, no more than 4!
-
+PROCESS_SPARES = -8  # processors to leave as spares, no more than 4!
+#changed from -4 BJN 8 Nov 2018
 arcpy.env.parallelProcessingFactor = "100%"
 
 Utility.setArcpyEnv(True)
