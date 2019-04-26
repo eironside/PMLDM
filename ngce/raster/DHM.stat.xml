@@ -1,0 +1,2 @@
+<?xml version="1.0"?>
+<RasterStatistics xml:lang="en"><DatasetName>DHM</DatasetName><Band Name="Band_1"><skipFactorX>2</skipFactorX><skipFactorY>2</skipFactorY><min>1</min><max>48.57444763183594</max><mean>7.916184052172167</mean><stddev>4.257979731281242</stddev><covariances>18.13039139200187</covariances></Band></RasterStatistics>
