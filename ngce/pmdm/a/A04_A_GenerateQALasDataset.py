@@ -68,7 +68,7 @@ def createLasStatistics(fileList, target_path, spatial_reference=None, isClassif
             #arcpy.AddMessage('\t Working on {}/{}: {}'.format(indx, total, f_path))
             arcpy.AddMessage('\t Working on {}/{}'.format(indx, total))
             args = [f_path, target_path, spatial_reference, "{}".format(isClassified), "{}".format(createQARasters), "{}".format(createMissingRasters), overrideBorderPath]
-
+			
             try:
                 processList.append(RunUtil.runToolx64_async(path, args, "A04_B", target_path))
                 # give time for things to wake up

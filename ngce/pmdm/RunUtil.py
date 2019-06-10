@@ -30,7 +30,12 @@ TOOLS_PATH = r"\\aiotxftw6na01data\SMB03\elevation\WorkflowManager\Tools\ngce\pm
 # TOOLS_PATH = r"C:\Users\eric5946\workspaceEE\NGCE_PMDM\src-ngce\ngce\pmdm\a"
 
 PROD_TOOLS = r"C:\Program Files (x86)\ArcGIS\EsriProductionMapping\Desktop10.5\arcpyproduction"
-
+if arcpy.GetInstallInfo()['Version'] == '10.6.1':
+	PATH_PYTHON27_32 = r"C:\Program Files (x86)\Python27\ArcGIS10.6"
+	PATH_PYTHON27_64 = r"C:\Program Files (x86)\Python27\ArcGISx6410.6"
+	WMX_TOOLS = r"C:\Tools"
+	TOOLS_PATH = r"C:\Tools\ngce\pmdm\a"
+	PROD_TOOLS = r"C:\Program Files (x86)\ArcGIS\EsriProductionMapping\Desktop10.6\arcpyproduction"
 
 def getLogFile(log_path, script_name):
     log_parts = os.path.split(log_path)

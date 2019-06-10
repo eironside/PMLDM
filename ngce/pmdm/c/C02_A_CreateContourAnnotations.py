@@ -29,7 +29,7 @@ CPU_HANDICAP = 0  # set higher to use fewer CPUs
 
 
 def gen_base_tiling_scheme(base_fc, scratch):
-    
+
     arcpy.env.overwriteOutput = True
     db, fc = os.path.split(base_fc)
     base_tiling_scheme = os.path.join(db, 'Base_Tiling_Scheme')
@@ -42,19 +42,19 @@ def gen_base_tiling_scheme(base_fc, scratch):
         section_mxd_name = os.path.join(scratch, 'Tiling_Scheme.mxd')
         if not os.path.exists(section_mxd_name):
             base_mxd.saveACopy(section_mxd_name)
-    
+
         # Set MXD For Processing
         first_mxd = arcpy.mapping.MapDocument(section_mxd_name)
-    
+
         # Set Layers to Reference Input FC
         broken = arcpy.mapping.ListBrokenDataSources(first_mxd)
         for item in broken:
             if item.name.startswith(r'Contour'):
                 item.replaceDataSource(db, "FILEGDB_WORKSPACE", fc)
         first_mxd.save()
-    
+
         # Generate Tiling Scheme for Input MXD
-        
+
         arcpy.MapServerCacheTilingSchemeToPolygons_cartography(
             map_document=first_mxd.filePath,
             data_frame='Layers',
@@ -81,76 +81,76 @@ def clearScratchFiles(section_mxd_name, anno_paths, mask_paths, annoLyr_paths):
     directory = os.path.split(section_mxd_name)[0]
     if os.path.exists(directory):
         try:
-                shutil.rmtree(directory) 
+                shutil.rmtree(directory)
         except:
             try:
                 os.remove(section_mxd_name)
             except:
                 pass
-            
+
             for layer_path in annoLyr_paths:
                 try:
                     os.remove(layer_path)
                 except:
                     pass
-                
+
             for anno_path in anno_paths:
                 try:
                     arcpy.Delete_management(anno_path)
                 except:
                     pass
-                
+
             for mask_path in mask_paths:
                 try:
                     arcpy.Delete_management(mask_path)
                 except:
                     pass
-            
+
             try:
-                shutil.rmtree(directory) 
+                shutil.rmtree(directory)
             except:
                 pass
 #     if not os.path.exists(directory):
 #         os.makedirs(directory)
     try:
         if not os.path.exists(directory):
-            os.makedirs(directory) 
+            os.makedirs(directory)
     except:
         pass
-    
 
 
-    
+
+
     arcpy.AddMessage("\t\tCleared scratch directory {}".format(directory))
 
 def isProcessFile(scratch, name):
     filter_folder_name = "T{}".format(name)
     filter_folder = os.path.join(scratch, filter_folder_name)
-    
+
     section_mxd_name = os.path.join(filter_folder, '{}.mxd'.format(filter_folder_name))
     scratch_db = os.path.join(filter_folder, '{}.gdb'.format(filter_folder_name))
     target_scheme_polys = os.path.join(filter_folder, '{}SP.shp'.format(filter_folder_name))
-    
+
     anno1128 = os.path.join(filter_folder, r"Contours_1128Anno1128.shp")
     anno2257 = os.path.join(filter_folder, r"Contours_2257Anno2256.shp")
     anno4514 = os.path.join(filter_folder, r"Contours_4514Anno4513.shp")
     anno9028 = os.path.join(filter_folder, r"Contours_9028Anno9027.shp")
     anno_paths = [anno1128, anno2257, anno4514, anno9028]
-    
+
     mask1128 = os.path.join(filter_folder, r"Mask1128.shp")
     mask2257 = os.path.join(filter_folder, r"Mask2256.shp")
     mask4514 = os.path.join(filter_folder, r"Mask4513.shp")
     mask9028 = os.path.join(filter_folder, r"Mask9027.shp")
     mask_paths = [mask1128, mask2257, mask4514, mask9028]
-    
+
     annoLyr1128 = os.path.join(filter_folder, r"Contours_1128Anno1128.lyr")
     annoLyr2257 = os.path.join(filter_folder, r"Contours_2257Anno2256.lyr")
     annoLyr4514 = os.path.join(filter_folder, r"Contours_4514Anno4513.lyr")
     annoLyr9028 = os.path.join(filter_folder, r"Contours_9028Anno9027.lyr")
     annoLyr_paths = [annoLyr1128, annoLyr2257, annoLyr4514, annoLyr9028]
-    
+
     isOk = True
-    
+
     isFolder = True
     isMxd = True
     isLyrFile = True
@@ -158,33 +158,33 @@ def isProcessFile(scratch, name):
     isAnno = True
     isTargetPoly = True
     isScratchDB = True
-    
+
     if not os.path.exists(filter_folder):
         isFolder = False
-    
+
     isOk = isOk and isFolder
-    
+
     if not os.path.exists(section_mxd_name):
         isMxd = False
-    
-    isOk = isOk and isMxd 
-    
-    if isOk and not os.path.exists(scratch_db): 
+
+    isOk = isOk and isMxd
+
+    if isOk and not os.path.exists(scratch_db):
         isScratchDB = False
-    
+
     isOk = isOk and isScratchDB
-        
+
     if isOk and not os.path.exists(target_scheme_polys):
-        isTargetPoly = False 
-            
+        isTargetPoly = False
+
     isOk = isOk and isTargetPoly
-    
+
     if isOk:
         for anno_path in anno_paths:
             if isOk and not os.path.exists(anno_path):
                 isAnno = False
             isOk = isOk and isAnno
-    
+
     if isOk:
         for mask_path in mask_paths:
             if isOk and not os.path.exists(mask_path):
@@ -195,19 +195,19 @@ def isProcessFile(scratch, name):
             if isOk and not os.path.exists(annoLyr_path):
                 isLyrFile = False
             isOk = isOk and isLyrFile
-    
+
 #     isOk = not (isMxd and isLyrFile and isMask and isAnno and isTargetPoly and isScratchDB)
-    
+
     return not isOk
-                
+
 def getContourPrepList(scratch, name_list):
     process_list = []
     for name in name_list:
         if isProcessFile(scratch, name):
             process_list.append(name)
-    
+
     return process_list
-    
+
 
 def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
     a = datetime.datetime.now()
@@ -215,9 +215,9 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
     # arcpy.AddMessage('Started: {}'.format(name))
     db = os.path.split(in_fc)[0]
     fc = os.path.split(in_fc)[1]
-    
+
     arcpy.env.overwriteOutput = True
-    
+
     filter_folder = os.path.join(scratch, 'T{}'.format(name))
     if not os.path.exists(filter_folder):
         os.makedirs(filter_folder)
@@ -225,38 +225,38 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
     scratch_db = os.path.join(filter_folder, 'T{}.gdb'.format(name))
     target_scheme_polys = os.path.join(filter_folder, 'T{}SP.shp'.format(name))
     target_scheme_polys_fgdb = os.path.join(scratch_db, 'T{}SP'.format(name))
-    
+
 #     Utility.printArguments(["in_fc", "scheme_poly", "scratch", "name", "db", "fc", "filter_folder", "section_mxd_name", "scratch_db", "target_scheme_polys"],
 #                            [in_fc, scheme_poly, scratch, name, db, fc, filter_folder, section_mxd_name, scratch_db, target_scheme_polys], "C02_B Contour Prep")
-    
-    
+
+
     anno1128 = os.path.join(scratch_db, r"Contours_1128Anno1128")
     anno2257 = os.path.join(scratch_db, r"Contours_2257Anno2256")
     anno4514 = os.path.join(scratch_db, r"Contours_4514Anno4513")
     anno9028 = os.path.join(scratch_db, r"Contours_9028Anno9027")
     anno_paths = [anno1128, anno2257, anno4514, anno9028]
-    
+
     annoShp1128 = os.path.join(filter_folder, r"Contours_1128Anno1128.shp")
     annoShp2257 = os.path.join(filter_folder, r"Contours_2257Anno2256.shp")
     annoShp4514 = os.path.join(filter_folder, r"Contours_4514Anno4513.shp")
     annoShp9028 = os.path.join(filter_folder, r"Contours_9028Anno9027.shp")
     annoShp_paths = [annoShp1128, annoShp2257, annoShp4514, annoShp9028]  # @UnusedVariable
-    
+
     mask1128 = os.path.join(filter_folder, r"Mask1128.shp")
     mask2257 = os.path.join(filter_folder, r"Mask2256.shp")
     mask4514 = os.path.join(filter_folder, r"Mask4513.shp")
     mask9028 = os.path.join(filter_folder, r"Mask9027.shp")
     mask_paths = [mask1128, mask2257, mask4514, mask9028]
-    
+
     annoLyr1128 = os.path.join(filter_folder, r"Contours_1128Anno1128.lyr")
     annoLyr2257 = os.path.join(filter_folder, r"Contours_2257Anno2256.lyr")
     annoLyr4514 = os.path.join(filter_folder, r"Contours_4514Anno4513.lyr")
     annoLyr9028 = os.path.join(filter_folder, r"Contours_9028Anno9027.lyr")
     annoLyr_paths = [annoLyr1128, annoLyr2257, annoLyr4514, annoLyr9028]
-    
-    clearScratch = True    
+
+    clearScratch = True
     TRIES_ALLOWED = 10
-    
+
     if not isProcessFile(scratch, name):
         arcpy.AddMessage("{}: All artifacts exist".format(name))
     else:
@@ -269,7 +269,7 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                 if clearScratch:
                     clearScratch = False
                     clearScratchFiles(section_mxd_name, anno_paths, mask_paths, annoLyr_paths)
-                
+
                 mxd_tries1 = 0
                 while not os.path.exists(section_mxd_name) and mxd_tries1 < TRIES_ALLOWED:
                     mxd_tries1 = mxd_tries1 + 1
@@ -279,22 +279,22 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                             arcpy.AddMessage('\tREPEAT: Made section Scratch Folder Name: {}'.format(filter_folder))
                         else:
                             arcpy.AddMessage('\tEXISTS: Section Scratch Folder Name: {}'.format(filter_folder))
-                    
+
                         arcpy.AddMessage('\tSection MXD Name: {}'.format(section_mxd_name))
                         shutil.copyfile(ContourConfig.MXD_ANNO_TEMPLATE, section_mxd_name)
-                        
+
                         a = Utility.doTime(a, "\t{}: Saved a copy of the mxd template to '{}'".format(name, section_mxd_name))
                         arcpy.AddMessage('\tSection MXD Name {} exists? {}'.format(section_mxd_name, os.path.exists(section_mxd_name)))
-                        
+
                     except Exception as e:
                         time.sleep(mxd_tries1)
-                        
+
                         arcpy.AddWarning('Copying Section MXD Failed: {}'.format(section_mxd_name))
                         arcpy.AddWarning('Error: {}'.format(e))
                         type_, value_, traceback_ = sys.exc_info()
                         tb = traceback.format_exception(type_, value_, traceback_, 3)
                         arcpy.AddWarning('Error: \n{}: {}\n{}\n'.format(type_, value_, tb[1]))
-                        
+
                         try:
                             arcpy.AddMessage('\t\t\t: Removing folder: {}'.format(filter_folder))
                             shutil.rmtree(filter_folder)
@@ -305,35 +305,35 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                             arcpy.AddMessage('\t\t\t: folder{} exists? {}'.format(filter_folder, os.path.exists(filter_folder)))
                         except:
                             arcpy.AddWarning('\t\t\t: folder{} exists: {}'.format(filter_folder, os.path.exists(filter_folder)))
-                        
+
                         if mxd_tries1 >= TRIES_ALLOWED:
                             raise e
-                                
+
                 # Set MXD For Processing
                 mxd = arcpy.mapping.MapDocument(section_mxd_name)
-        
+
                 # Set Layers to Reference Input FC
                 broken = arcpy.mapping.ListBrokenDataSources(mxd)
-                
+
                 for item in broken:
                     if item.name.startswith(r'Contour'):
                         item.replaceDataSource(db, "FILEGDB_WORKSPACE", fc)
-                
+
                 mxd.save()
                 a = Utility.doTime(a, "\t{}: Fixed broken paths in '{}'".format(name, section_mxd_name))
-        
+
                 # Create FGDB For Annotation Storage
                 if arcpy.Exists(scratch_db):
                     pass
                 else:
                     arcpy.CreateFileGDB_management(filter_folder, 'T{}.gdb'.format(name))
                     a = Utility.doTime(a, "\t{}: Created 'T{}.gdb' at {}".format(name, name, filter_folder))
-                
-                
+
+
                 if arcpy.Exists(target_scheme_polys):
                     arcpy.AddMessage("\t{}: Scheme Poly exists: {}".format(name, target_scheme_polys))
                 else:
-                    
+
                     # Filter for Section of Input FC
                     feat = arcpy.MakeFeatureLayer_management(
                         in_features=footprint_path,
@@ -341,7 +341,7 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                         where_clause="name='{}'".format(name)
                     )
                     a = Utility.doTime(a, "\t{}: Created feature layer '{}'".format(name, feat))
-                            
+
                     arcpy.Clip_analysis(in_features=scheme_poly, clip_features=feat, out_feature_class=target_scheme_polys, cluster_tolerance="")
                     if arcpy.Exists(target_scheme_polys_fgdb):
                         arcpy.Delete_management(target_scheme_polys_fgdb)
@@ -355,21 +355,21 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                             created = True
                         except:
                             time.sleep(1)
-        
+
                 # Reference Annotation FCs created with TiledLabelsToAnnotation
                 df = arcpy.mapping.ListDataFrames(mxd, 'Layers')[0]
                 a = Utility.doTime(a, "\t{}: Got data frame '{}'".format(name, df))
-                        
+
                 for lyr in arcpy.mapping.ListLayers(mxd):
                     try:
                         lyr.showLabels = False
                         if lyr.name.upper().startswith("CONTOURS "):
                             lyr.showLabels = True
                             if lyr.supports("DEFINITIONQUERY"):
-                                lyr.definitionQuery = "{} and name = '{}'".format(lyr.definitionQuery, name) 
+                                lyr.definitionQuery = "{} and name = '{}'".format(lyr.definitionQuery, name)
                     except:
                         pass  # some layers don't support labels. If not, just move one
-                
+
                 a = Utility.doTime(a, "\t{}: Creating annotation from tiled labels".format(name))
                 # Create Annotation with Filtered FC Extent
                 arcpy.TiledLabelsToAnnotation_cartography(
@@ -386,10 +386,10 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                     generate_unplaced_annotation="NOT_GENERATE_UNPLACED_ANNOTATION"
                 )
                 Utility.addToolMessages()
-                                
+
                 mxd.save()
                 a = Utility.doTime(a, "\t{}: Exported tiled labels to annotation '{}'".format(name, target_scheme_polys))
-        
+
                 # Create layer files for each of the Anno feature classes, and add to the map
                 annotation_set = [
                     [anno1128, annoLyr1128, "Cont_1128Anno1128", annoShp1128],
@@ -397,7 +397,7 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                     [anno4514, annoLyr4514, "Cont_4514Anno4513", annoShp4514],
                     [anno9028, annoLyr9028, "Cont_9028Anno9027", annoShp9028]
                 ]
-        
+
                 # Create .lyr Files & Add to MXD
                 df = arcpy.mapping.ListDataFrames(mxd, 'Layers')[0]
                 for anno in annotation_set:
@@ -416,14 +416,14 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                                 version='CURRENT'
                             )
                             arcpy.AddMessage("\t{}: Annotation Layer Exported: {}".format(name, lyr_path))
-                            
+
                         shp_path = anno[3]
                         if os.path.exists(shp_path):
                             arcpy.AddMessage("\t{}: Annotation shapefile Exported: {}".format(name, shp_path))
                         else:
                             arcpy.FeatureToPoint_management(in_features=anno[0], out_feature_class=shp_path, point_location="INSIDE")
                             arcpy.AddMessage("\t{}: Annotation shapefile Exported: {}".format(name, shp_path))
-                        
+
                         addLayer = True
                         for cur_lyr in arcpy.mapping.ListLayers(mxd):
                             if cur_lyr.name.upper().startswith(str(anno[2]).upper()):
@@ -434,7 +434,7 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                             arcpy.mapping.AddLayer(df, add_lyr, 'BOTTOM')
                 mxd.save()
                 a = Utility.doTime(a, "\t{}: Exported layer files for annotation set {}".format(name, annotation_set))
-                
+
                 for lyr_path in annoLyr_paths:  # arcpy.ListFiles('Contours*.lyr_path'):
                     try:
                         ref_scale = lyr_path[-8:-4]
@@ -460,11 +460,11 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                         pass
                 mxd.save()
                 a = Utility.doTime(a, "\t{}: Created masking polygons".format(name))
-                
+
                 Utility.doTime(aa, 'Finished: {}'.format(name))
                 created1 = True
                 del mxd
-                
+
             except Exception as e:
                 arcpy.AddError('Exception: {}'.format(e))
                 tb = sys.exc_info()[2]
@@ -474,8 +474,8 @@ def contour_prep(in_fc, scheme_poly, scratch, footprint_path, name):
                 if tries1 > TRIES_ALLOWED:
                     arcpy.AddError('Dropped: {}'.format(name))
                     raise e
-    
-    
+
+
 
 
 def db_list_gen(scratch, dirs, names, shp=False):
@@ -502,7 +502,7 @@ def db_list_gen(scratch, dirs, names, shp=False):
                     lists[index].append(target)
                 else:
                     lists[index].append(target_shp)
-            
+
     return lists
 
 
@@ -544,7 +544,7 @@ def handle_merge(scratch):
     # Get Directories in Scratch Folder
     dirs = [name for name in os.listdir(scratch) if os.path.isdir(os.path.join(scratch, name))]
     a = Utility.doTime(a, "Generated dir List of length {}".format(len(dirs)))
-    
+
     # Annotation Names
     a_names = [
         'Contours_1128Anno1128',
@@ -576,7 +576,7 @@ def handle_merge(scratch):
     Utility.doTime(aa, 'Exit Merging Multiprocessing Results')
     return results, results_folder
 
-    
+
 def buildAnnotations(scratch_path, in_cont_fc, base_scheme_poly, name_list, footprint_path, runAgain=True):
     a = datetime.datetime.now()
     updated_name_list = getContourPrepList(scratch_path, name_list)
@@ -588,20 +588,20 @@ def buildAnnotations(scratch_path, in_cont_fc, base_scheme_poly, name_list, foot
         pool.map(partial(contour_prep, in_cont_fc, base_scheme_poly, scratch_path, footprint_path), name_list)
         pool.close()
         pool.join()
-        
+
         # sometimes things fail for no reason, so try again
         updated_name_list = getContourPrepList(scratch_path, name_list)
         if len(updated_name_list) > 0:
             if runAgain:
                 arcpy.AddWarning("WARNING: Building annotations again.")
                 buildAnnotations(scratch_path, in_cont_fc, base_scheme_poly, name_list, footprint_path, False)
-            
-    
-    
+
+
+
     Utility.doTime(a, "Finished building annotations")
-    
-        
-        
+
+
+
 def build_results_mxd(in_fc, final_db, folder):
     a = datetime.datetime.now()
     aa = a
@@ -623,7 +623,7 @@ def build_results_mxd(in_fc, final_db, folder):
     final_mxd.tags = "Contour, Elevation, Annotation"
     final_mxd.description = "This service represents NRCS contours with a 2 foot interval, generated from Lidar datasets."
     a = Utility.doTime(a, "Updated mxd at {}".format(section_mxd_name))
-    
+
     # Set Layers to Reference Input FC
     broken = arcpy.mapping.ListBrokenDataSources(final_mxd)
     fc_db = os.path.split(in_fc)[0]
@@ -647,7 +647,7 @@ def build_results_mxd(in_fc, final_db, folder):
         [anno_9028, "Contours_9028Anno9027.lyr", "Cont_9028Anno9027"]
     ]
 
-    
+
 
     # Create .lyr Files & Add to MXD
     for anno in annotation_set:
@@ -667,7 +667,7 @@ def build_results_mxd(in_fc, final_db, folder):
         arcpy.mapping.AddLayer(df, add_lyr, 'BOTTOM')
     final_mxd.save()
     a = Utility.doTime(a, "Created and added layer files {}".format(section_mxd_name))
-    
+
 
     # Copy Blank Symbology
     base_mask_symbology = ContourConfig.SYMBOLOGY_LAYER_PATH
@@ -712,10 +712,10 @@ def build_results_mxd(in_fc, final_db, folder):
 #                     update,
 #                     lyr
 #                 )
-                
+
                 a = Utility.doTime(a, "\tEnabled masking on {}".format(lyr))
                 break
-            
+
     final_mxd.save()
     a = datetime.datetime.now()
     # Ensure Labels are Disabled
@@ -724,7 +724,7 @@ def build_results_mxd(in_fc, final_db, folder):
             lyr.showLabels = False
     final_mxd.save()
     a = Utility.doTime(a, "Updated label props on {}".format(section_mxd_name))
-    
+
     Utility.doTime(aa, "Finished Annotation Results for {}".format(section_mxd_name))
 
     # JWS - 3/29
@@ -737,21 +737,21 @@ def processJob(project_job, project, strUID):
 #     scratch_path = r'C:\Users\jeff8977\Desktop\NGCE\CONTOUR\Scratch'
 
     project_folder = ProjectFolders.getProjectFolderFromDBRow(project_job, project)
-    
+
     derived = project_folder.derived
     project_fgdb_path = derived.fgdb_path
     con_folder = derived.contour_path
     contour_file_gdb_path = os.path.join(con_folder, CONTOUR_GDB_NAME)
     footprint_path = A05_C_ConsolidateRasterInfo.getRasterFootprintPath(fgdb_path=project_fgdb_path, elev_type=DTM)
-    
+
     # Set up the scratch directory
     scratch_path = os.path.join(con_folder, 'C02Scratch')
     if not os.path.exists(scratch_path):
         os.makedirs(scratch_path)
-    
+
     in_cont_fc = os.path.join(contour_file_gdb_path, CONTOUR_NAME_WM)
     a = Utility.doTime(a, "Set up for run")
-    
+
     # Create Base Tiling Scheme for Individual Raster Selection
     base_scheme_poly = gen_base_tiling_scheme(in_cont_fc, scratch_path)
     a = Utility.doTime(a, "Generated tiling scheme")
@@ -769,14 +769,14 @@ def processJob(project_job, project, strUID):
     a = Utility.doTime(a, "Built annotations")
     updated_name_list = getContourPrepList(scratch_path, name_list)
     a = Utility.doTime(a, "Got Contour Prep List")
-    
+
     if len(updated_name_list) > 0:
         arcpy.AddWarning("Failed to build artifacts for {} tiles".format(len(updated_name_list)))
         for fail in updated_name_list:
             arcpy.AddWarning("\t{}: Failed".format(fail))
         a = Utility.doTime(a, "Finished getting failed artifacts")
         # raise Exception("Failed to build artifacts for {} tiles".format(len(updated_name_list)))
-    
+
     # Merge Multiprocessing Results
     res_db, res_dir = handle_merge(scratch_path)
     a = Utility.doTime(a, "Merged results")
@@ -784,22 +784,22 @@ def processJob(project_job, project, strUID):
     # Create Final MXD
     build_results_mxd(in_cont_fc, res_db, res_dir)
     RunUtil.runTool(r'ngce\pmdm\C\C02_B_PrepContForPub.py', [in_cont_fc, res_db, res_dir], bit32=True, log_path=project_folder.derived.path)
-    
+
     #     build_results_mxd(in_cont_fc, res_db, res_dir)
     a = Utility.doTime(aa, "Processed Job")
-    
+
 def PrepareContoursForJob(strJobId):
     Utility.printArguments(["WMXJobID"],
                            [strJobId], "C02 PrepareContoursForPublishing")
     aa = datetime.datetime.now()
 
     project_job, project, strUID = getProjectFromWMXJobID(strJobId)  # @UnusedVariable
-    
+
     processJob(project_job, project, strUID)
-    
+
     doTime(aa, "Operation Complete: C02 Create Contour Annotoations")
 
-    
+
 
 def setupForDebug():
     UID = None  # field_ProjectJob_UID
@@ -827,20 +827,20 @@ def setupForDebug():
                project_dir,  # field_ProjectJob_ProjDir
                project_AOI  # field_ProjectJob_SHAPE
                ]
-          
+
     return project_job, project, UID
 
 if __name__ == '__main__':
     exception = None
 
     arcpy.CheckOutExtension("Foundation")
-    
+
     if len(sys.argv) > 1:
         jobID = sys.argv[1]
         PrepareContoursForJob(jobID)
     else:
         project_job, project, strUID = setupForDebug()
         processJob(project_job, project, strUID)
-    
+
     arcpy.CheckInExtension("Foundation")
-        
+
