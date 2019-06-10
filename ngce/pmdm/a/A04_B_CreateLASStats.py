@@ -976,7 +976,7 @@ def createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spati
     # Delete the rows we have values for from the empty list
     for row in arcpy.da.SearchCursor(point_file_path, info_fields):  # @UndefinedVariable
         clazz = None if row[2] is None else int(row[2])
-        if clazz is not None and clazz >= 0  and clazz <> 7 and  clazz <> 18:
+        if clazz is not None and clazz >= 0  and clazz <> 7 and  clazz < 18:
             del blank_rows[clazz]
 
     doTime(aa, "\t\tUpdated blank rows {}".format(point_file_path))
