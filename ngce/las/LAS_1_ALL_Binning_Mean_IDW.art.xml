@@ -1,4 +1,4 @@
-<RasterType xsi:type='typens:RasterType' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xs='http://www.w3.org/2001/XMLSchema' xmlns:typens='http://www.esri.com/schemas/ArcGIS/10.3'>
+<RasterType xsi:type='typens:RasterType' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xmlns:xs='http://www.w3.org/2001/XMLSchema' xmlns:typens='http://www.esri.com/schemas/ArcGIS/10.6'>
 	<Names xsi:type='typens:ArrayOfString'>
 		<String>RasterBuilder</String>
 		<String>Name</String>
@@ -19,17 +19,17 @@
 		<String>FullName</String>
 		<String>AddRastersParameters</String>
 		<String>SynchronizeParameters</String>
+		<String>Parameters</String>
 	</Names>
 	<Values xsi:type='typens:ArrayOfAnyType'>
-		<AnyType xsi:type='typens:LasBuilder'>
+		<AnyType xsi:type='typens:LasDatasetBuilder'>
 			<Names xsi:type='typens:ArrayOfString'>
 				<String>AuxiliaryFields</String>
 				<String>AuxiliaryFieldAlias</String>
 				<String>ParentRasterTypeName</String>
 				<String>Properties</String>
 				<String>MergeItems</String>
-				<String>LasToRasterArguments</String>
-				<String>FolderAsDataset</String>
+				<String>LasDatasetToRasterArguments</String>
 				<String>ZFactor</String>
 			</Names>
 			<Values xsi:type='typens:ArrayOfAnyType'>
@@ -106,7 +106,7 @@
 						</PropertySetProperty>
 					</PropertyArray>
 				</AnyType>
-				<AnyType xsi:type='xs:string'>LAS</AnyType>
+				<AnyType xsi:type='xs:string'>LAS Dataset</AnyType>
 				<AnyType xsi:type='typens:PropertySet'>
 					<PropertyArray xsi:type='typens:ArrayOfPropertySetProperty'>
 						<PropertySetProperty xsi:type='typens:PropertySetProperty'>
@@ -124,7 +124,7 @@
 					</PropertyArray>
 				</AnyType>
 				<AnyType xsi:type='xs:boolean'>false</AnyType>
-				<AnyType xsi:type='typens:LasToRasterFunctionArguments'>
+				<AnyType xsi:type='typens:LasDatasetToRasterFunctionArguments'>
 					<Names xsi:type='typens:ArrayOfString'>
 						<String>CacheLocation</String>
 						<String>CacheMaxNumSurfaces</String>
@@ -133,9 +133,11 @@
 						<String>ReturnTypesSelected</String>
 						<String>DataType</String>
 						<String>UseTinning</String>
-						<String>MaxHoleWidthFilled</String>
 						<String>VoidFillMethod</String>
 						<String>CellWidth</String>
+						<String>MaxHoleWidthFilled</String>
+						<String>UseConstraints</String>
+						<String>TinToRasterInterpolationType</String>
 					</Names>
 					<Values xsi:type='typens:ArrayOfAnyType'>
 						<AnyType xsi:type='typens:WorkspaceName'>
@@ -146,19 +148,36 @@
 						<AnyType xsi:type='xs:int'>0</AnyType>
 						<AnyType xsi:type='xs:int'>3</AnyType>
 						<AnyType xsi:type='typens:ArrayOfInt'>
-							<Int>-1</Int>
+							<Int>0</Int>
+							<Int>1</Int>
+							<Int>2</Int>
+							<Int>3</Int>
+							<Int>4</Int>
+							<Int>5</Int>
+							<Int>6</Int>
+							<Int>8</Int>
+							<Int>9</Int>
+							<Int>10</Int>
+							<Int>11</Int>
+							<Int>12</Int>
+							<Int>13</Int>
+							<Int>14</Int>
+							<Int>15</Int>
+							<Int>16</Int>
+							<Int>17</Int>
 						</AnyType>
 						<AnyType xsi:type='typens:ArrayOfInt'>
 							<Int>-1</Int>
 						</AnyType>
 						<AnyType xsi:type='xs:int'>0</AnyType>
 						<AnyType xsi:type='xs:boolean'>false</AnyType>
-						<AnyType xsi:type='xs:double'>50</AnyType>
 						<AnyType xsi:type='xs:int'>2</AnyType>
 						<AnyType xsi:type='xs:double'>1</AnyType>
+						<AnyType xsi:type='xs:double'>50</AnyType>
+						<AnyType xsi:type='xs:boolean'>false</AnyType>
+						<AnyType xsi:type='xs:int'>0</AnyType>
 					</Values>
 				</AnyType>
-				<AnyType xsi:type='xs:boolean'>false</AnyType>
 				<AnyType xsi:type='xs:double'>1</AnyType>
 			</Values>
 		</AnyType>
@@ -166,7 +185,7 @@
 		<AnyType xsi:type='typens:ArrayOfString'/>
 		<AnyType xsi:type='xs:int'>1</AnyType>
 		<AnyType xsi:type='xs:string'>Supports LIDAR (Light Detection and Ranging) data.</AnyType>
-		<AnyType xsi:type='xs:int'>3</AnyType>
+		<AnyType xsi:type='xs:int'>1024</AnyType>
 		<AnyType xsi:type='xs:string'/>
 		<AnyType xsi:type='xs:boolean'>false</AnyType>
 		<AnyType xsi:type='xs:boolean'>false</AnyType>
@@ -180,11 +199,14 @@
 		</AnyType>
 		<AnyType xsi:type='typens:ArrayOfArgument'/>
 		<AnyType xsi:type='typens:RasterTypeName'>
-			<Name>LAS</Name>
+			<Name>LAS Dataset</Name>
 			<InstanceID>-1</InstanceID>
 			<MosaicDatasetName xsi:nil='true'/>
 		</AnyType>
 		<AnyType xsi:nil='true'/>
 		<AnyType xsi:nil='true'/>
+		<AnyType xsi:type='typens:PropertySet'>
+			<PropertyArray xsi:type='typens:ArrayOfPropertySetProperty'></PropertyArray>
+		</AnyType>
 	</Values>
 </RasterType>

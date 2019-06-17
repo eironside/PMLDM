@@ -15,10 +15,10 @@ import tempfile
 import time
 
 
-# PATH_PYTHON27_32 = r"C:\Program Files (x86)\PYTHON27\ArcGIS10.5"
+# PATH_PYTHON27_32 = r"C:\Program Files (x86)\PYTHON27\ArcGIS10.6"
 PATH_PYTHON27_32 = r"C:\Python27\ArcGIS10.5"
 
-# PATH_PYTHON27_64 = r"C:\Program Files (x86)\PYTHON27\ArcGISx6410.5"
+# PATH_PYTHON27_64 = r"C:\Program Files (x86)\PYTHON27\ArcGISx6410.6"
 PATH_PYTHON27_64 = r"C:\Python27\ArcGISx6410.5"
 # PATH_PYTHON27_64= r'C:\Program Files\ArcGIS\Pro\bin\Python\envs\arcgispro-py3'
 
@@ -36,6 +36,7 @@ if arcpy.GetInstallInfo()['Version'] == '10.6.1':
 	WMX_TOOLS = r"C:\Tools"
 	TOOLS_PATH = r"C:\Tools\ngce\pmdm\a"
 	PROD_TOOLS = r"C:\Program Files (x86)\ArcGIS\EsriProductionMapping\Desktop10.6\arcpyproduction"
+
 
 def getLogFile(log_path, script_name):
     log_parts = os.path.split(log_path)
