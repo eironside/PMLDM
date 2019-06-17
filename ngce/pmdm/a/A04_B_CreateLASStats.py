@@ -976,7 +976,6 @@ def createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spati
     # Delete the rows we have values for from the empty list
     for row in arcpy.da.SearchCursor(point_file_path, info_fields):  # @UndefinedVariable
         clazz = None if row[2] is None else int(row[2])
-##        if clazz is not None and clazz >= 0  and clazz <> 7 and  clazz <> 18: changed per cchavis 5 June 2019 BJN
         if clazz is not None and clazz >= 0  and clazz <> 7 and  clazz < 18:
             del blank_rows[clazz]
 
@@ -1204,7 +1203,7 @@ def exportIntensity(target_path, isClassified, f_name, lasd_path, createMissingR
                     out_raster=out_raster_path,
                     value_field=value_field,
                     interpolation_type="BINNING AVERAGE LINEAR",
-                    data_type="INT",
+                    data_type="FLOAT",
                     sampling_type="CELLSIZE",
                     sampling_value=cell_size,
                     z_factor="1"
@@ -1649,7 +1648,6 @@ if __name__ == '__main__':
         arcpy.CheckInExtension("Spatial")
 
     doTime(aaa, "  Completed A04_B_CreateLASStats")
-
 
 
 
