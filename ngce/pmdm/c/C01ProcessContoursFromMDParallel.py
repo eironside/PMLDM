@@ -67,6 +67,8 @@ def generate_con_workspace(con_folder):
     return (contour_file_gdb_path, scratch_path)
 
 def createRefDTMMosaic(in_md_path, out_md_path, v_unit):
+    from datetime import datetime
+    
     a = datetime.now()
     if arcpy.Exists(out_md_path):
         arcpy.AddMessage("Referenced mosaic dataset exists " + out_md_path)
@@ -99,6 +101,8 @@ def createRefDTMMosaic(in_md_path, out_md_path, v_unit):
 
 
 def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_clip_contours):
+    from datetime import datetime
+    
     a = datetime.now()
     arcpy.AddMessage('Create Multiprocessing Iterable')
 
@@ -170,7 +174,8 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
 
 
 def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_path, proc_dict):
-
+    from datetime import datetime
+    
     name = proc_dict[0]
     index = str(proc_dict[1][2])
 
@@ -211,121 +216,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             md_desc = arcpy.Describe(md)
             if not md_desc.referenced:
                 arcpy.AddError("\t{}: ERROR Referenced Mosaic not found '{}'".format(name, focal2_path))
-    ##            md_layer = arcpy.MakeMosaicLayer_management(in_mosaic_dataset=md, out_mosaic_layer="DTM_MosaicLayer", where_clause="TypeID = 1", template=buff_poly.extent)
-    ##            a = doTime(a, "\t" + name + ": Created mosaic layer for primary images")
-    ##
-    ##            divide1_name = 'O01_Divide1_' + name + '.tif'
-    ##            divide1_path = os.path.join(workspace, divide1_name)
-    ##            if not os.path.exists(divide1_path):
-    ##                arcpy.MakeRasterLayer_management(in_raster=md_layer, out_rasterlayer=divide1_name)
-    ##                # @TODO: Clean up the unit conversion here. output will ALWAYS be US Survey Feet
-    ###                 contUnits = contUnits.upper()
-    ##                contUnits = "FOOT_US"
-    ##                rasterUnits = rasterUnits.upper()
-    ##                outDivide1 = Functions.Divide(divide1_name, 1.0)
-    ###                 if contUnits.find("METERS") >= 0 or contUnits.find("MT") >= 0:
-    ###                     contUnits = "METER"
-    ###                 elif contUnits.find("FOOT") >= 0 or contUnits.find("FEET") >= 0 or contUnits.find("FT") >= 0:
-    ###                     contUnits = "FOOT_INTL"
-    ###                     if contUnits.find("US") >= 0 or contUnits.find("SURVEY") >= 0:
-    ###                         contUnits = "FOOT_US"
-    ###
-    ####                if rasterUnits.find("METERS") >= 0 or rasterUnits.find("MT") >= 0:
-    ####                    rasterUnits = "METER"
-    ####                elif rasterUnits.find("FOOT") >= 0 or rasterUnits.find("FEET") >= 0 or rasterUnits.find("FT") >= 0:
-    ####                    rasterUnits = "FOOT_INTL"
-    ####                    if rasterUnits.find("US") >= 0 or rasterUnits.find("SURVEY") >= 0:
-    ####                        rasterUnits = "FOOT_US"
-    ##
-    ###                 if contUnits == "METER":
-    ###                     if rasterUnits == "METER":
-    ###                         outDivide1 = Functions.Divide(divide1_name, 1.0)
-    ###                     elif rasterUnits == "FOOT_US":
-    ###                         outDivide1 = Functions.Times(divide1_name, 1200.0 / 3937.0)
-    ###                     elif rasterUnits == "FOOT_INTL":
-    ###                         outDivide1 = Functions.Times(divide1_name, 0.3048)
-    ###                 elif contUnits == "FOOT_US":
-    ####                if rasterUnits == "METER":
-    ####                    outDivide1 = Functions.Times(divide1_name, 1.0 / (1200.0 / 3937.0))
-    ####                elif rasterUnits == "FOOT_US":
-    ####                    outDivide1 = Functions.Divide(divide1_name, 1.0)
-    ####                elif rasterUnits == "FOOT_INTL":
-    ####                    outDivide1 = Functions.Times(divide1_name, 0.3048 / (1200.0 / 3937.0))
-    ###                 elif contUnits == "FOOT_INTL":
-    ###                     if rasterUnits == "METER":
-    ###                         outDivide1 = Functions.Times(divide1_name, 1.0 / (0.3048))
-    ###                     elif rasterUnits == "FOOT_US":
-    ###                         outDivide1 = Functions.Times(divide1_name, (1200.0 / 3937.0) / 0.3048)
-    ###                     elif rasterUnits == "FOOT_INTL":
-    ###                         outDivide1 = Functions.Divide(divide1_name, 1.0)
-    ####                else:
-    ####                    arcpy.AddMessage("\ncontourUnits: {}, rasterUnits: {}".format(contUnits, rasterUnits))
-    ####                    arcpy.AddError('\nUnable to create contours.')
-    ####                    raise Exception("Units not valid")
-    ##
-    ##                outDivide1.save(divide1_path)
-    ##                del outDivide1
-    ##                a = doTime(a, '\t' + name + ' ' + index + ': Converted raster units ' + rasterUnits + ' to ' + contUnits + ' = ' + divide1_path)
-    ##
-    ##            focal1_name = 'O02_Focal1_' + name + '.tif'
-    ##            focal1_path = os.path.join(workspace, focal1_name)
-    ##            if not os.path.exists(focal1_path):
-    ##                arcpy.MakeRasterLayer_management(in_raster=divide1_path, out_rasterlayer=focal1_name)
-    ##                outFS = Functions.FocalStatistics(in_raster=focal1_name, neighborhood="Rectangle 3 3 CELL", statistics_type="MEAN", ignore_nodata="DATA")
-    ##                outFS.save(focal1_path)
-    ##                del outFS
-    ##                a = doTime(a, '\t' + name + ' ' + index + ': Focal statistics on ' + focal1_path)
-    ##
-    ##            times1_name = 'O03_Times_' + name + '.tif'
-    ##            times1_path = os.path.join(workspace, times1_name)
-    ##            if not os.path.exists(times1_path):
-    ##                arcpy.MakeRasterLayer_management(in_raster=focal1_path, out_rasterlayer=times1_name)
-    ##                outTimes = Functions.Times(times1_name, 100)
-    ##                outTimes.save(times1_path)
-    ##                del outTimes
-    ##                a = doTime(a, '\t' + name + ' ' + index + ': Times 100 on ' + times1_path)
-    ##
-    ##            plus1_name = 'O04_Plus_' + name + '.tif'
-    ##            plus1_path = os.path.join(workspace, plus1_name)
-    ##            if not os.path.exists(plus1_path):
-    ##                arcpy.MakeRasterLayer_management(in_raster=times1_path, out_rasterlayer=plus1_name)
-    ##                outPlus = Functions.Plus(plus1_name, 0.5)
-    ##                outPlus.save(plus1_path)
-    ##                del outPlus
-    ##                a = doTime(a, '\t' + name + ' ' + index + ': Plus 0.5 ' + plus1_path)
-    ##
-    ##            round1_name = 'O05_Round_' + name + '.tif'
-    ##            round1_path = os.path.join(workspace, round1_name)
-    ##            if not os.path.exists(round1_path):
-    ##                arcpy.MakeRasterLayer_management(in_raster=plus1_path, out_rasterlayer=round1_name)
-    ##                outRoundDown = Functions.RoundDown(round1_name)
-    ##                outRoundDown.save(round1_path)
-    ##                del outRoundDown
-    ##                a = doTime(a, '\t' + name + ' ' + index + ': Round Down ' + round1_path)
-    ##
-    ##            divide2_name = 'O06_Divide2_' + name + '.tif'
-    ##            divide2_path = os.path.join(workspace, divide2_name)
-    ##            if not os.path.exists(divide2_path):
-    ##                arcpy.MakeRasterLayer_management(in_raster=round1_path, out_rasterlayer=divide2_name)
-    ##                outDivide2 = Functions.Divide(divide2_name, 100)
-    ##                outDivide2.save(divide2_path)
-    ##                del outDivide2
-    ##                a = doTime(a, '\t' + name + ' ' + index + ': Divide 100 ' + divide2_path)
-    ##
-    ##            focal2_name = 'O07_Focal2_' + name + '.tif'
-    ##            focal2_path = os.path.join(workspace, focal2_name)
-    ##            if not os.path.exists(focal2_path):
-    ##                arcpy.MakeRasterLayer_management(in_raster=divide2_path, out_rasterlayer=focal2_name)
-    ##                outFS2 = Functions.FocalStatistics(focal2_name, "Rectangle 3 3 CELL", "MEAN", "DATA")
-    ##                outFS2.save(focal2_path)
-    ##                del outFS2
-    ##                a = doTime(a, '\t' + name + ' ' + index + ': Focal Statistics #2 ' + focal2_path)
-
-        #         a = doTime(a, '\t{}: Calculating statistics {}'.format(raster_name, contour_ready_path))
-        #         arcpy.CalculateStatistics_management(in_raster_dataset=contour_ready_path, x_skip_factor="1", y_skip_factor="1", ignore_values="", skip_existing="OVERWRITE", area_of_interest="Feature Set")
-
-
-
+                
             arcpy.AddMessage("\t{}: Referenced Mosaic found '{}'".format(name, focal2_path))
             base_name = 'O08_BaseCont_' + name + '.shp'
             base_contours = os.path.join(workspace, base_name)
@@ -433,7 +324,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
 
 
 def handle_results(scratch_dir, contour_dir):
-
+    from datetime import datetime
     output_folders = os.listdir(scratch_dir)
 
     merge_list = []
@@ -606,6 +497,57 @@ def processJob(ProjectJob, project, ProjectUID):
     finally:
         run = time.time() - start
         arcpy.AddMessage('Script Ran: ' + str(run))
+        
+def processExternalJob(md, ft_prints, contour_folder, cont_int = 2, raster_vertical_unit = 'MT'):
+    '''
+    # contour_folder = Folder to generate the contour features in. A FGDB and Scratch folder are created here to generate the artifacts
+    # md = Path to the mosaic dataset that contains ground elevation in original coordinate system.
+    # ft_prints = Path to a shapefile that represents the image footprint in the mosaic dataset.
+    # cont_int = Contour interval (default is 2 valid values are 1 and 2)
+    # raster_vertical_unit = Vertical units of the original coordinate system (default is MT Valid values are MT, FT, and FT_US)
+    # TODO lookup valid raster vertical units
+    '''
+    start = time.time()
+    a = start
+    # From ContourConfig
+    cont_unit = CONTOUR_UNIT
+    smooth_unit = CONTOUR_SMOOTH_UNIT
+    distance_to_clip_md = DISTANCE_TO_CLIP_MOSAIC_DATASET
+    distance_to_clip_contours = DISTANCE_TO_CLIP_CONTOURS
+
+    arcpy.AddMessage("Got input raster vertical unit: {}".format(raster_vertical_unit))
+
+    try:
+        a = datetime.now()
+        # Generate Script Workspaces
+        contour_gdb, scratch_path = generate_con_workspace(contour_folder)
+        a = doTime(a, "Created Contour Workspace\n\t{}\n\t{}".format(contour_gdb, scratch_path))
+
+        ref_md = os.path.join(contour_gdb, "ContourPrep")
+        # Create referenced DTM mosaic with the pixel pre-setup for contour output
+        createRefDTMMosaic(md, ref_md, raster_vertical_unit)
+
+        # Collect Processing Extents
+        run_dict = create_iterable(scratch_path, ft_prints, distance_to_clip_md, distance_to_clip_contours)
+
+
+    except Exception as e:
+        arcpy.AddWarning('Exception Raised During Script Initialization')
+        arcpy.AddWarning('Exception: ' + str(e))
+
+    try:
+        createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smooth_unit, scratch_path, run_dict)
+
+        # Merge Contours
+        handle_results(scratch_path, contour_gdb)
+
+    except Exception as e:
+        arcpy.AddMessage('Exception Raised During Multiprocessing')
+        arcpy.AddError('Exception: ' + str(e))
+
+    finally:
+        run = time.time() - start
+        arcpy.AddMessage('Script Ran: ' + str(run))
 
 def CreateContoursFromMD(strJobId):
     Utility.printArguments(["WMXJobID"],
@@ -625,10 +567,17 @@ if __name__ == '__main__':
     arcpy.CheckOutExtension("3D")
     arcpy.CheckOutExtension("Spatial")
 
-    if len(sys.argv) > 1:
+    if len(sys.argv) == 2:
         projId = sys.argv[1]
 
         CreateContoursFromMD(projId)
+    elif len(sys.argv) > 2:
+        md = sys.argv[1]
+        ft_prints = sys.argv[2]
+        contour_folder = sys.argv[3]
+        cont_int = sys.argv[4]
+        raster_vertical_unit = sys.argv[5]
+        processExternalJob(md, ft_prints, contour_folder, cont_int, raster_vertical_unit)
     else:
         # DEBUG
         UID = None  # field_ProjectJob_UID
