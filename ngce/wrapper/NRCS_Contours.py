@@ -92,17 +92,20 @@ def main():
             raise arcpy.ExecuteError
 
         # Set default in case outLabels is not set
+        outLabels_bool = True
         if outLabels == None:
-            outLabels = True
+            outLabels_bool = True
+        elif isinstance(outLabels, bool):
+            outLabels_bool = outLabels
         elif isinstance(outLabels, str):
             if outLabels.lower() == 'true' or outLabels == '#':
-                outLabels = True
+                outLabels_bool = True
             elif outLabels.lower() == 'false':
-                outLabels = False
+                outLabels_bool = False
             else:
-                arcpy.AddError('Create label option set to {}, should be true or false'.format(type(outLabels)))
+                arcpy.AddError('Create label option set to incorrect value {}, should be \'true\' or \'false\''.format(outLabels))
                 raise arcpy.ExecuteError
-        elif not isinstance(outLabels, bool):
+        else:
             arcpy.AddError('Create label option set incorrectly, of type {}'.format(type(outLabels)))
             raise arcpy.ExecuteError
 
