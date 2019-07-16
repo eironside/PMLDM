@@ -24,6 +24,7 @@ from ngce.raster import Raster
 
 CPU_HANDICAP = 1
 TRIES_ALLOWED = 10
+USE_FEATURE_CLASS = False
 
 def generateHighLow(workspace, name, clip_contours, ref_md):
     cont_poly1 = os.path.join(workspace, 'O12_poly_' + name + '.shp')
@@ -106,10 +107,25 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
     a = datetime.now()
     arcpy.AddMessage('Create Multiprocessing Iterable')
 
-    ext_dict = {}
     # Go up one directory so we don't have to delete if things go wrong down in scratch
     tmp_scratch_folder = os.path.split(scratch_folder)[0]
-    tmp_buff_name = os.path.join(tmp_scratch_folder, "footprints_clip_md.shp")
+    ftprints_path = tmp_scratch_folder
+    ftprints_clip_md = "footprints_clip_md.shp"
+    ftprints_clip_cont = "footprints_clip_cont.shp"
+    if USE_FEATURE_CLASS:
+        ftprints_path = os.path.join(tmp_scratch_folder, "Scratch")
+        ftprints_clip_md = "footprints_clip_md"
+        ftprints_clip_cont = "footprints_clip_cont"
+        if not os.path.exists(ftprints_path):
+            arcpy.AddMessage("\nCreating Scratch GDB:   {0}".format(ftprints_path))
+            arcpy.CreateFileGDB_management(
+                tmp_scratch_folder,
+                "Scratch",
+                out_version="CURRENT"
+            )
+
+    ext_dict = {}
+    tmp_buff_name = os.path.join(ftprints_path, ftprints_clip_md)
     if not os.path.exists(tmp_buff_name):
         arcpy.Buffer_analysis(
             prints,
@@ -137,7 +153,7 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
                 row_info.append(box)
                 ext_dict[rowname] = row_info
 
-    tmp_buff_name2 = os.path.join(tmp_scratch_folder, "footprints_clip_cont.shp")
+    tmp_buff_name2 = os.path.join(ftprints_path, ftprints_clip_cont)
     if not os.path.exists(tmp_buff_name2):
         arcpy.Buffer_analysis(
             prints,
@@ -205,9 +221,20 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
 
             workspace = os.path.join(scratch_path, name)
 
+            shpExtension = ".shp"
             if not os.path.exists(workspace):
                 # Don't delete if it exists, keep our previous work to save time
-                os.mkdir(workspace)
+                if USE_FEATURE_CLASS:
+                    shpExtension = ""
+                    if not os.path.exists(workspace):
+                        arcpy.AddMessage("\nCreating Workspace GDB:   {0}".format(workspace))
+                        arcpy.CreateFileGDB_management(
+                            scratch_path,
+                            name,
+                            out_version="CURRENT"
+                        )
+                else:
+                    os.mkdir(workspace)
 
             arcpy.env.workspace = workspace
             a = doTime(a, '\t' + name + ' ' + index + ': Created scratch workspace' + workspace)
@@ -218,7 +245,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 arcpy.AddError("\t{}: ERROR Referenced Mosaic not found '{}'".format(name, focal2_path))
                 
             arcpy.AddMessage("\t{}: Referenced Mosaic found '{}'".format(name, focal2_path))
-            base_name = 'O08_BaseCont_' + name + '.shp'
+            base_name = 'O08_BaseCont_' + name + shpExtension
             base_contours = os.path.join(workspace, base_name)
             if not os.path.exists(base_contours):
                 arcpy.MakeRasterLayer_management(in_raster=focal2_path, out_rasterlayer=base_name)
@@ -229,7 +256,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Contoured to ' + base_contours)
 
-            simple_contours = os.path.join(workspace, 'O09_SimpleCont_' + name + '.shp')
+            simple_contours = os.path.join(workspace, 'O09_SimpleCont_' + name + shpExtension)
             if not os.path.exists(simple_contours):
                 ca.SimplifyLine(
                     base_contours,
@@ -242,7 +269,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Simplified to ' + simple_contours)
 
-            smooth_contours = os.path.join(workspace, 'O10_SmoothCont_' + name + '.shp')
+            smooth_contours = os.path.join(workspace, 'O10_SmoothCont_' + name + shpExtension)
             if not os.path.exists(smooth_contours):
                 ca.SmoothLine(
                     simple_contours,
@@ -256,7 +283,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
 
             # put this up one level to avoid re-processing all of above if something goes wrong below
             clip_workspace = os.path.split(workspace)[0]
-            clip_contours = os.path.join(clip_workspace, 'O11_ClipCont_' + name + '.shp')
+            clip_contours = os.path.join(clip_workspace, 'O11_ClipCont_' + name + shpExtension)
             if not os.path.exists(clip_contours):
                 arcpy.Clip_analysis(
                     in_features=smooth_contours,
@@ -328,9 +355,13 @@ def handle_results(scratch_dir, contour_dir):
     output_folders = os.listdir(scratch_dir)
 
     merge_list = []
+    
+    shpExtension = ".shp"
+    if USE_FEATURE_CLASS:
+        shpExtension = ""
 
     for folder in output_folders:
-        cont = os.path.join(scratch_dir, 'O11_ClipCont_' + folder + '.shp')
+        cont = os.path.join(scratch_dir, 'O11_ClipCont_' + folder + shpExtension)
         if arcpy.Exists(cont):
             merge_list.append(cont)
 
@@ -367,7 +398,10 @@ def handle_results(scratch_dir, contour_dir):
 def isProcessFile(f_name, scratch_dir):
     process_file = False
     if f_name is not None:
-        cont = os.path.join(scratch_dir, 'O11_ClipCont_' + f_name + '.shp')
+        shpExtension = ".shp"
+        if USE_FEATURE_CLASS:
+            shpExtension = ""
+        cont = os.path.join(scratch_dir, 'O11_ClipCont_' + f_name + shpExtension)
         if not os.path.exists(cont):
             arcpy.AddMessage("PROCESS (Missing): " + cont)
             process_file = True
@@ -566,6 +600,8 @@ if __name__ == '__main__':
     arcpy.AddMessage("Checking out licenses")
     arcpy.CheckOutExtension("3D")
     arcpy.CheckOutExtension("Spatial")
+
+    USE_FEATURE_CLASS = True
 
     if len(sys.argv) == 2:
         projId = sys.argv[1]
