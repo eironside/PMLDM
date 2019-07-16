@@ -24,7 +24,7 @@ from ngce.raster import Raster
 
 CPU_HANDICAP = 1
 TRIES_ALLOWED = 10
-USE_FEATURE_CLASS = False
+USE_FEATURE_CLASS = True
 
 def generateHighLow(workspace, name, clip_contours, ref_md):
     cont_poly1 = os.path.join(workspace, 'O12_poly_' + name + '.shp')
@@ -600,8 +600,6 @@ if __name__ == '__main__':
     arcpy.AddMessage("Checking out licenses")
     arcpy.CheckOutExtension("3D")
     arcpy.CheckOutExtension("Spatial")
-
-    USE_FEATURE_CLASS = True
 
     if len(sys.argv) == 2:
         projId = sys.argv[1]
