@@ -113,14 +113,14 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
     ftprints_clip_md = "footprints_clip_md.shp"
     ftprints_clip_cont = "footprints_clip_cont.shp"
     if USE_FEATURE_CLASS:
-        ftprints_path = os.path.join(tmp_scratch_folder, "Scratch")
+        ftprints_path = os.path.join(tmp_scratch_folder, "Scratch.gdb")
         ftprints_clip_md = "footprints_clip_md"
         ftprints_clip_cont = "footprints_clip_cont"
         if not os.path.exists(ftprints_path):
             arcpy.AddMessage("\nCreating Scratch GDB:   {0}".format(ftprints_path))
             arcpy.CreateFileGDB_management(
                 tmp_scratch_folder,
-                "Scratch",
+                "Scratch.gdb",
                 out_version="CURRENT"
             )
 
@@ -219,7 +219,11 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
 
             arcpy.env.extent = buff_poly.extent
 
-            workspace = os.path.join(scratch_path, name)
+            if USE_FEATURE_CLASS:
+                gdbName = "{}.gdb".format(name)
+                workspace = os.path.join(scratch_path, gdbName)
+            else:
+                workspace = os.path.join(scratch_path, name)
 
             shpExtension = ".shp"
             if not os.path.exists(workspace):
@@ -230,7 +234,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                         arcpy.AddMessage("\nCreating Workspace GDB:   {0}".format(workspace))
                         arcpy.CreateFileGDB_management(
                             scratch_path,
-                            name,
+                            gdbName,
                             out_version="CURRENT"
                         )
                 else:
