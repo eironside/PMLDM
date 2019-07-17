@@ -261,7 +261,9 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Contoured to ' + base_contours)
             del base_name
-            gc.collect()
+            unreachable_garbage = gc.collect()
+            for item in unreachable_garbage:
+                arcpy.AddMessage("Unreachable garbage: {}".format(item))
 
             simple_contours = os.path.join(workspace, 'O09_SimpleCont_' + name + fileExtension)
             if not os.path.exists(simple_contours):
@@ -276,7 +278,9 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Simplified to ' + simple_contours)
             del base_contours
-            gc.collect()
+            unreachable_garbage = gc.collect()
+            for item in unreachable_garbage:
+                arcpy.AddMessage("Unreachable garbage: {}".format(item))
 
             smooth_contours = os.path.join(workspace, 'O10_SmoothCont_' + name + fileExtension)
             if not os.path.exists(smooth_contours):
@@ -290,7 +294,9 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Smoothed to ' + smooth_contours)
             del simple_contours
-            gc.collect()
+            unreachable_garbage = gc.collect()
+            for item in unreachable_garbage:
+                arcpy.AddMessage("Unreachable garbage: {}".format(item))
 
             # put this up one level to avoid re-processing all of above if something goes wrong below
             clip_workspace = os.path.split(workspace)[0]
@@ -303,7 +309,9 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Clipped to ' + clip_contours)
             del smooth_contours
-            gc.collect()
+            unreachable_garbage = gc.collect()
+            for item in unreachable_garbage:
+                arcpy.AddMessage("Unreachable garbage: {}".format(item))
             arcpy.RepairGeometry_management(in_features=clip_contours,
                                             delete_null="DELETE_NULL")
 
