@@ -6,7 +6,7 @@ from multiprocessing import Pool, cpu_count
 import os
 import sys
 import time
-
+import gc
 import arcpy.cartography as ca
 from ngce import Utility
 from ngce.cmdr.CMDR import ProjectJob
@@ -191,6 +191,7 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
 
 def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_path, proc_dict):
     from datetime import datetime
+    gc.set_debug(gc.DEBUG_LEAK)
     
     name = proc_dict[0]
     index = str(proc_dict[1][2])
@@ -225,11 +226,11 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             else:
                 workspace = os.path.join(scratch_path, name)
 
-            shpExtension = ".shp"
+            fileExtension = ".shp"
             if not os.path.exists(workspace):
                 # Don't delete if it exists, keep our previous work to save time
                 if USE_FEATURE_CLASS:
-                    shpExtension = ""
+                    fileExtension = ""
                     if not os.path.exists(workspace):
                         arcpy.AddMessage("\nCreating Workspace GDB:   {0}".format(workspace))
                         arcpy.CreateFileGDB_management(
@@ -249,7 +250,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 arcpy.AddError("\t{}: ERROR Referenced Mosaic not found '{}'".format(name, focal2_path))
                 
             arcpy.AddMessage("\t{}: Referenced Mosaic found '{}'".format(name, focal2_path))
-            base_name = 'O08_BaseCont_' + name + shpExtension
+            base_name = 'O08_BaseCont_' + name + fileExtension
             base_contours = os.path.join(workspace, base_name)
             if not os.path.exists(base_contours):
                 arcpy.MakeRasterLayer_management(in_raster=focal2_path, out_rasterlayer=base_name)
@@ -259,8 +260,10 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                     int(cont_int)
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Contoured to ' + base_contours)
+            del base_name
+            gc.collect()
 
-            simple_contours = os.path.join(workspace, 'O09_SimpleCont_' + name + shpExtension)
+            simple_contours = os.path.join(workspace, 'O09_SimpleCont_' + name + fileExtension)
             if not os.path.exists(simple_contours):
                 ca.SimplifyLine(
                     base_contours,
@@ -272,8 +275,10 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                     "NO_CHECK"
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Simplified to ' + simple_contours)
+            del base_contours
+            gc.collect()
 
-            smooth_contours = os.path.join(workspace, 'O10_SmoothCont_' + name + shpExtension)
+            smooth_contours = os.path.join(workspace, 'O10_SmoothCont_' + name + fileExtension)
             if not os.path.exists(smooth_contours):
                 ca.SmoothLine(
                     simple_contours,
@@ -284,10 +289,12 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                     "NO_CHECK"
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Smoothed to ' + smooth_contours)
+            del simple_contours
+            gc.collect()
 
             # put this up one level to avoid re-processing all of above if something goes wrong below
             clip_workspace = os.path.split(workspace)[0]
-            clip_contours = os.path.join(clip_workspace, 'O11_ClipCont_' + name + shpExtension)
+            clip_contours = os.path.join(clip_workspace, 'O11_ClipCont_' + name + fileExtension)
             if not os.path.exists(clip_contours):
                 arcpy.Clip_analysis(
                     in_features=smooth_contours,
@@ -295,7 +302,8 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                     out_feature_class=clip_contours
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Clipped to ' + clip_contours)
-
+            del smooth_contours
+            gc.collect()
             arcpy.RepairGeometry_management(in_features=clip_contours,
                                             delete_null="DELETE_NULL")
 
@@ -360,12 +368,12 @@ def handle_results(scratch_dir, contour_dir):
 
     merge_list = []
     
-    shpExtension = ".shp"
+    fileExtension = ".shp"
     if USE_FEATURE_CLASS:
-        shpExtension = ""
+        fileExtension = ""
 
     for folder in output_folders:
-        cont = os.path.join(scratch_dir, 'O11_ClipCont_' + folder + shpExtension)
+        cont = os.path.join(scratch_dir, 'O11_ClipCont_' + folder + fileExtension)
         if arcpy.Exists(cont):
             merge_list.append(cont)
 
@@ -402,10 +410,10 @@ def handle_results(scratch_dir, contour_dir):
 def isProcessFile(f_name, scratch_dir):
     process_file = False
     if f_name is not None:
-        shpExtension = ".shp"
+        fileExtension = ".shp"
         if USE_FEATURE_CLASS:
-            shpExtension = ""
-        cont = os.path.join(scratch_dir, 'O11_ClipCont_' + f_name + shpExtension)
+            fileExtension = ".shp"
+        cont = os.path.join(scratch_dir, 'O11_ClipCont_' + f_name + fileExtension)
         if not os.path.exists(cont):
             arcpy.AddMessage("PROCESS (Missing): " + cont)
             process_file = True
