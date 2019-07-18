@@ -277,10 +277,21 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             del base_contours
             gc.collect()
 
+            if rasterUnits == "Foot":
+                maxShapeLength = 6.5616
+            elif rasterUnits == "Meter":
+                maxShapeLength = 2
+
+            greaterThan2MetersSelection = arcpy.SelectLayerByAttribute_management(simple_contours, "NEW_SELECTION", "Shape_Length > {}".format(maxShapeLength))
+            # TODO: Select anything under 2 meters in length to a new 'small_contours' feature class
+            # Delete the selection from the simple_contours
+            # Delete any small contours snippets that are within 2 meters of the tile boundary
+            # Run Feature to Point on the small contours and use the output in our contour map and service
+
             smooth_contours = os.path.join(workspace, 'O10_SmoothCont_' + name + fileExtension)
             if not os.path.exists(smooth_contours):
                 ca.SmoothLine(
-                    simple_contours,
+                    greaterThan2MetersSelection,
                     smooth_contours,
                     "PAEK",
                     "{} DecimalDegrees".format(smooth_tol),
