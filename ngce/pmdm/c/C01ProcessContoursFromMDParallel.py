@@ -222,22 +222,21 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
 
             if USE_FEATURE_CLASS:
                 gdbName = "{}.gdb".format(name)
+                fileExtension = ""
                 workspace = os.path.join(scratch_path, gdbName)
             else:
+                fileExtension = ".shp"
                 workspace = os.path.join(scratch_path, name)
 
-            fileExtension = ".shp"
             if not os.path.exists(workspace):
                 # Don't delete if it exists, keep our previous work to save time
                 if USE_FEATURE_CLASS:
-                    fileExtension = ""
-                    if not os.path.exists(workspace):
-                        arcpy.AddMessage("\nCreating Workspace GDB:   {0}".format(workspace))
-                        arcpy.CreateFileGDB_management(
-                            scratch_path,
-                            gdbName,
-                            out_version="CURRENT"
-                        )
+                    arcpy.AddMessage("\nCreating Workspace GDB:   {0}".format(workspace))
+                    arcpy.CreateFileGDB_management(
+                        scratch_path,
+                        gdbName,
+                        out_version="CURRENT"
+                    )
                 else:
                     os.mkdir(workspace)
 
@@ -261,9 +260,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Contoured to ' + base_contours)
             del base_name
-            unreachable_garbage = gc.collect()
-            for item in unreachable_garbage:
-                arcpy.AddMessage("Unreachable garbage: {}".format(item))
+            gc.collect()
 
             simple_contours = os.path.join(workspace, 'O09_SimpleCont_' + name + fileExtension)
             if not os.path.exists(simple_contours):
@@ -278,9 +275,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Simplified to ' + simple_contours)
             del base_contours
-            unreachable_garbage = gc.collect()
-            for item in unreachable_garbage:
-                arcpy.AddMessage("Unreachable garbage: {}".format(item))
+            gc.collect()
 
             smooth_contours = os.path.join(workspace, 'O10_SmoothCont_' + name + fileExtension)
             if not os.path.exists(smooth_contours):
@@ -294,9 +289,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Smoothed to ' + smooth_contours)
             del simple_contours
-            unreachable_garbage = gc.collect()
-            for item in unreachable_garbage:
-                arcpy.AddMessage("Unreachable garbage: {}".format(item))
+            gc.collect()
 
             # put this up one level to avoid re-processing all of above if something goes wrong below
             clip_workspace = os.path.split(workspace)[0]
@@ -309,9 +302,8 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Clipped to ' + clip_contours)
             del smooth_contours
-            unreachable_garbage = gc.collect()
-            for item in unreachable_garbage:
-                arcpy.AddMessage("Unreachable garbage: {}".format(item))
+            gc.collect()
+
             arcpy.RepairGeometry_management(in_features=clip_contours,
                                             delete_null="DELETE_NULL")
 
