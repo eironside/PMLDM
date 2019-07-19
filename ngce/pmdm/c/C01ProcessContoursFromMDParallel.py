@@ -447,21 +447,35 @@ def isProcessFile(f_name, scratch_dir):
 def createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smooth_unit, scratch_path, run_dict, run_again=True):
     arcpy.AddMessage("---- Creating Contours on {} -----".format(len(run_dict.items())))
     # Map Generate Contour Function to Footprints
-    pool = Pool(processes=cpu_count() - CPU_HANDICAP)
-    pool.map(
-        partial(
-            generate_contour,
-            ref_md,
-            cont_int,
-            cont_unit,
-            raster_vertical_unit,
-            smooth_unit,
-            scratch_path
-        ),
-        run_dict.items()
-    )
-    pool.close()
-    pool.join()
+    items = run_dict.items()
+    itemsCount = len(items)
+
+    lowerBound = 0
+    upperBound = 11
+    splitItems = []
+    while upperBound < itemsCount:
+        splitItems.append(items[lowerBound:upperBound])
+        lowerBound = upperBound
+        upperBound += 10
+        if upperBound > itemsCount:
+            splitItems.append(items[lowerBound:])
+    
+    for splitItem in splitItems:
+        pool = Pool(processes=cpu_count() - CPU_HANDICAP)
+        pool.map(
+            partial(
+                generate_contour,
+                ref_md,
+                cont_int,
+                cont_unit,
+                raster_vertical_unit,
+                smooth_unit,
+                scratch_path
+            ),
+            splitItem
+        )
+        pool.close()
+        pool.join()
 
     if run_again:
         # run again to re-create missing tiles if one or more dropped
