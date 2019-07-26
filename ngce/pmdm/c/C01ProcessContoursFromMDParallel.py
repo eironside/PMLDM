@@ -6,7 +6,7 @@ from multiprocessing import Pool, cpu_count
 import os
 import sys
 import time
-import gc
+import glob #using in handle_results BJN
 import arcpy.cartography as ca
 from ngce import Utility
 from ngce.cmdr.CMDR import ProjectJob
@@ -191,7 +191,6 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
 
 def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_path, proc_dict):
     from datetime import datetime
-    gc.set_debug(gc.DEBUG_LEAK)
     
     name = proc_dict[0]
     index = str(proc_dict[1][2])
@@ -260,7 +259,6 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Contoured to ' + base_contours)
             del base_name
-            gc.collect()
 
             simple_contours = os.path.join(workspace, 'O09_SimpleCont_' + name + fileExtension)
             if not os.path.exists(simple_contours):
@@ -275,14 +273,15 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Simplified to ' + simple_contours)
             del base_contours
-            gc.collect()
 
-            if rasterUnits == "Foot":
+            if rasterUnits == "Foot" or rasterUnits == "FT":
                 maxShapeLength = 6.5616
-            elif rasterUnits == "Meter":
+            elif rasterUnits == "Meter" or rasterUnits == "MT":
                 maxShapeLength = 2
 
-            greaterThan2MetersSelection = arcpy.SelectLayerByAttribute_management(simple_contours, "NEW_SELECTION", "Shape_Length > {}".format(maxShapeLength))
+            greaterThan2MetersSelection = 'greaterThan2MetersSelection' #BJN
+            arcpy.MakeFeatureLayer_management(simple_contours, greaterThan2MetersSelection, "Shape_Length > {}".format(maxShapeLength))
+            #greaterThan2MetersSelection = arcpy.SelectLayerByAttribute_management(simple_contours, "NEW_SELECTION", "Shape_Length > {}".format(maxShapeLength))
             # TODO: Select anything under 2 meters in length to a new 'small_contours' feature class
             # Delete the selection from the simple_contours
             # Delete any small contours snippets that are within 2 meters of the tile boundary
@@ -300,11 +299,10 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Smoothed to ' + smooth_contours)
             del simple_contours
-            gc.collect()
 
             # put this up one level to avoid re-processing all of above if something goes wrong below
             clip_workspace = os.path.split(workspace)[0]
-            clip_contours = os.path.join(clip_workspace, 'O11_ClipCont_' + name + fileExtension)
+            clip_contours = os.path.join(clip_workspace, 'O11_ClipCont_{}.shp'.format(name)) #BJN
             if not os.path.exists(clip_contours):
                 arcpy.Clip_analysis(
                     in_features=smooth_contours,
@@ -313,7 +311,6 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Clipped to ' + clip_contours)
             del smooth_contours
-            gc.collect()
 
             arcpy.RepairGeometry_management(in_features=clip_contours,
                                             delete_null="DELETE_NULL")
@@ -375,18 +372,9 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
 
 def handle_results(scratch_dir, contour_dir):
     from datetime import datetime
-    output_folders = os.listdir(scratch_dir)
+##    output_folders = os.listdir(scratch_dir)
 
-    merge_list = []
-    
-    fileExtension = ".shp"
-    if USE_FEATURE_CLASS:
-        fileExtension = ""
-
-    for folder in output_folders:
-        cont = os.path.join(scratch_dir, 'O11_ClipCont_' + folder + fileExtension)
-        if arcpy.Exists(cont):
-            merge_list.append(cont)
+    merge_list = glob.glob(os.path.join(scratch_dir, 'O11_ClipCont_*.shp')) #formerly [] BJN
 
     a = datetime.now()
     merge_name = os.path.join(contour_dir, CONTOUR_NAME_OCS)
@@ -421,10 +409,7 @@ def handle_results(scratch_dir, contour_dir):
 def isProcessFile(f_name, scratch_dir):
     process_file = False
     if f_name is not None:
-        fileExtension = ".shp"
-        if USE_FEATURE_CLASS:
-            fileExtension = ".shp"
-        cont = os.path.join(scratch_dir, 'O11_ClipCont_' + f_name + fileExtension)
+        cont = os.path.join(scratch_dir, 'O11_ClipCont_{}.shp'.format(f_name)) #BJN
         if not os.path.exists(cont):
             arcpy.AddMessage("PROCESS (Missing): " + cont)
             process_file = True
@@ -457,9 +442,9 @@ def createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smoot
         splitItems.append(items[lowerBound:upperBound])
         lowerBound = upperBound
         upperBound += 10
-        if upperBound > itemsCount:
-            splitItems.append(items[lowerBound:])
-    
+    if upperBound >= itemsCount: #De-indented and changed condition to '>=' to handle edge cases BJN
+        splitItems.append(items[lowerBound:])
+    arcpy.AddMessage("Number of items in last index of split: {}".format(len(splitItems[-1])))
     for splitItem in splitItems:
         pool = Pool(processes=cpu_count() - CPU_HANDICAP)
         pool.map(
