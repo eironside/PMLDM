@@ -1,3 +1,4 @@
 .idea/
 CMDR.gdb
 *.pyc
+ngce/.vscode/settings.json
