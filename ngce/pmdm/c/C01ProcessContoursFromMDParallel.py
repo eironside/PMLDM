@@ -202,9 +202,6 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
 
     created = False
     tries = 0
-    outOfMemory = False
-    vertexLimit = 100
-    featureCount = 25000
     while not created and tries <= TRIES_ALLOWED:
         tries = tries + 1
 
@@ -264,21 +261,6 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             del base_name
 
             simple_contours = os.path.join(workspace, 'O09_SimpleCont_' + name + fileExtension)
-            if outOfMemory:
-                diced_contours = os.path.join(workspace, 'O08ADicedCont_' + name + fileExtension)
-                arcpy.Dice_management(base_contours, diced_contours, vertexLimit)
-                a = doTime(a, '\t' + name + ' ' + index + ': Diced to ' + diced_contours)
-
-                cartographic_partitions = os.path.join(workspace, 'Carto_Partitions_' + name + fileExtension)
-                arcpy.CreateCartographicPartitions_cartography(diced_contours, cartographic_partitions, featureCount)
-                a = doTime(a, '\t' + name + ' ' + index + ': Created Cartographic Partitions at ' + cartographic_partitions)
-                arcpy.env.CartographicPartitions = cartographic_partitions
-
-                base_contours = diced_contours
-
-                if arcpy.Exists(simple_contours):
-                    arcpy.Delete_management(simple_contours)
-                
             if not os.path.exists(simple_contours):
                 ca.SimplifyLine(
                     base_contours,
@@ -375,16 +357,6 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             doTime(aa, 'FINISHED ' + name + ' ' + index)
             created = True
 
-        except arcpy.ExecuteError as exeErr:
-            errorCode = str(exeErr).split(':')[0]
-            if errorCode == 'ERROR 000426':
-                outOfMemory = True
-                vertexLimit *= 0.75
-                featureCount *= 0.75
-            arcpy.AddMessage('\t\tProcess Dropped: ' + name)
-            arcpy.AddMessage('\t\tException: ' + str(exeErr))
-            if tries > TRIES_ALLOWED:
-                arcpy.AddError('Too many tries, Dropped: {}'.format(name))
         except Exception as e:
             arcpy.AddMessage('\t\tProcess Dropped: ' + name)
             arcpy.AddMessage('\t\tException: ' + str(e))
