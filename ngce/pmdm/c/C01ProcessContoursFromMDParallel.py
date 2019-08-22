@@ -136,6 +136,10 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
     else:
         arcpy.AddMessage("Using existing {}".format(tmp_buff_name))
 
+    tmp_buff_fields = arcpy.ListFields(tmp_buff_name)
+    if "zran" not in tmp_buff_fields:
+        arcpy.AddField_management(tmp_buff_name, "zran", "SHORT")
+        arcpy.CalculateField_management(tmp_buff_name, "zran", "1")
 
     with arcpy.da.SearchCursor(tmp_buff_name, ["Name", "SHAPE@", "zran"]) as cursor:  # @UndefinedVariable
 
@@ -163,6 +167,11 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
         arcpy.AddMessage("Created new {}".format(tmp_buff_name2))
     else:
         arcpy.AddMessage("Using existing {}".format(tmp_buff_name2))
+
+    tmp_buff_fields = arcpy.ListFields(tmp_buff_name2)
+    if "zran" not in tmp_buff_fields:
+        arcpy.AddField_management(tmp_buff_name2, "zran", "SHORT")
+        arcpy.CalculateField_management(tmp_buff_name2, "zran", "1")
 
     with arcpy.da.SearchCursor(tmp_buff_name2, ["Name", "SHAPE@", "zran"]) as cursor:  # @UndefinedVariable
 
