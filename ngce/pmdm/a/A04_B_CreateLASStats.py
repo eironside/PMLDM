@@ -927,7 +927,7 @@ def createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spati
     deleteFileIfExists(point_file_path, False, True)
     deleteFileIfExists(point_file_path1, False, True)
 
-    arcpy.PointFileInformation_3d(input=f_path, out_feature_class=point_file_path, in_file_type="LAS", input_coordinate_system=spatial_reference, folder_recursion="NO_RECURSION", extrude_geometry="NO_EXTRUSION", decimal_separator="DECIMAL_POINT", summarize_by_class_code="NO_SUMMARIZE", improve_las_point_spacing="LAS_SPACING")
+    arcpy.PointFileInformation_3d(input=f_path, out_feature_class=point_file_path, in_file_type="LAS", file_suffix="las", input_coordinate_system=spatial_reference, folder_recursion="NO_RECURSION", extrude_geometry="NO_EXTRUSION", decimal_separator="DECIMAL_POINT", summarize_by_class_code="NO_SUMMARIZE", improve_las_point_spacing="LAS_SPACING")
     addToolMessages()
 
     tries = 0
@@ -964,7 +964,7 @@ def createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spati
 
     aa = doTime(a, "\t\tCreated blank rows {}".format(point_file_path))
 
-    arcpy.PointFileInformation_3d(input=f_path, out_feature_class=point_file_path1, in_file_type="LAS", input_coordinate_system=spatial_reference, folder_recursion="NO_RECURSION", extrude_geometry="NO_EXTRUSION", decimal_separator="DECIMAL_POINT", summarize_by_class_code="SUMMARIZE", improve_las_point_spacing="NO_LAS_SPACING")
+    arcpy.PointFileInformation_3d(input=f_path, out_feature_class=point_file_path1, in_file_type="LAS", file_suffix="las", input_coordinate_system=spatial_reference, folder_recursion="NO_RECURSION", extrude_geometry="NO_EXTRUSION", decimal_separator="DECIMAL_POINT", summarize_by_class_code="SUMMARIZE", improve_las_point_spacing="NO_LAS_SPACING")
     addToolMessages()
     arcpy.Append_management(inputs=point_file_path1, target=point_file_path, schema_type="TEST")
     addToolMessages()
