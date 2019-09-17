@@ -378,9 +378,10 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
         except arcpy.ExecuteError as exeErr:
             errorCode = str(exeErr).split(':')[0]
             if errorCode == 'ERROR 000426':
+                if tries > 1 and outOfMemory:
+                    vertexLimit *= 0.75
+                    featureCount *= 0.75
                 outOfMemory = True
-                vertexLimit *= 0.75
-                featureCount *= 0.75
             arcpy.AddMessage('\t\tProcess Dropped: ' + name)
             arcpy.AddMessage('\t\tException: ' + str(exeErr))
             if tries > TRIES_ALLOWED:
