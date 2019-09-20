@@ -968,10 +968,7 @@ def createLasDatasetInfo(point_file_path, stat_out_folder, f_name, f_path, spati
     addToolMessages()
     arcpy.Append_management(inputs=point_file_path1, target=point_file_path, schema_type="TEST")
     addToolMessages()
-    #arcpy.Delete_management(in_data=point_file_path1, data_type="ShapeFile")
-    aa = doTime(a, "\t\tBRUCE: Appended temporary info file {}".format(point_file_path1))
-##    deleteFileIfExists(point_file_path1, False, True)
-    aa = doTime(a, "\t\tBRUCE: Deleted temporary info file {}".format(point_file_path1))
+    arcpy.Delete_management(in_data=point_file_path1, data_type="ShapeFile")
 
     # Delete the rows we have values for from the empty list
     for row in arcpy.da.SearchCursor(point_file_path, info_fields):  # @UndefinedVariable
