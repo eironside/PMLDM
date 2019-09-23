@@ -107,6 +107,12 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
     a = datetime.now()
     arcpy.AddMessage('Create Multiprocessing Iterable')
 
+    # Make sure that our footprints have the zran field
+    zranField = arcpy.ListFields(prints, "zran")[0]
+    if not zranField:
+        arcpy.AddField_management(prints, "zran", "DOUBLE")
+        arcpy.CalculateField_management(prints, "zran", 1 + 1, "PYTHON_9.3")
+
     # Go up one directory so we don't have to delete if things go wrong down in scratch
     tmp_scratch_folder = os.path.split(scratch_folder)[0]
     ftprints_path = tmp_scratch_folder
@@ -135,7 +141,6 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
         arcpy.AddMessage("Created new {}".format(tmp_buff_name))
     else:
         arcpy.AddMessage("Using existing {}".format(tmp_buff_name))
-
 
     with arcpy.da.SearchCursor(tmp_buff_name, ["Name", "SHAPE@", "zran"]) as cursor:  # @UndefinedVariable
 
