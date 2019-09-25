@@ -272,7 +272,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 cartographic_partitions = os.path.join(workspace, 'Carto_Partitions_' + name + fileExtension)
                 arcpy.CreateCartographicPartitions_cartography(diced_contours, cartographic_partitions, featureCount)
                 a = doTime(a, '\t' + name + ' ' + index + ': Created Cartographic Partitions at ' + cartographic_partitions)
-                arcpy.env.CartographicPartitions = cartographic_partitions
+                arcpy.env.cartographicPartitions = cartographic_partitions
 
                 base_contours = diced_contours
 
