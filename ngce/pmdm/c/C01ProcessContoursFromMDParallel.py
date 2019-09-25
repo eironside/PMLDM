@@ -108,8 +108,8 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
     arcpy.AddMessage('Create Multiprocessing Iterable')
 
     # Make sure that our footprints have the zran field
-    zranField = arcpy.ListFields(prints, "zran")[0]
-    if not zranField:
+    zranField = arcpy.ListFields(prints, "zran")
+    if len(zranField) <= 0:
         arcpy.AddField_management(prints, "zran", "DOUBLE")
         arcpy.CalculateField_management(prints, "zran", 1 + 1, "PYTHON_9.3")
 
