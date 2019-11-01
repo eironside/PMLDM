@@ -293,38 +293,24 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 a = doTime(a, '\t' + name + ' ' + index + ': Simplified to ' + simple_contours)
             del base_contours
 
-            # Workaround for smoothline running forever (Must run feature class to feature class with an output of feature class)
-            # workaround_workspace = workspace
-            # if not USE_FEATURE_CLASS:
-            #     gdbName = "{}.gdb".format(name)
-            #     arcpy.CreateFileGDB_management(
-            #         workspace,
-            #         gdbName,
-            #         out_version="CURRENT"
-            #     )
-            #     workaround_workspace = os.path.join(workspace, gdbName)
+            if rasterUnits == "Foot" or rasterUnits == "FT":
+                maxShapeLength = 16.404
+            elif rasterUnits == "Meter" or rasterUnits == "MT":
+                maxShapeLength = 5
+            else:
+                maxShapeLength = 0
 
-            # simplify_to_feature = os.path.join(workaround_workspace, 'O09_SimpleContToFeature_' + name + fileExtension)
-            # if not os.path.exists(simplify_to_feature):
-            #     arcpy.FeatureClassToFeatureClass_conversion(simple_contours, workaround_workspace, 'O09_SimpleContToFeature_' + name + fileExtension)
+            # BJN Need to add Shape_Length attribute to shapefile & calculate length if USE_FEATURE_CLASS = False
+            if not USE_FEATURE_CLASS:
+                SHAPE_LENGTH = 'Length'
+                arcpy.AddField_management(simple_contours, SHAPE_LENGTH, 'Double')
+                arcpy.CalculateField_management(simple_contours, SHAPE_LENGTH, '!shape.length!', 'PYTHON_9.3')
+            else:
+                SHAPE_LENGTH = 'Shape_Length'
+                
+            greaterThan2MetersSelection = 'greaterThan2MetersSelection' #BJN
+            arcpy.MakeFeatureLayer_management(simple_contours, greaterThan2MetersSelection, "{} > {}".format(SHAPE_LENGTH, maxShapeLength))
 
-            # if rasterUnits == "Foot" or rasterUnits == "FT":
-            #     maxShapeLength = 16.404
-            # elif rasterUnits == "Meter" or rasterUnits == "MT":
-            #     maxShapeLength = 5
-            # else:
-            #     maxShapeLength = 0
-
-            #BJN Need to add Shape_Length attribute to shapefile & calculate length if USE_FEATURE_CLASS = False
-            # if not USE_FEATURE_CLASS:
-                # SHAPE_LENGTH = 'Length'
-                # arcpy.AddField_management(simple_contours, SHAPE_LENGTH, 'Double')
-                # arcpy.CalculateField_management(simple_contours, SHAPE_LENGTH, '!shape.length!', 'PYTHON_9.3')
-            # else:
-                # SHAPE_LENGTH = 'Shape_Length'
-            # greaterThan2MetersSelection = 'greaterThan2MetersSelection' #BJN
-            # arcpy.MakeFeatureLayer_management(simplify_to_feature, greaterThan2MetersSelection, "{} > {}".format(SHAPE_LENGTH, maxShapeLength))
-            #greaterThan2MetersSelection = arcpy.SelectLayerByAttribute_management(simple_contours, "NEW_SELECTION", "Shape_Length > {}".format(maxShapeLength))
             # TODO: Select anything under 2 meters in length to a new 'small_contours' feature class
             # Delete the selection from the simple_contours
             # Delete any small contours snippets that are within 2 meters of the tile boundary
@@ -333,7 +319,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             smooth_contours = os.path.join(workspace, 'O10_SmoothCont_' + name + fileExtension)
             if not os.path.exists(smooth_contours):
                 ca.SmoothLine(
-                    simple_contours,
+                    greaterThan2MetersSelection,
                     smooth_contours,
                     "PAEK",
                     "{} DecimalDegrees".format(smooth_tol),
