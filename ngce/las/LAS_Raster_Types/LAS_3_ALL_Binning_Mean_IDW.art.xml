@@ -172,8 +172,8 @@
 						<AnyType xsi:type='xs:int'>0</AnyType>
 						<AnyType xsi:type='xs:boolean'>false</AnyType>
 						<AnyType xsi:type='xs:int'>2</AnyType>
-						<AnyType xsi:type='xs:double'>1</AnyType>
-						<AnyType xsi:type='xs:double'>50</AnyType>
+						<AnyType xsi:type='xs:double'>3.28084</AnyType>
+						<AnyType xsi:type='xs:double'>164.042</AnyType>
 						<AnyType xsi:type='xs:boolean'>false</AnyType>
 						<AnyType xsi:type='xs:int'>0</AnyType>
 					</Values>
