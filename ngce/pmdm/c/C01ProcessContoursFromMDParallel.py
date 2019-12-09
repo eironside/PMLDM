@@ -207,11 +207,12 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
 
     created = False
     tries = 0
+    outOfMemory = False
+    vertexLimit = 100
+    featureCount = 25000
     while not created and tries <= TRIES_ALLOWED:
         tries = tries + 1
-
         try:
-
             a = datetime.now()
             aa = a
             Utility.setArcpyEnv(True)
@@ -397,6 +398,11 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 outOfMemory = True
             arcpy.AddMessage('\t\tProcess Dropped: ' + name)
             arcpy.AddMessage('\t\tException: ' + str(exeErr))
+            if tries > TRIES_ALLOWED:
+                arcpy.AddError('Too many tries, Dropped: {}'.format(name))
+        except Exception as e:
+            arcpy.AddMessage('\t\tProcess Dropped: ' + name)
+            arcpy.AddMessage('\t\tException: ' + str(e))
             if tries > TRIES_ALLOWED:
                 arcpy.AddError('Too many tries, Dropped: {}'.format(name))
     try:
