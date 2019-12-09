@@ -107,6 +107,12 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
     a = datetime.now()
     arcpy.AddMessage('Create Multiprocessing Iterable')
 
+    # Make sure that our footprints have the zran field
+    zranField = arcpy.ListFields(prints, "zran")
+    if len(zranField) <= 0:
+        arcpy.AddField_management(prints, "zran", "DOUBLE")
+        arcpy.CalculateField_management(prints, "zran", 1 + 1, "PYTHON_9.3")
+
     # Go up one directory so we don't have to delete if things go wrong down in scratch
     tmp_scratch_folder = os.path.split(scratch_folder)[0]
     ftprints_path = tmp_scratch_folder
@@ -135,7 +141,6 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
         arcpy.AddMessage("Created new {}".format(tmp_buff_name))
     else:
         arcpy.AddMessage("Using existing {}".format(tmp_buff_name))
-
 
     with arcpy.da.SearchCursor(tmp_buff_name, ["Name", "SHAPE@", "zran"]) as cursor:  # @UndefinedVariable
 
@@ -202,9 +207,6 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
 
     created = False
     tries = 0
-    outOfMemory = False
-    vertexLimit = 100
-    featureCount = 25000
     while not created and tries <= TRIES_ALLOWED:
         tries = tries + 1
 
@@ -279,7 +281,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
 
                 if arcpy.Exists(simple_contours):
                     arcpy.Delete_management(simple_contours)
-                
+
             if not os.path.exists(simple_contours):
                 ca.SimplifyLine(
                     base_contours,
@@ -395,11 +397,6 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 outOfMemory = True
             arcpy.AddMessage('\t\tProcess Dropped: ' + name)
             arcpy.AddMessage('\t\tException: ' + str(exeErr))
-            if tries > TRIES_ALLOWED:
-                arcpy.AddError('Too many tries, Dropped: {}'.format(name))
-        except Exception as e:
-            arcpy.AddMessage('\t\tProcess Dropped: ' + name)
-            arcpy.AddMessage('\t\tException: ' + str(e))
             if tries > TRIES_ALLOWED:
                 arcpy.AddError('Too many tries, Dropped: {}'.format(name))
     try:

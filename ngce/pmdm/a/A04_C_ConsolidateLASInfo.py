@@ -569,10 +569,10 @@ def createRasterBoundaryAndFootprints(fgdb_path, target_path, project_ID, projec
             #whichever is smaller.
             append_msg = '{}Adding {} tiles'.format(' '*8, append_group_size)
             if append_group_end < len(b_file_list):
-                arcpy.Append_management(b_file_list[append_group_start:append_group_end], las_footprint_2)
+                arcpy.Append_management(b_file_list[append_group_start:append_group_end], las_footprint_2, "NO_TEST")
             else:
                 append_msg = '{}Adding {} tiles'.format(' '*8, len(b_file_list[append_group_start:]))
-                arcpy.Append_management(b_file_list[append_group_start:], las_footprint_2)
+                arcpy.Append_management(b_file_list[append_group_start:], las_footprint_2, "NO_TEST")
             arcpy.AddMessage(append_msg)
 
             #Set the new start point
