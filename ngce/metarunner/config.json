@@ -1,0 +1,127 @@
+{
+	"base_dir": "", // Directory where projects are housed. Example: D:\\projects
+	"base_url":"", // ServeradminURLtogetatokenfrom.Example:https://myserverfqdn:6443/arcgis/admin
+	"username": "", // credentialstogetaservertokenwith
+	"password": "",
+	"feat_url": "", // URLtothefeatureservicetoedittheCMDRwith.Example:https://myserverfqdn:6443/arcgis/rest/services/LDM/CMDR_Edit/FeatureServer
+	"features": {
+		"QC": {
+			"BoundaryRaster": {
+				"DTM": {
+					"Project_GUID": "Project_GUID",
+					"area": "QC_Area_M",
+					"h_name": "QC_HorzProj",
+					"h_wkid": "QC_HorzWKID",
+					"h_unit": "QC_HorzUnit",
+					"v_name": "QC_VertProj",
+					"v_unit": "QC_VertUnit",
+					"zmax": "QC_ValidZ_Max",
+					"COUNT_Name": "QC_DTM_Count_Raster",
+					"SHAPE@": "geometry"
+				},
+				"DSM": {
+					"COUNT_Name": "QC_DSM_Count_Raster",
+					"zmin": "QC_ValidZ_Min"
+				}
+			},
+			"BoundaryLASDataset": {
+				"is_Class": "QC_Classified_LAS",
+				"COUNT_name": "QC_Count_LAS",
+				"c02_pt_ct": "c2_ptct",
+				"c08_pt_ct": "c8_ptct"
+			},
+			"POINT_COUNT_LAST": {
+				"mean": "QC_DTM_PointDensity",
+				"m_sqrt": "QC_DTM_PointSpacing"
+			},
+			"POINT_COUNT_FIRST": {
+				"mean": "QC_DSM_PointDensity",
+				"m_sqrt": "QC_DSM_PointSpacing"
+			},
+			"PULSE_COUNT_LAST": {
+				"mean": "QC_DTM_PulseDensity",
+				"m_sqrt": "QC_DTM_PulseSpacing"
+			},
+			"PULSE_COUNT_FIRST": {
+				"mean": "QC_DSM_PulseDensity",
+				"m_sqrt": "QC_DSM_PulseSpacing"
+			}
+		},
+		"Contract": {
+			"BoundaryRaster": {
+				"DTM": {
+					"Project_GUID": "Project_GUID",
+					"area": "Contract_Area_M",
+					"h_name": "Contract_HorzProj",
+					"h_wkid": "Contract_HorzWKID",
+					"h_unit": "Contract_HorzUnit",
+					"v_name": "Contract_VertProj",
+					"v_unit": "Contract_VertUnit",
+					"cell_w": "Contract_DTM_CellResolution",
+					"SHAPE@": "geometry"
+				},
+				"DSM": {
+					"cell_w": "Contract_DSM_CellResolution"
+				}
+			},
+			"PULSE_COUNT_LAST": {
+				"m_sqrt": "Contract_DTM_PulseSpacing"
+			},
+			"POINT_COUNT_LAST": {
+				"mean": "Contract_DTM_PointDensity",
+				"m_sqrt": "Contract_DTM_PointSpacing"
+			},
+			"PULSE_COUNT_FIRST": {
+				"m_sqrt": "Contract_DSM_PulseSpacing"
+			},
+			"POINT_COUNT_FIRST": {
+				"m_sqrt": "Contract_DSM_PointSpacing"
+			}
+		},
+		"Deliver": {
+			"BoundaryRaster": {
+				"DTM": {
+					"Project_GUID": "Project_GUID",
+					"area": "Deliver_Area_M",
+					"h_name": "Deliver_HorzProj",
+					"h_wkid": "Deliver_HorzWKID",
+					"h_unit": "Deliver_HorzUnit",
+					"v_name": "Deliver_VertProj",
+					"v_unit": "Deliver_VertUnit",
+					"zmax": "Deliver_ValidZ_Max",
+					"cell_w": "Deliver_DTM_CellResolution",
+					"COUNT_Name": "Deliver_DTM_Count_Raster",
+					"SHAPE@": "geometry"
+				},
+				"DSM": {
+					"cell_w": "Deliver_DSM_CellResolution",
+					"COUNT_Name": "Deliver_DSM_Count_Raster",
+					"zmin": "Deliver_ValidZ_Min"
+				}
+			},
+			"BoundaryLASDataset": {
+				"is_Class": "Deliver_LAS_Classified",
+				"COUNT_name": "Deliver_Count_LAS",
+				"r1_pt_ct": "Deliver_DSM_PointCount",
+				"c02_pt_ct": "c2_ptct",
+				"c08_pt_ct": "c8_ptct"
+			},
+			"POINT_COUNT_LAST": {
+				"mean": "Deliver_DTM_PointDensity",
+				"m_sqrt": "Deliver_DTM_PointSpacing"
+			},
+			"POINT_COUNT_FIRST": {
+				"mean": "Deliver_DSM_PointDensity",
+				"m_sqrt": "Deliver_DSM_PointSpacing"
+			},
+			"PULSE_COUNT_LAST": {
+				"mean": "Deliver_DTM_PulseDensity",
+				"m_sqrt": "Deliver_DTM_PulseSpacing"
+			},
+			"PULSE_COUNT_FIRST": {
+				"mean": "Deliver_DSM_PulseDensity",
+				"m_sqrt": "Deliver_DSM_PulseSpacing"
+			}
+		}
+	}
+}
