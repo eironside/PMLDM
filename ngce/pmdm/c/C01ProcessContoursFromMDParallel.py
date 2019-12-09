@@ -207,11 +207,12 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
 
     created = False
     tries = 0
+    outOfMemory = False
+    vertexLimit = 100
+    featureCount = 25000
     while not created and tries <= TRIES_ALLOWED:
         tries = tries + 1
-
         try:
-
             a = datetime.now()
             aa = a
             Utility.setArcpyEnv(True)
@@ -223,6 +224,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             #arcpy.AddMessage("\t{}: Clip Poly '{}'".format(name, clip_poly))
 
             arcpy.env.extent = buff_poly.extent
+            arcpy.env.XYResolution = "0.0001 Meters"
 
             if USE_FEATURE_CLASS:
                 gdbName = "{}.gdb".format(name)
@@ -266,6 +268,21 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             del base_name
 
             simple_contours = os.path.join(workspace, 'O09_SimpleCont_' + name + fileExtension)
+            if outOfMemory:
+                diced_contours = os.path.join(workspace, 'O08ADicedCont_' + name + fileExtension)
+                arcpy.Dice_management(base_contours, diced_contours, vertexLimit)
+                a = doTime(a, '\t' + name + ' ' + index + ': Diced to ' + diced_contours)
+
+                cartographic_partitions = os.path.join(workspace, 'Carto_Partitions_' + name + fileExtension)
+                arcpy.CreateCartographicPartitions_cartography(diced_contours, cartographic_partitions, featureCount)
+                a = doTime(a, '\t' + name + ' ' + index + ': Created Cartographic Partitions at ' + cartographic_partitions)
+                arcpy.env.cartographicPartitions = cartographic_partitions
+
+                base_contours = diced_contours
+
+                if arcpy.Exists(simple_contours):
+                    arcpy.Delete_management(simple_contours)
+
             if not os.path.exists(simple_contours):
                 ca.SimplifyLine(
                     base_contours,
@@ -280,13 +297,23 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             del base_contours
 
             if rasterUnits == "Foot" or rasterUnits == "FT":
-                maxShapeLength = 6.5616
+                maxShapeLength = 16.404
             elif rasterUnits == "Meter" or rasterUnits == "MT":
-                maxShapeLength = 2
+                maxShapeLength = 5
+            else:
+                maxShapeLength = 0
 
+            # BJN Need to add Shape_Length attribute to shapefile & calculate length if USE_FEATURE_CLASS = False
+            if not USE_FEATURE_CLASS:
+                SHAPE_LENGTH = 'Length'
+                arcpy.AddField_management(simple_contours, SHAPE_LENGTH, 'Double')
+                arcpy.CalculateField_management(simple_contours, SHAPE_LENGTH, '!shape.length!', 'PYTHON_9.3')
+            else:
+                SHAPE_LENGTH = 'Shape_Length'
+                
             greaterThan2MetersSelection = 'greaterThan2MetersSelection' #BJN
-            arcpy.MakeFeatureLayer_management(simple_contours, greaterThan2MetersSelection, "Shape_Length > {}".format(maxShapeLength))
-            #greaterThan2MetersSelection = arcpy.SelectLayerByAttribute_management(simple_contours, "NEW_SELECTION", "Shape_Length > {}".format(maxShapeLength))
+            arcpy.MakeFeatureLayer_management(simple_contours, greaterThan2MetersSelection, "{} > {}".format(SHAPE_LENGTH, maxShapeLength))
+
             # TODO: Select anything under 2 meters in length to a new 'small_contours' feature class
             # Delete the selection from the simple_contours
             # Delete any small contours snippets that are within 2 meters of the tile boundary
@@ -362,6 +389,17 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             doTime(aa, 'FINISHED ' + name + ' ' + index)
             created = True
 
+        except arcpy.ExecuteError as exeErr:
+            errorCode = str(exeErr).split(':')[0]
+            if errorCode == 'ERROR 000426':
+                if tries > 1 and outOfMemory:
+                    vertexLimit *= 0.75
+                    featureCount *= 0.75
+                outOfMemory = True
+            arcpy.AddMessage('\t\tProcess Dropped: ' + name)
+            arcpy.AddMessage('\t\tException: ' + str(exeErr))
+            if tries > TRIES_ALLOWED:
+                arcpy.AddError('Too many tries, Dropped: {}'.format(name))
         except Exception as e:
             arcpy.AddMessage('\t\tProcess Dropped: ' + name)
             arcpy.AddMessage('\t\tException: ' + str(e))
@@ -438,34 +476,23 @@ def createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smoot
     arcpy.AddMessage("---- Creating Contours on {} -----".format(len(run_dict.items())))
     # Map Generate Contour Function to Footprints
     items = run_dict.items()
-    itemsCount = len(items)
 
-    lowerBound = 0
-    upperBound = 11
-    splitItems = []
-    while upperBound < itemsCount:
-        splitItems.append(items[lowerBound:upperBound])
-        lowerBound = upperBound
-        upperBound += 10
-    if upperBound >= itemsCount: #De-indented and changed condition to '>=' to handle edge cases BJN
-        splitItems.append(items[lowerBound:])
-    arcpy.AddMessage("Number of items in last index of split: {}".format(len(splitItems[-1])))
-    for splitItem in splitItems:
-        pool = Pool(processes=cpu_count() - CPU_HANDICAP)
-        pool.map(
-            partial(
-                generate_contour,
-                ref_md,
-                cont_int,
-                cont_unit,
-                raster_vertical_unit,
-                smooth_unit,
-                scratch_path
-            ),
-            splitItem
-        )
-        pool.close()
-        pool.join()
+    pool = Pool(processes=cpu_count() - CPU_HANDICAP)
+    pool.map(
+        partial(
+            generate_contour,
+            ref_md,
+            cont_int,
+            cont_unit,
+            raster_vertical_unit,
+            smooth_unit,
+            scratch_path
+        ),
+        items
+    )
+
+    pool.close()
+    pool.join()
 
     if run_again:
         # run again to re-create missing tiles if one or more dropped
