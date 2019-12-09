@@ -257,10 +257,11 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             arcpy.AddMessage("\t{}: Referenced Mosaic found '{}'".format(name, focal2_path))
             base_name = 'O08_BaseCont_' + name + fileExtension
             base_contours = os.path.join(workspace, base_name)
+            outRasterLayer = "outRasterLayer"
             if not os.path.exists(base_contours):
-                arcpy.MakeRasterLayer_management(in_raster=focal2_path, out_rasterlayer=base_name)
+                arcpy.MakeRasterLayer_management(in_raster=focal2_path, out_rasterlayer=outRasterLayer)
                 Functions.Contour(
-                    base_name,
+                    outRasterLayer,
                     base_contours,
                     int(cont_int)
                 )
