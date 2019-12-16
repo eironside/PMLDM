@@ -24,7 +24,7 @@ from ngce.raster import Raster
 
 CPU_HANDICAP = 1
 TRIES_ALLOWED = 10
-USE_FEATURE_CLASS = True
+USE_FEATURE_CLASS = False
 
 def generateHighLow(workspace, name, clip_contours, ref_md):
     cont_poly1 = os.path.join(workspace, 'O12_poly_' + name + '.shp')
@@ -255,7 +255,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 arcpy.AddError("\t{}: ERROR Referenced Mosaic not found '{}'".format(name, focal2_path))
                 
             arcpy.AddMessage("\t{}: Referenced Mosaic found '{}'".format(name, focal2_path))
-            base_name = 'O08_BaseCont_' + name + fileExtension
+            base_name = 'O08_BaseCont_{}{}'.format(name, fileExtension)
             base_contours = os.path.join(workspace, base_name)
             outRasterLayer = "outRasterLayer"
             if not os.path.exists(base_contours):
@@ -266,15 +266,14 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                     int(cont_int)
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Contoured to ' + base_contours)
-            del base_name
 
-            simple_contours = os.path.join(workspace, 'O09_SimpleCont_' + name + fileExtension)
+            simple_contours = os.path.join(workspace, 'O09_SimpleCont_{}{}'.format(name, fileExtension))
             if outOfMemory:
-                diced_contours = os.path.join(workspace, 'O08ADicedCont_' + name + fileExtension)
+                diced_contours = os.path.join(workspace, 'O08ADicedCont_{}{}'.format(name, fileExtension))
                 arcpy.Dice_management(base_contours, diced_contours, vertexLimit)
                 a = doTime(a, '\t' + name + ' ' + index + ': Diced to ' + diced_contours)
 
-                cartographic_partitions = os.path.join(workspace, 'Carto_Partitions_' + name + fileExtension)
+                cartographic_partitions = os.path.join(workspace, 'Carto_Partitions_{}{}'.format(name, fileExtension))
                 arcpy.CreateCartographicPartitions_cartography(diced_contours, cartographic_partitions, featureCount)
                 a = doTime(a, '\t' + name + ' ' + index + ': Created Cartographic Partitions at ' + cartographic_partitions)
                 arcpy.env.cartographicPartitions = cartographic_partitions
@@ -295,7 +294,6 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                     "NO_CHECK"
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Simplified to ' + simple_contours)
-            del base_contours
 
             if rasterUnits == "Foot" or rasterUnits == "FT":
                 maxShapeLength = 16.404
@@ -320,7 +318,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             # Delete any small contours snippets that are within 2 meters of the tile boundary
             # Run Feature to Point on the small contours and use the output in our contour map and service
 
-            smooth_contours = os.path.join(workspace, 'O10_SmoothCont_' + name + fileExtension)
+            smooth_contours = os.path.join(workspace, 'O10_SmoothCont_{}{}'.format(name, fileExtension))
             if not os.path.exists(smooth_contours):
                 ca.SmoothLine(
                     greaterThan2MetersSelection,
@@ -331,7 +329,6 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                     "NO_CHECK"
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Smoothed to ' + smooth_contours)
-            del simple_contours
 
             # put this up one level to avoid re-processing all of above if something goes wrong below
             clip_workspace = os.path.split(workspace)[0]
@@ -343,7 +340,6 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                     out_feature_class=clip_contours
                 )
                 a = doTime(a, '\t' + name + ' ' + index + ': Clipped to ' + clip_contours)
-            del smooth_contours
 
             arcpy.RepairGeometry_management(in_features=clip_contours,
                                             delete_null="DELETE_NULL")
@@ -397,15 +393,15 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                     vertexLimit *= 0.75
                     featureCount *= 0.75
                 outOfMemory = True
-            arcpy.AddMessage('\t\tProcess Dropped: ' + name)
+            arcpy.AddMessage('\t\tProcess Dropped: ' + name + ' ' + index)
             arcpy.AddMessage('\t\tException: ' + str(exeErr))
             if tries > TRIES_ALLOWED:
                 arcpy.AddError('Too many tries, Dropped: {}'.format(name))
         except Exception as e:
-            arcpy.AddMessage('\t\tProcess Dropped: ' + name)
+            arcpy.AddMessage('\t\tProcess Dropped: ' + name + ' ' + index)
             arcpy.AddMessage('\t\tException: ' + str(e))
             if tries > TRIES_ALLOWED:
-                arcpy.AddError('Too many tries, Dropped: {}'.format(name))
+                arcpy.AddError('Too many tries, Dropped: {} {}'.format(name, index))
     try:
         arcpy.AddMessage("Checking in licenses")
         arcpy.CheckInExtension("3D")
@@ -476,9 +472,7 @@ def isProcessFile(f_name, scratch_dir):
 def createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smooth_unit, scratch_path, run_dict, run_again=True):
     arcpy.AddMessage("---- Creating Contours on {} -----".format(len(run_dict.items())))
     # Map Generate Contour Function to Footprints
-    items = run_dict.items()
-
-    pool = Pool(processes=cpu_count() - CPU_HANDICAP)
+    pool = Pool(processes=cpu_count() - CPU_HANDICAP, maxtasksperchild=1)
     pool.map(
         partial(
             generate_contour,
@@ -489,7 +483,8 @@ def createTiledContours(ref_md, cont_int, cont_unit, raster_vertical_unit, smoot
             smooth_unit,
             scratch_path
         ),
-        items
+        run_dict.items(),
+        chunksize=1
     )
 
     pool.close()
