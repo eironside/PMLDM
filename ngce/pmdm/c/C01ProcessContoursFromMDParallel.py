@@ -122,7 +122,7 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
         ftprints_path = os.path.join(tmp_scratch_folder, "Scratch.gdb")
         ftprints_clip_md = "footprints_clip_md"
         ftprints_clip_cont = "footprints_clip_cont"
-        if not os.path.exists(ftprints_path):
+        if not arcpy.Exists(ftprints_path):
             arcpy.AddMessage("\nCreating Scratch GDB:   {0}".format(ftprints_path))
             arcpy.CreateFileGDB_management(
                 tmp_scratch_folder,
@@ -132,7 +132,7 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
 
     ext_dict = {}
     tmp_buff_name = os.path.join(ftprints_path, ftprints_clip_md)
-    if not os.path.exists(tmp_buff_name):
+    if not arcpy.Exists(tmp_buff_name):
         arcpy.Buffer_analysis(
             prints,
             tmp_buff_name,
@@ -159,7 +159,7 @@ def create_iterable(scratch_folder, prints, distance_to_clip_md, distance_to_cli
                 ext_dict[rowname] = row_info
 
     tmp_buff_name2 = os.path.join(ftprints_path, ftprints_clip_cont)
-    if not os.path.exists(tmp_buff_name2):
+    if not arcpy.Exists(tmp_buff_name2):
         arcpy.Buffer_analysis(
             prints,
             tmp_buff_name2,
@@ -234,7 +234,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 fileExtension = ".shp"
                 workspace = os.path.join(scratch_path, name)
 
-            if not os.path.exists(workspace):
+            if not arcpy.Exists(workspace):
                 # Don't delete if it exists, keep our previous work to save time
                 if USE_FEATURE_CLASS:
                     arcpy.AddMessage("\nCreating Workspace GDB:   {0}".format(workspace))
@@ -258,7 +258,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             base_name = 'O08_BaseCont_{}{}'.format(name, fileExtension)
             base_contours = os.path.join(workspace, base_name)
             outRasterLayer = "outRasterLayer"
-            if not os.path.exists(base_contours):
+            if not arcpy.Exists(base_contours):
                 arcpy.MakeRasterLayer_management(in_raster=focal2_path, out_rasterlayer=outRasterLayer)
                 Functions.Contour(
                     outRasterLayer,
@@ -283,7 +283,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
                 if arcpy.Exists(simple_contours):
                     arcpy.Delete_management(simple_contours)
 
-            if not os.path.exists(simple_contours):
+            if not arcpy.Exists(simple_contours):
                 ca.SimplifyLine(
                     base_contours,
                     simple_contours,
@@ -319,7 +319,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             # Run Feature to Point on the small contours and use the output in our contour map and service
 
             smooth_contours = os.path.join(workspace, 'O10_SmoothCont_{}{}'.format(name, fileExtension))
-            if not os.path.exists(smooth_contours):
+            if not arcpy.Exists(smooth_contours):
                 ca.SmoothLine(
                     greaterThan2MetersSelection,
                     smooth_contours,
@@ -333,7 +333,7 @@ def generate_contour(md, cont_int, contUnits, rasterUnits, smooth_tol, scratch_p
             # put this up one level to avoid re-processing all of above if something goes wrong below
             clip_workspace = os.path.split(workspace)[0]
             clip_contours = os.path.join(clip_workspace, 'O11_ClipCont_{}.shp'.format(name)) #BJN
-            if not os.path.exists(clip_contours):
+            if not arcpy.Exists(clip_contours):
                 arcpy.Clip_analysis(
                     in_features=smooth_contours,
                     clip_features=clip_poly,
@@ -450,7 +450,7 @@ def isProcessFile(f_name, scratch_dir):
     process_file = False
     if f_name is not None:
         cont = os.path.join(scratch_dir, 'O11_ClipCont_{}.shp'.format(f_name)) #BJN
-        if not os.path.exists(cont):
+        if not arcpy.Exists(cont):
             arcpy.AddMessage("PROCESS (Missing): " + cont)
             process_file = True
         else:
