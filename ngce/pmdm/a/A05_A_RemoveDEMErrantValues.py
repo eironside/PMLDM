@@ -123,9 +123,9 @@ def checkSpatialOnRaster(start_dir, elev_type, target_path, v_name, v_unit, h_na
 
     prj_Count, prj_File = Utility.fileCounter(start_dir, '.prj')
     if prj_Count > 0 and prj_File is not None and len(str(prj_File)) > 0:
-        prj_spatial_ref = os.path.join(start_dir, prj_File)
+        prj_file_full_path = os.path.join(start_dir, prj_File)
 
-        prj_spatial_ref = arcpy.SpatialReference(prj_spatial_ref)
+        prj_spatial_ref = arcpy.SpatialReference(prj_file_full_path)
 
     ras_horz_cs_name, ras_horz_cs_unit_name, ras_horz_cs_factory_code, ras_vert_cs_name, ras_vert_cs_unit_name = Utility.getSRValues(ras_spatial_ref)
     prj_horz_cs_name, prj_horz_cs_unit_name, prj_horz_cs_factory_code, prj_vert_cs_name, prj_vert_cs_unit_name = Utility.getSRValues(prj_spatial_ref)
