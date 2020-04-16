@@ -370,9 +370,15 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
 
                     # Compression isn't being applied properly so results are uncompressed
                     rasterObject = arcpy.Raster(f_path)
-                    outSetNull = arcpy.sa.Con(((rasterObject >= (float(minZ))) & (rasterObject <= (float(maxZ)))), f_path)  # @UndefinedVariable
-                    outSetNull.save(target_f_path)
-                    del outSetNull, rasterObject
+                    if isInt:
+                        linearTransform = arcpy.sa.TfLinear()
+                        outRescale = arcpy.sa.RescaleByFunction(rasterObject, linearTransform, minZ, maxZ)
+                        outRescale.save(target_f_path)
+                        del outRescale, rasterObject
+                    else:
+                        outSetNull = arcpy.sa.Con(((rasterObject >= (float(minZ))) & (rasterObject <= (float(maxZ)))), f_path)  # @UndefinedVariable
+                        outSetNull.save(target_f_path)
+                        del outSetNull, rasterObject
 
                     if spatial_ref is not None:
                         arcpy.AddMessage("Applying projection to raster '{}' {}".format(target_f_path, spatial_ref))
