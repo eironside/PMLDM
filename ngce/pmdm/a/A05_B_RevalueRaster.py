@@ -371,7 +371,10 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                     # Compression isn't being applied properly so results are uncompressed
                     rasterObject = arcpy.Raster(f_path)
                     if isInt:
-                        linearTransform = arcpy.sa.TfLinear()
+                        mean = rasterObject.mean
+                        stdDev = rasterObject.standardDeviation
+                        maximumPixel = mean + (stdDev * 2)
+                        linearTransform = arcpy.sa.TfLinear(maximum=maximumPixel, upperThreshold=maximumPixel, valueAboveThreshold="NoData")
                         outRescale = arcpy.sa.RescaleByFunction(rasterObject, linearTransform, minZ, maxZ)
                         outRescale.save(target_f_path)
                         del outRescale, rasterObject
