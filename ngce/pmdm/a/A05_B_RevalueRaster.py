@@ -374,7 +374,7 @@ def RevalueRaster(f_path, elev_type, raster_props, target_path, publish_path, mi
                         mean = rasterObject.mean
                         stdDev = rasterObject.standardDeviation
                         maximumPixel = mean + (stdDev * 2)
-                        linearTransform = arcpy.sa.TfLinear(maximum=maximumPixel, upperThreshold=maximumPixel, valueAboveThreshold="NoData")
+                        linearTransform = arcpy.sa.TfLinear(maximum=maximumPixel, upperThreshold=maximumPixel)
                         outRescale = arcpy.sa.RescaleByFunction(rasterObject, linearTransform, minZ, maxZ)
                         outRescale.save(target_f_path)
                         del outRescale, rasterObject
